@@ -1,0 +1,58 @@
+{
+  "users": [
+    { "name": "Administrador", "username": "admin", "password": "admin123", "role": "admin", "email": "admin@example.com", "points": 0 },
+    { "name": "Alicia Pérez", "username": "alice", "password": "alicepass", "role": "student", "email": "alice@example.com", "points": 10 },
+    { "name": "Roberto Díaz", "username": "bob", "password": "bobpass", "role": "student", "email": "bob@example.com", "points": 5 }
+  ],
+  "surveys": [
+    { "title": "Opinión sobre áreas verdes", "description": "Encuesta sobre uso y mantenimiento de áreas verdes en la universidad", "type": "yesno", "active": true },
+    { "title": "Sostenibilidad en el campus", "description": "Encuesta sobre prácticas sostenibles y reciclaje", "type": "yesno", "active": true },
+    { "title": "Transporte sostenible", "description": "Encuesta sobre uso de bicicletas y transporte público", "type": "yesno", "active": false },
+    { "title": "Calidad del aire", "description": "Evalúa la percepción del aire dentro del campus", "type": "rating", "active": true },
+    { "title": "Uso de energía renovable", "description": "¿Crees que el campus debería invertir más en energía solar?", "type": "yesno", "active": true },
+    { "title": "Servicio de reciclaje", "description": "Valora la frecuencia y la accesibilidad de los puntos de reciclaje", "type": "rating", "active": true },
+    { "title": "Iluminación solar", "description": "¿Debería instalarse más iluminación solar en los pasillos y plazas?", "type": "yesno", "active": true },
+    { "title": "Comedor saludable", "description": "Califica la oferta de productos saludables en el comedor universitario", "type": "rating", "active": true },
+    { "title": "Hábitos de consumo eco", "description": "¿Participas en acciones para reducir el consumo de plástico?", "type": "yesno", "active": true },
+    { "title": "Reducción de desperdicios", "description": "Evalúa los programas para reducir el desperdicio de comida", "type": "rating", "active": true },
+    { "title": "Uso de bolsas reutilizables", "description": "¿Siempre utilizas bolsas reutilizables al comprar en el campus?", "type": "yesno", "active": true },
+    { "title": "Programas de voluntariado", "description": "Califica tu interés en participar en programas de voluntariado ecológico", "type": "rating", "active": true },
+    { "title": "Mejora de jardines", "description": "¿Te gustaría ver más jardines comunitarios en el campus?", "type": "yesno", "active": true },
+    { "title": "Espacios verdes nocturnos", "description": "Evalúa la seguridad de los espacios verdes durante la noche", "type": "rating", "active": true },
+    { "title": "Caminos peatonales", "description": "¿Los senderos peatonales son suficientes en el campus?", "type": "yesno", "active": true },
+    { "title": "Limpieza de lagos", "description": "Valora los esfuerzos de limpieza de cuerpos de agua en la universidad", "type": "rating", "active": true },
+    { "title": "Reducción de ruido", "description": "¿Estás satisfecho con el nivel de ruido en las áreas de estudio?", "type": "rating", "active": true },
+    { "title": "Puntos de reciclaje adicionales", "description": "¿Dónde quieres más puntos de reciclaje?", "type": "yesno", "active": true },
+    { "title": "Uso de transporte público", "description": "Califica la disponibilidad de transporte público para llegar al campus", "type": "rating", "active": true },
+    { "title": "Capacitación ecológica", "description": "¿Te interesa más formación sobre prácticas sostenibles?", "type": "yesno", "active": true },
+    { "title": "Hidratación saludable", "description": "Evalúa los puntos de agua potable y fuentes disponibles", "type": "rating", "active": true },
+    { "title": "Clima y bienestar", "description": "¿El clima del campus impacta tu rendimiento académico?", "type": "rating", "active": true },
+    { "title": "Economía circular", "description": "¿Conoces los principios de economía circular aplicados en la universidad?", "type": "yesno", "active": true },
+    { "title": "Eventos ecológicos", "description": "¿Qué tipo de eventos ecológicos te gustaría ver más en el campus?", "type": "rating", "active": true },
+    { "title": "Reducción de emisiones", "description": "¿Crees que el campus debe reducir las emisiones de gases de efecto invernadero?", "type": "yesno", "active": true },
+    { "title": "Cultura sustentable", "description": "Evalúa el nivel de cultura sustentable entre estudiantes y profesores", "type": "rating", "active": true },
+    { "title": "Reciclaje de residuos electrónicos", "description": "¿El campus debería promover más la recolección de residuos electrónicos?", "type": "yesno", "active": true }
+  ],
+  "responses": [
+    { "surveyTitle": "Opinión sobre áreas verdes", "username": "alice", "answers": "{\"answer\":\"yes\"}" },
+    { "surveyTitle": "Sostenibilidad en el campus", "username": "bob", "answers": "{\"answer\":\"no\"}" },
+    { "surveyTitle": "Transporte sostenible", "username": "alice", "answers": "{\"answer\":\"yes\"}" },
+    { "surveyTitle": "Calidad del aire", "username": "bob", "answers": "{\"answer\":\"4\"}" },
+    { "surveyTitle": "Uso de energía renovable", "username": "alice", "answers": "{\"answer\":\"yes\"}" },
+    { "surveyTitle": "Servicio de reciclaje", "username": "bob", "answers": "{\"answer\":\"3\"}" },
+    { "surveyTitle": "Iluminación solar", "username": "alice", "answers": "{\"answer\":\"no\"}" },
+    { "surveyTitle": "Comedor saludable", "username": "bob", "answers": "{\"answer\":\"5\"}" },
+    { "surveyTitle": "Hábitos de consumo eco", "username": "alice", "answers": "{\"answer\":\"yes\"}" },
+    { "surveyTitle": "Reducción de desperdicios", "username": "bob", "answers": "{\"answer\":\"4\"}" },
+    { "surveyTitle": "Uso de bolsas reutilizables", "username": "alice", "answers": "{\"answer\":\"no\"}" },
+    { "surveyTitle": "Programas de voluntariado", "username": "bob", "answers": "{\"answer\":\"3\"}" },
+    { "surveyTitle": "Mejora de jardines", "username": "alice", "answers": "{\"answer\":\"yes\"}" },
+    { "surveyTitle": "Espacios verdes nocturnos", "username": "bob", "answers": "{\"answer\":\"5\"}" },
+    { "surveyTitle": "Caminos peatonales", "username": "alice", "answers": "{\"answer\":\"yes\"}" },
+    { "surveyTitle": "Limpieza de lagos", "username": "bob", "answers": "{\"answer\":\"4\"}" }
+  ],
+  "suggestions": [
+    { "title": "Más árboles", "description": "Plantar más árboles cerca de la biblioteca", "username": "alice", "reviewed": false },
+    { "title": "Puntos de reciclaje", "description": "Añadir más contenedores de reciclaje en cafeterías", "username": "bob", "reviewed": true }
+  ]
+}

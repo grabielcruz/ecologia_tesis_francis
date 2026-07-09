@@ -1,0 +1,15 @@
+Proyecto de encuestas estudiantiles para temas relacionados a la sostenibilidad y áreas verdes
+de la universidad Dr Rafael Belloso Chacín. 
+El sistema debe mostrar una ventan que permita a usuarios y administradores entrar al sistema
+mediante un usuario y contraseña; el sistema debe permitir el reinicio de la contraseña en caso
+de ser olvidada mediante un correo de recuperación.
+Una vez dentro, los administradores podrán generar nuevas encuestas a ser respondidas por los
+participantes o estudiantes, podran visualizar métricas sobre la opinión de los mismos, borrar
+encuestas, crear encuestas, actualizarlas y visualizarlas.
+Los estudiantes al estar ingresados podrán ver las encuestas tomadas y las pendientes.
+El sistema deberá tener un sistema de puntos o premios que estimule a los estudiantes a realizar
+las encuestas mostradas en el sistema.
+Adicionalmente, los participantes o estudiantes podrán sugerir nuevos temas para nuevas encuestas
+que los administradores podrán revisar para generar nuevas encuestas
+Para el stack de desarrollo se utiliza nodejs, typescript, react, expressjs para el back, utilizando 
+vit. Para la base de datos se utiliza sqlite con el paquete sequelize
