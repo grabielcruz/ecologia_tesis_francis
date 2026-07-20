@@ -1,6 +1,13 @@
 import bcrypt from "bcryptjs";
 import { Op } from "sequelize";
-import { User, Survey, Response, initializeDatabase } from "./models";
+import {
+  User,
+  Survey,
+  Response,
+  GreenSpace,
+  GreenSpaceReview,
+  initializeDatabase,
+} from "./models";
 import seeds from "./seeds.json";
 
 export async function seedDatabase() {
@@ -54,7 +61,8 @@ export async function seedDatabase() {
       where: { surveyTitle: r.surveyTitle, username: r.username },
     });
 
-    const answerData = typeof r.answers === "string" ? r.answers : JSON.stringify(r.answers);
+    const answerData =
+      typeof r.answers === "string" ? r.answers : JSON.stringify(r.answers);
     if (existing) {
       await existing.update({ answers: answerData });
       continue;
@@ -65,6 +73,54 @@ export async function seedDatabase() {
       username: r.username,
       answers: answerData,
     });
+  }
+
+  // Seed green spaces
+  for (const g of (seeds as any).greenSpaces || []) {
+    const existing = await GreenSpace.findOne({ where: { name: g.name } });
+    const payload = {
+      name: g.name,
+      location: g.location,
+      totalAreaM2: Number(g.totalAreaM2) || 0,
+      tallTreeCount: Number(g.tallTreeCount) || 0,
+      images: JSON.stringify(Array.isArray(g.images) ? g.images : []),
+    };
+
+    if (existing) {
+      await existing.update(payload);
+      continue;
+    }
+
+    await GreenSpace.create(payload);
+  }
+
+  // Seed green space reviews
+  for (const r of (seeds as any).greenSpaceReviews || []) {
+    const space = await GreenSpace.findOne({
+      where: { name: r.greenSpaceName },
+    });
+    if (!space) continue;
+
+    const existing = await GreenSpaceReview.findOne({
+      where: {
+        greenSpaceId: space.id,
+        username: r.username,
+      },
+    });
+
+    const payload = {
+      greenSpaceId: space.id,
+      username: r.username,
+      rating: Number(r.rating) || 0,
+      comment: r.comment || "",
+    };
+
+    if (existing) {
+      await existing.update(payload);
+      continue;
+    }
+
+    await GreenSpaceReview.create(payload);
   }
 
   console.log("Seeding complete.");

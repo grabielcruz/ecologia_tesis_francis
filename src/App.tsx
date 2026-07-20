@@ -1,10 +1,12 @@
 import { FormEvent, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface SurveySummary {
   totalResponses: number;
   yesCount?: number;
   noCount?: number;
   average?: number;
+  ratingCounts?: Record<string, number>;
 }
 
 interface Survey {
@@ -15,6 +17,31 @@ interface Survey {
   type: "yesno" | "rating";
   summary?: SurveySummary;
   updatedAt?: string;
+}
+
+interface GreenSpace {
+  id: number;
+  name: string;
+  location: string;
+  totalAreaM2: number;
+  tallTreeCount: number;
+  images: string[];
+  updatedAt?: string;
+  reviewSummary?: {
+    totalReviews: number;
+    averageRating: number;
+  };
+  recentReviews?: Array<{
+    username: string;
+    rating: number;
+    comment: string;
+    updatedAt?: string;
+  }>;
+}
+
+interface GreenSpaceReviewDraft {
+  rating: number;
+  comment: string;
 }
 
 function App() {
@@ -42,7 +69,23 @@ function App() {
     return avatarUrl;
   };
 
+  const resolveAssetUrl = (assetPath: string) => {
+    if (!assetPath) return "";
+    if (
+      assetPath.startsWith("http://") ||
+      assetPath.startsWith("https://") ||
+      assetPath.startsWith("data:")
+    ) {
+      return assetPath;
+    }
+    if (assetPath.startsWith("/")) {
+      return `${window.location.origin}${assetPath}`;
+    }
+    return assetPath;
+  };
+
   const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [adminSurveyOverview, setAdminSurveyOverview] = useState<Survey[]>([]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [registerName, setRegisterName] = useState("");
@@ -156,6 +199,23 @@ function App() {
   const [pollType, setPollType] = useState<"yesno" | "rating">("yesno");
   const [pollActive, setPollActive] = useState(true);
   const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
+  const [greenSpaces, setGreenSpaces] = useState<GreenSpace[]>([]);
+  const [spaceName, setSpaceName] = useState("");
+  const [spaceLocation, setSpaceLocation] = useState("");
+  const [spaceArea, setSpaceArea] = useState("");
+  const [spaceTrees, setSpaceTrees] = useState("");
+  const [spaceImagesInput, setSpaceImagesInput] = useState("");
+  const [uploadingSpaceImages, setUploadingSpaceImages] = useState(false);
+  const [editingGreenSpace, setEditingGreenSpace] = useState<GreenSpace | null>(
+    null,
+  );
+  const [reviewDrafts, setReviewDrafts] = useState<
+    Record<number, GreenSpaceReviewDraft>
+  >({});
+  const spaceImagePreviewList = spaceImagesInput
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 
   const navigate = (path: string, replace = false) => {
     if (window.location.pathname !== path) {
@@ -205,9 +265,11 @@ function App() {
     if (!token) return;
     if (user?.role === "admin") {
       fetchAdminSurveys(adminPage);
+      fetchAdminSurveyOverview();
     } else {
       fetchSurveys();
     }
+    fetchGreenSpaces();
   }, [
     token,
     user?.role,
@@ -217,6 +279,20 @@ function App() {
     filterStatus,
     sortOrder,
   ]);
+
+  const fetchGreenSpaces = async () => {
+    try {
+      const res = await fetch("/api/green-spaces");
+      if (!res.ok) {
+        setError("No se pudieron cargar las areas verdes");
+        return;
+      }
+      const data = await res.json();
+      setGreenSpaces(Array.isArray(data) ? data : []);
+    } catch {
+      setError("No se pudieron cargar las areas verdes");
+    }
+  };
 
   const fetchSurveys = async () => {
     try {
@@ -254,6 +330,19 @@ function App() {
       setTotalPages(data.totalPages);
     } catch {
       setError("No se pudieron cargar las encuestas de administrador");
+    }
+  };
+
+  const fetchAdminSurveyOverview = async () => {
+    try {
+      const res = await fetch(
+        "/api/surveys?admin=true&page=1&limit=1000&sort=desc",
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setAdminSurveyOverview(data.surveys || []);
+    } catch {
+      // Keep UI functional even if overview fails.
     }
   };
 
@@ -317,6 +406,8 @@ function App() {
     setToken(null);
     setUser(null);
     setSurveys([]);
+    setAdminSurveyOverview([]);
+    setGreenSpaces([]);
     setUsername("");
     setPassword("");
     setError(null);
@@ -327,6 +418,7 @@ function App() {
     setPollType("yesno");
     setPollActive(true);
     setEditingSurvey(null);
+    resetGreenSpaceForm();
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
@@ -366,12 +458,40 @@ function App() {
     (safeUserPage - 1) * limit,
     safeUserPage * limit,
   );
+  const isGreenSpacesRoute =
+    route === "/green-spaces" || route.startsWith("/green-spaces/");
+  const selectedGreenSpaceId = (() => {
+    if (!route.startsWith("/green-spaces/")) return null;
+    const id = Number(route.split("/")[2]);
+    return Number.isFinite(id) ? id : null;
+  })();
+  const selectedGreenSpace = selectedGreenSpaceId
+    ? greenSpaces.find((space) => space.id === selectedGreenSpaceId) || null
+    : null;
   const pageTitle =
-    route === "/profile" ? "Mi perfil" : "Encuestas disponibles";
+    route === "/"
+      ? "Principal"
+      : route === "/profile"
+        ? "Mi perfil"
+        : route === "/surveys"
+          ? user?.role === "admin"
+            ? "Encuestas"
+            : "Encuestas disponibles"
+          : route.startsWith("/green-spaces/")
+            ? "Detalle de area verde"
+            : route === "/green-spaces"
+              ? "Areas verdes del campus"
+              : "Encuestas disponibles";
   const pageSubtitle =
-    route === "/profile"
-      ? "Actualiza tus datos personales"
-      : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
+    route === "/"
+      ? "Resumen general de encuestas y areas verdes"
+      : route === "/profile"
+        ? "Actualiza tus datos personales"
+        : route.startsWith("/green-spaces/")
+          ? "Informacion completa, resenas y sugerencias del espacio"
+          : route === "/green-spaces"
+            ? "Registro y consulta de espacios verdes universitarios"
+            : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
 
   const resetAdminForm = () => {
     setEditingSurvey(null);
@@ -385,12 +505,16 @@ function App() {
     event.preventDefault();
     setError(null);
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       title: pollTitle,
       description: pollDescription,
-      type: pollType,
-      active: pollActive,
     };
+
+    payload.active = pollActive;
+
+    if (!editingSurvey) {
+      payload.type = pollType;
+    }
 
     try {
       const method = editingSurvey ? "PUT" : "POST";
@@ -411,6 +535,7 @@ function App() {
       resetAdminForm();
       setShowModal(false);
       fetchAdminSurveys(adminPage);
+      fetchAdminSurveyOverview();
     } catch {
       setError("No se pudo guardar la encuesta");
     }
@@ -440,10 +565,241 @@ function App() {
     resetAdminForm();
   };
 
+  const resetGreenSpaceForm = () => {
+    setEditingGreenSpace(null);
+    setSpaceName("");
+    setSpaceLocation("");
+    setSpaceArea("");
+    setSpaceTrees("");
+    setSpaceImagesInput("");
+    setUploadingSpaceImages(false);
+  };
+
+  const uploadGreenSpaceImages = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    if (!token) {
+      setError("Solo administradores pueden subir imagenes");
+      return;
+    }
+
+    setUploadingSpaceImages(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach((file) => formData.append("images", file));
+
+      const response = await fetch("/api/green-spaces/images", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        setError("No se pudieron subir las imagenes");
+        return;
+      }
+
+      const data = await response.json();
+      const uploadedPaths = Array.isArray(data.images)
+        ? data.images.map((img: string) => img.trim()).filter(Boolean)
+        : [];
+
+      if (uploadedPaths.length > 0) {
+        setSpaceImagesInput((prev) => {
+          const current = prev
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+          const merged = [...new Set([...current, ...uploadedPaths])];
+          return merged.join("\n");
+        });
+      }
+      event.target.value = "";
+    } catch {
+      setError("No se pudieron subir las imagenes");
+    } finally {
+      setUploadingSpaceImages(false);
+    }
+  };
+
+  const saveGreenSpace = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token) {
+      setError("Solo administradores pueden registrar areas verdes");
+      return;
+    }
+
+    const images = spaceImagesInput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    const payload = {
+      name: spaceName,
+      location: spaceLocation,
+      totalAreaM2: Number(spaceArea) || 0,
+      tallTreeCount: Number(spaceTrees) || 0,
+      images,
+    };
+
+    try {
+      const method = editingGreenSpace ? "PUT" : "POST";
+      const url = editingGreenSpace
+        ? `/api/green-spaces/${editingGreenSpace.id}`
+        : "/api/green-spaces";
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        setError("No se pudo guardar el area verde");
+        return;
+      }
+
+      resetGreenSpaceForm();
+      fetchGreenSpaces();
+      setSuccessMessage(
+        editingGreenSpace
+          ? "Area verde actualizada correctamente."
+          : "Area verde registrada correctamente.",
+      );
+      setError(null);
+    } catch {
+      setError("No se pudo guardar el area verde");
+    }
+  };
+
+  const editGreenSpace = (space: GreenSpace) => {
+    setEditingGreenSpace(space);
+    setSpaceName(space.name);
+    setSpaceLocation(space.location);
+    setSpaceArea(String(space.totalAreaM2));
+    setSpaceTrees(String(space.tallTreeCount));
+    setSpaceImagesInput((space.images || []).join("\n"));
+  };
+
+  const deleteGreenSpace = async (id: number) => {
+    if (!token) {
+      setError("Solo administradores pueden eliminar areas verdes");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/green-spaces/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        setError("No se pudo eliminar el area verde");
+        return;
+      }
+
+      if (editingGreenSpace?.id === id) {
+        resetGreenSpaceForm();
+      }
+      fetchGreenSpaces();
+      setSuccessMessage("Area verde eliminada correctamente.");
+      setError(null);
+    } catch {
+      setError("No se pudo eliminar el area verde");
+    }
+  };
+
+  const updateGreenSpaceReviewDraft = (
+    greenSpaceId: number,
+    patch: Partial<GreenSpaceReviewDraft>,
+  ) => {
+    setReviewDrafts((prev) => ({
+      ...prev,
+      [greenSpaceId]: {
+        rating: prev[greenSpaceId]?.rating ?? 0,
+        comment: prev[greenSpaceId]?.comment ?? "",
+        ...patch,
+      },
+    }));
+  };
+
+  const submitGreenSpaceReview = async (greenSpaceId: number) => {
+    if (!token) {
+      setError("Debes iniciar sesion para enviar una resena");
+      return;
+    }
+
+    const draft = reviewDrafts[greenSpaceId] || { rating: 0, comment: "" };
+    if (draft.rating < 0 || draft.rating > 5) {
+      setError("La calificacion debe estar entre 0 y 5 estrellas");
+      return;
+    }
+
+    if (!draft.comment.trim()) {
+      setError("Debes escribir un comentario o sugerencia");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/green-spaces/${greenSpaceId}/reviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          rating: draft.rating,
+          comment: draft.comment.trim(),
+        }),
+      });
+
+      if (!res.ok) {
+        setError("No se pudo guardar tu resena");
+        return;
+      }
+
+      setSuccessMessage("Resena guardada correctamente.");
+      setError(null);
+      setReviewDrafts((prev) => ({
+        ...prev,
+        [greenSpaceId]: { rating: draft.rating, comment: "" },
+      }));
+      fetchGreenSpaces();
+    } catch {
+      setError("No se pudo guardar tu resena");
+    }
+  };
+
+  const renderAverageStars = (average: number) => {
+    const safeAverage = Math.max(0, Math.min(5, average || 0));
+    const fillPercent = (safeAverage / 5) * 100;
+
+    return (
+      <div
+        className="avg-stars"
+        aria-label={`Calificacion promedio ${safeAverage.toFixed(1)} de 5`}
+      >
+        <span className="stars-base">★★★★★</span>
+        <span className="stars-fill" style={{ width: `${fillPercent}%` }}>
+          ★★★★★
+        </span>
+      </div>
+    );
+  };
+
   const renderModal = () => {
     if (!showModal) return null;
 
-    return (
+    return createPortal(
       <div className="modal-overlay" onClick={closeModal}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
@@ -471,18 +827,20 @@ function App() {
                   required
                 />
               </label>
-              <label>
-                Tipo de encuesta
-                <select
-                  value={pollType}
-                  onChange={(e) =>
-                    setPollType(e.target.value as "yesno" | "rating")
-                  }
-                >
-                  <option value="yesno">Sí / No</option>
-                  <option value="rating">Valoración 1–5</option>
-                </select>
-              </label>
+              {!editingSurvey && (
+                <label>
+                  Tipo de encuesta
+                  <select
+                    value={pollType}
+                    onChange={(e) =>
+                      setPollType(e.target.value as "yesno" | "rating")
+                    }
+                  >
+                    <option value="yesno">Sí / No</option>
+                    <option value="rating">Valoración 1–5</option>
+                  </select>
+                </label>
+              )}
             </div>
 
             <label>
@@ -502,7 +860,7 @@ function App() {
                   checked={pollActive}
                   onChange={(e) => setPollActive(e.target.checked)}
                 />
-                Encuesta activa
+                Visible
               </label>
               <div className="button-row">
                 <button type="submit">
@@ -519,7 +877,8 @@ function App() {
             </div>
           </form>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   };
 
@@ -537,6 +896,7 @@ function App() {
       } else {
         fetchAdminSurveys(adminPage);
       }
+      fetchAdminSurveyOverview();
     } catch {
       setError("No se pudo eliminar la encuesta");
     }
@@ -917,7 +1277,7 @@ function App() {
   const renderPasswordModal = () => {
     if (!showPasswordModal) return null;
 
-    return (
+    return createPortal(
       <div className="modal-overlay" onClick={closePasswordModal}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
@@ -980,7 +1340,8 @@ function App() {
             </div>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   };
 
@@ -1096,6 +1457,85 @@ function App() {
                   )}
                 </div>
               )}
+              {survey.summary && survey.summary.totalResponses > 0 && (
+                <div className="poll-chart">
+                  <h4>Distribución de respuestas</h4>
+                  {survey.type === "yesno" ? (
+                    <>
+                      {[
+                        {
+                          label: "Sí",
+                          value: survey.summary.yesCount ?? 0,
+                          tone: "yes",
+                        },
+                        {
+                          label: "No",
+                          value: survey.summary.noCount ?? 0,
+                          tone: "no",
+                        },
+                      ].map((item) => {
+                        const percentage =
+                          survey.summary && survey.summary.totalResponses > 0
+                            ? Math.round(
+                                (item.value / survey.summary.totalResponses) *
+                                  100,
+                              )
+                            : 0;
+
+                        return (
+                          <div key={item.label} className="chart-row">
+                            <div className="chart-row-label">
+                              <span>{item.label}</span>
+                              <strong>
+                                {item.value} ({percentage}%)
+                              </strong>
+                            </div>
+                            <div className="chart-track">
+                              <div
+                                className={`chart-fill ${item.tone}`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <>
+                      {[1, 2, 3, 4, 5].map((score) => {
+                        const scoreKey = String(score);
+                        const value =
+                          survey.summary?.ratingCounts?.[scoreKey] ?? 0;
+                        const percentage =
+                          survey.summary && survey.summary.totalResponses > 0
+                            ? Math.round(
+                                (value / survey.summary.totalResponses) * 100,
+                              )
+                            : 0;
+
+                        return (
+                          <div key={score} className="chart-row">
+                            <div className="chart-row-label">
+                              <span>
+                                {score} estrella{score > 1 ? "s" : ""}
+                              </span>
+                              <strong>
+                                {value} ({percentage}%)
+                              </strong>
+                            </div>
+                            <div className="chart-track">
+                              <div
+                                className="chart-fill rating"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
               <div className="admin-actions">
                 <button type="button" onClick={() => editSurvey(survey)}>
                   Editar
@@ -1136,12 +1576,415 @@ function App() {
     </section>
   );
 
+  const renderGreenSpacesSection = () => (
+    <section className="box green-spaces-box">
+      {user?.role === "admin" && (
+        <div className="green-space-form-wrap">
+          <h2>
+            {editingGreenSpace ? "Editar area verde" : "Registrar area verde"}
+          </h2>
+          <form className="admin-form" onSubmit={saveGreenSpace}>
+            <div className="field-row">
+              <label>
+                Nombre
+                <input
+                  value={spaceName}
+                  onChange={(e) => setSpaceName(e.target.value)}
+                  placeholder="Ej: Jardin Central"
+                  required
+                />
+              </label>
+              <label>
+                Ubicacion
+                <input
+                  value={spaceLocation}
+                  onChange={(e) => setSpaceLocation(e.target.value)}
+                  placeholder="Ej: Frente a biblioteca"
+                  required
+                />
+              </label>
+            </div>
+            <div className="field-row">
+              <label>
+                Area total (m2)
+                <input
+                  type="number"
+                  min="0"
+                  value={spaceArea}
+                  onChange={(e) => setSpaceArea(e.target.value)}
+                  placeholder="0"
+                  required
+                />
+              </label>
+              <label>
+                Numero de arboles altos
+                <input
+                  type="number"
+                  min="0"
+                  value={spaceTrees}
+                  onChange={(e) => setSpaceTrees(e.target.value)}
+                  placeholder="0"
+                  required
+                />
+              </label>
+            </div>
+            <label>
+              Imagenes (una ruta o URL por linea)
+              <textarea
+                value={spaceImagesInput}
+                onChange={(e) => setSpaceImagesInput(e.target.value)}
+                placeholder="/green-spaces/jardin-central-1.svg"
+                required
+              />
+            </label>
+            {spaceImagePreviewList.length > 0 && (
+              <div className="green-space-preview-list">
+                {spaceImagePreviewList.map((image, index) => (
+                  <figure
+                    key={`${image}-${index}`}
+                    className="green-space-preview-item"
+                  >
+                    <img
+                      src={resolveAssetUrl(image)}
+                      alt={`Previsualizacion ${index + 1}`}
+                    />
+                    <figcaption>{image}</figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
+            <label>
+              Subir imagenes desde tu equipo
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={uploadGreenSpaceImages}
+                disabled={uploadingSpaceImages}
+              />
+            </label>
+            {uploadingSpaceImages && (
+              <p className="muted">Subiendo imagenes, por favor espera...</p>
+            )}
+            <div className="button-row">
+              <button type="submit">
+                {editingGreenSpace ? "Guardar cambios" : "Registrar"}
+              </button>
+              {editingGreenSpace && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={resetGreenSpaceForm}
+                >
+                  Cancelar edicion
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="green-space-grid compact">
+        {greenSpaces.length === 0 ? (
+          <p>No hay areas verdes registradas.</p>
+        ) : (
+          greenSpaces.map((space) => (
+            <article key={space.id} className="green-space-mini-card">
+              <img
+                src={resolveAssetUrl(
+                  space.images?.[0] || "/default-avatar.svg",
+                )}
+                alt={`${space.name} portada`}
+                className="green-space-mini-cover"
+              />
+              <div className="green-space-mini-content">
+                <h3>{space.name}</h3>
+                <p>{space.location}</p>
+                <div className="mini-rating-row">
+                  {renderAverageStars(space.reviewSummary?.averageRating ?? 0)}
+                  <span>
+                    {(space.reviewSummary?.averageRating ?? 0).toFixed(1)} / 5 ·{" "}
+                    {space.reviewSummary?.totalReviews ?? 0} resenas
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/green-spaces/${space.id}`)}
+                >
+                  Ver detalles
+                </button>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+    </section>
+  );
+
+  const renderGreenSpaceDetailSection = () => {
+    if (!selectedGreenSpace) {
+      return (
+        <section className="box">
+          <p>El area verde solicitada no existe.</p>
+          <button type="button" onClick={() => navigate("/green-spaces")}>
+            Volver a areas verdes
+          </button>
+        </section>
+      );
+    }
+
+    const current = reviewDrafts[selectedGreenSpace.id]?.rating ?? 0;
+
+    return (
+      <section className="box green-spaces-box">
+        <div className="button-row">
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => navigate("/green-spaces")}
+          >
+            Volver a lista
+          </button>
+          {user?.role === "admin" && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  editGreenSpace(selectedGreenSpace);
+                  navigate("/green-spaces");
+                }}
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => {
+                  deleteGreenSpace(selectedGreenSpace.id);
+                  navigate("/green-spaces");
+                }}
+              >
+                Eliminar
+              </button>
+            </>
+          )}
+        </div>
+
+        <article className="green-space-card">
+          <div className="green-space-header">
+            <div>
+              <h3>{selectedGreenSpace.name}</h3>
+              <p>{selectedGreenSpace.location}</p>
+            </div>
+            <span className="poll-updated">
+              {formatUpdatedAt(selectedGreenSpace.updatedAt)}
+            </span>
+          </div>
+          <div className="green-space-metrics">
+            <div className="summary-item">
+              <span>Area total</span>
+              <strong>{selectedGreenSpace.totalAreaM2} m2</strong>
+            </div>
+            <div className="summary-item">
+              <span>Arboles altos</span>
+              <strong>{selectedGreenSpace.tallTreeCount}</strong>
+            </div>
+            <div className="summary-item">
+              <span>Calificacion promedio</span>
+              <div className="detail-rating-row">
+                {renderAverageStars(
+                  selectedGreenSpace.reviewSummary?.averageRating ?? 0,
+                )}
+                <strong>
+                  {(
+                    selectedGreenSpace.reviewSummary?.averageRating ?? 0
+                  ).toFixed(1)}{" "}
+                  / 5
+                </strong>
+              </div>
+            </div>
+            <div className="summary-item">
+              <span>Total de resenas</span>
+              <strong>
+                {selectedGreenSpace.reviewSummary?.totalReviews ?? 0}
+              </strong>
+            </div>
+          </div>
+          <div className="green-space-images">
+            {(selectedGreenSpace.images || []).map((image, index) => (
+              <img
+                key={`${selectedGreenSpace.id}-${index}`}
+                src={resolveAssetUrl(image)}
+                alt={`${selectedGreenSpace.name} imagen ${index + 1}`}
+              />
+            ))}
+          </div>
+
+          <div className="green-space-review-box">
+            <h4>Califica este espacio (0 a 5 estrellas)</h4>
+            <div
+              className="star-strip"
+              role="radiogroup"
+              aria-label="Calificacion de estrellas"
+            >
+              {[1, 2, 3, 4, 5].map((value) => {
+                const filled = value <= current;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`star-button ${filled ? "filled" : ""}`}
+                    aria-label={`${value} estrellas`}
+                    onClick={() =>
+                      updateGreenSpaceReviewDraft(selectedGreenSpace.id, {
+                        rating: current === value ? 0 : value,
+                      })
+                    }
+                  >
+                    ★
+                  </button>
+                );
+              })}
+            </div>
+            <p className="muted">
+              Seleccion actual: {current} estrella{current === 1 ? "" : "s"}
+            </p>
+            <label>
+              Comentarios y sugerencias
+              <textarea
+                value={reviewDrafts[selectedGreenSpace.id]?.comment ?? ""}
+                onChange={(e) =>
+                  updateGreenSpaceReviewDraft(selectedGreenSpace.id, {
+                    comment: e.target.value,
+                  })
+                }
+                placeholder="Escribe tu opinion o sugerencia para mejorar este espacio verde"
+              />
+            </label>
+            <div className="button-row">
+              <button
+                type="button"
+                onClick={() => submitGreenSpaceReview(selectedGreenSpace.id)}
+              >
+                Guardar resena
+              </button>
+            </div>
+            {(selectedGreenSpace.recentReviews || []).length > 0 && (
+              <div className="recent-reviews">
+                <h5>Ultimas opiniones</h5>
+                {(selectedGreenSpace.recentReviews || []).map(
+                  (review, index) => (
+                    <article
+                      key={`${selectedGreenSpace.id}-review-${index}`}
+                      className="recent-review-item"
+                    >
+                      <strong>
+                        {review.username} · {review.rating}/5
+                      </strong>
+                      <p>{review.comment}</p>
+                    </article>
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+        </article>
+      </section>
+    );
+  };
+
+  const renderPrincipalSection = () => {
+    const surveySource = user?.role === "admin" ? adminSurveyOverview : surveys;
+    const totalPolls = surveySource.length;
+    const activePolls = surveySource.filter((survey) => survey.active).length;
+    const totalResponses = surveySource.reduce(
+      (acc, survey) => acc + (survey.summary?.totalResponses ?? 0),
+      0,
+    );
+    const totalGreenArea = greenSpaces.reduce(
+      (acc, space) => acc + (space.totalAreaM2 || 0),
+      0,
+    );
+    const totalTallTrees = greenSpaces.reduce(
+      (acc, space) => acc + (space.tallTreeCount || 0),
+      0,
+    );
+
+    return (
+      <section className="box principal-box">
+        <div className="principal-summary-grid">
+          <article className="summary-item">
+            <span>Encuestas totales</span>
+            <strong>{totalPolls}</strong>
+          </article>
+          <article className="summary-item">
+            <span>Encuestas visibles</span>
+            <strong>{activePolls}</strong>
+          </article>
+          <article className="summary-item">
+            <span>Respuestas registradas</span>
+            <strong>{totalResponses}</strong>
+          </article>
+          <article className="summary-item">
+            <span>Areas verdes</span>
+            <strong>{greenSpaces.length}</strong>
+          </article>
+          <article className="summary-item">
+            <span>Superficie verde total</span>
+            <strong>{totalGreenArea.toFixed(0)} m2</strong>
+          </article>
+          <article className="summary-item">
+            <span>Arboles altos</span>
+            <strong>{totalTallTrees}</strong>
+          </article>
+        </div>
+
+        <div className="principal-highlights">
+          <article className="principal-panel">
+            <h3>Encuestas recientes</h3>
+            {surveySource.slice(0, 4).map((survey) => (
+              <p key={survey.id}>
+                <strong>{survey.title}</strong> ·{" "}
+                {survey.summary?.totalResponses ?? 0} respuestas
+              </p>
+            ))}
+            {surveySource.length === 0 && <p>No hay encuestas disponibles.</p>}
+          </article>
+          <article className="principal-panel">
+            <h3>Areas verdes destacadas</h3>
+            {greenSpaces.slice(0, 4).map((space) => (
+              <p key={space.id}>
+                <strong>{space.name}</strong> · {space.totalAreaM2} m2 ·{" "}
+                {space.tallTreeCount} arboles
+              </p>
+            ))}
+            {greenSpaces.length === 0 && (
+              <p>No hay areas verdes registradas.</p>
+            )}
+          </article>
+        </div>
+      </section>
+    );
+  };
+
   const renderMainSection = () => {
+    if (route === "/") {
+      return renderPrincipalSection();
+    }
+
     if (route === "/profile") {
       return renderProfileSection();
     }
 
-    if (user?.role === "admin") {
+    if (route.startsWith("/green-spaces/")) {
+      return renderGreenSpaceDetailSection();
+    }
+
+    if (route === "/green-spaces") {
+      return renderGreenSpacesSection();
+    }
+
+    if (route === "/surveys" && user?.role === "admin") {
       return renderAdminPanel();
     }
 
@@ -1353,8 +2196,8 @@ function App() {
       <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
         <div className="brand">
           <div>
-            <h2>Panel de encuestas</h2>
-            <p>Accede rápido a tu perfil y administra tu campus.</p>
+            <h2>Panel del campus</h2>
+            <p>Accede a encuestas, areas verdes y tu perfil.</p>
           </div>
         </div>
         {user?.role !== "admin" && (
@@ -1373,7 +2216,14 @@ function App() {
             className={route === "/" ? "active" : ""}
             onClick={() => navigate("/")}
           >
-            Home
+            Principal
+          </button>
+          <button
+            type="button"
+            className={route === "/surveys" ? "active" : ""}
+            onClick={() => navigate("/surveys")}
+          >
+            Encuestas
           </button>
           <button
             type="button"
@@ -1381,6 +2231,13 @@ function App() {
             onClick={() => navigate("/profile")}
           >
             Perfil
+          </button>
+          <button
+            type="button"
+            className={isGreenSpacesRoute ? "active" : ""}
+            onClick={() => navigate("/green-spaces")}
+          >
+            Areas verdes
           </button>
         </nav>
         {user?.role === "admin" && <span className="nav-badge">ADMIN</span>}

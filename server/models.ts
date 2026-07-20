@@ -60,7 +60,7 @@ User.init(
       defaultValue: 0,
     },
   },
-  { sequelize, modelName: "User" }
+  { sequelize, modelName: "User" },
 );
 
 export class Survey extends Model {
@@ -99,7 +99,7 @@ Survey.init(
       defaultValue: true,
     },
   },
-  { sequelize, modelName: "Survey" }
+  { sequelize, modelName: "Survey" },
 );
 
 export class Response extends Model {
@@ -129,7 +129,7 @@ Response.init(
       allowNull: false,
     },
   },
-  { sequelize, modelName: "Response" }
+  { sequelize, modelName: "Response" },
 );
 
 export class Suggestion extends Model {
@@ -164,7 +164,91 @@ Suggestion.init(
       defaultValue: false,
     },
   },
-  { sequelize, modelName: "Suggestion" }
+  { sequelize, modelName: "Suggestion" },
+);
+
+export class GreenSpace extends Model {
+  public id!: number;
+  public name!: string;
+  public location!: string;
+  public totalAreaM2!: number;
+  public tallTreeCount!: number;
+  public images!: string;
+}
+
+GreenSpace.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    location: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    totalAreaM2: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    tallTreeCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    images: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    },
+  },
+  { sequelize, modelName: "GreenSpace" },
+);
+
+export class GreenSpaceReview extends Model {
+  public id!: number;
+  public greenSpaceId!: number;
+  public username!: string;
+  public rating!: number;
+  public comment!: string;
+}
+
+GreenSpaceReview.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    greenSpaceId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    rating: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+        max: 5,
+      },
+    },
+    comment: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "",
+    },
+  },
+  { sequelize, modelName: "GreenSpaceReview" },
 );
 
 export const initializeDatabase = async () => {

@@ -41,24 +41,44 @@ router.get("/", async (req, res) => {
     where,
     limit,
     offset,
-    order: [["updatedAt", sort], ["id", sort]],
+    order: [
+      ["updatedAt", sort],
+      ["id", sort],
+    ],
   });
 
   const surveyTitles = rows.map((survey) => survey.title);
-  const responses = await Response.findAll({ where: { surveyTitle: surveyTitles } });
+  const responses = await Response.findAll({
+    where: { surveyTitle: surveyTitles },
+  });
 
   const summaryByTitle: Record<
     string,
-    { totalResponses: number; yesCount: number; noCount: number; ratingTotal: number }
+    {
+      totalResponses: number;
+      yesCount: number;
+      noCount: number;
+      ratingTotal: number;
+      ratingCounts: Record<string, number>;
+    }
   > = {};
 
   for (const response of responses) {
     const title = response.surveyTitle;
     if (!summaryByTitle[title]) {
-      summaryByTitle[title] = { totalResponses: 0, yesCount: 0, noCount: 0, ratingTotal: 0 };
+      summaryByTitle[title] = {
+        totalResponses: 0,
+        yesCount: 0,
+        noCount: 0,
+        ratingTotal: 0,
+        ratingCounts: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
+      };
     }
 
-    const payload = typeof response.answers === "string" ? JSON.parse(response.answers) : response.answers;
+    const payload =
+      typeof response.answers === "string"
+        ? JSON.parse(response.answers)
+        : response.answers;
     const answer = payload?.answer;
     summaryByTitle[title].totalResponses += 1;
 
@@ -67,13 +87,23 @@ router.get("/", async (req, res) => {
     } else if (answer === "no") {
       summaryByTitle[title].noCount += 1;
     } else if (!Number.isNaN(Number(answer))) {
-      summaryByTitle[title].ratingTotal += Number(answer);
+      const numericAnswer = Number(answer);
+      summaryByTitle[title].ratingTotal += numericAnswer;
+      if (numericAnswer >= 1 && numericAnswer <= 5) {
+        summaryByTitle[title].ratingCounts[String(numericAnswer)] += 1;
+      }
     }
   }
 
   const surveysWithSummary = rows.map((survey) => {
     const base = survey.toJSON();
-    const summary = summaryByTitle[survey.title] || { totalResponses: 0, yesCount: 0, noCount: 0, ratingTotal: 0 };
+    const summary = summaryByTitle[survey.title] || {
+      totalResponses: 0,
+      yesCount: 0,
+      noCount: 0,
+      ratingTotal: 0,
+      ratingCounts: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
+    };
     const summaryData: any = { totalResponses: summary.totalResponses };
 
     if (survey.type === "yesno") {
@@ -82,7 +112,10 @@ router.get("/", async (req, res) => {
     }
 
     if (survey.type === "rating") {
-      summaryData.average = summary.totalResponses ? summary.ratingTotal / summary.totalResponses : 0;
+      summaryData.average = summary.totalResponses
+        ? summary.ratingTotal / summary.totalResponses
+        : 0;
+      summaryData.ratingCounts = summary.ratingCounts;
     }
 
     return {
@@ -105,7 +138,9 @@ router.post("/:id/responses", async (req, res) => {
   const { username, answers } = req.body;
 
   if (!username || !answers) {
-    return res.status(400).json({ error: "Faltan datos de usuario o respuesta" });
+    return res
+      .status(400)
+      .json({ error: "Faltan datos de usuario o respuesta" });
   }
 
   const survey = await Survey.findByPk(id);
@@ -139,7 +174,13 @@ router.put("/:id", async (req, res) => {
   const survey = await Survey.findByPk(id);
   if (!survey) return res.status(404).json({ error: "Encuesta no encontrada" });
 
-  await survey.update({ title, description, type, active });
+  const updates: Record<string, unknown> = {};
+  if (typeof title !== "undefined") updates.title = title;
+  if (typeof description !== "undefined") updates.description = description;
+  if (typeof type !== "undefined") updates.type = type;
+  if (typeof active !== "undefined") updates.active = active;
+
+  await survey.update(updates);
   res.json(survey);
 });
 
@@ -151,6 +192,5 @@ router.delete("/:id", async (req, res) => {
   await survey.destroy();
   res.status(204).end();
 });
-
 
 export default router;

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <rect width="1200" height="700" fill="#f0fbff"/>
+  <rect y="430" width="1200" height="270" fill="#97d289"/>
+  <rect y="520" width="1200" height="180" fill="#74b56a"/>
+  <ellipse cx="600" cy="500" rx="430" ry="115" fill="#c9b68b"/>
+  <g fill="#4ca75f">
+    <circle cx="210" cy="380" r="75"/>
+    <circle cx="340" cy="350" r="90"/>
+    <circle cx="470" cy="390" r="72"/>
+    <circle cx="760" cy="390" r="76"/>
+    <circle cx="900" cy="350" r="92"/>
+    <circle cx="1030" cy="385" r="74"/>
+  </g>
+  <g fill="#7a5c49">
+    <rect x="194" y="385" width="30" height="170"/>
+    <rect x="322" y="360" width="34" height="190"/>
+    <rect x="454" y="395" width="30" height="160"/>
+    <rect x="744" y="395" width="30" height="160"/>
+    <rect x="884" y="360" width="34" height="190"/>
+    <rect x="1014" y="390" width="30" height="165"/>
+  </g>
+  <text x="48" y="650" font-family="Verdana" font-size="36" fill="#2c5f39">Jardin Central - Vista 2</text>
+</svg>

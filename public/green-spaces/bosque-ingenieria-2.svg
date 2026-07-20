@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <rect width="1200" height="700" fill="#eef8ff"/>
+  <rect y="390" width="1200" height="310" fill="#90ce87"/>
+  <path d="M0 560 Q300 500 600 560 T1200 560" stroke="#6a9f63" stroke-width="120" fill="none"/>
+  <rect x="500" y="360" width="200" height="160" fill="#d7d0c4"/>
+  <rect x="560" y="410" width="78" height="110" fill="#9b8f7f"/>
+  <g fill="#4ca760">
+    <circle cx="260" cy="300" r="95"/>
+    <circle cx="390" cy="290" r="105"/>
+    <circle cx="810" cy="290" r="108"/>
+    <circle cx="950" cy="300" r="96"/>
+  </g>
+  <g fill="#7c5f4a">
+    <rect x="250" y="310" width="26" height="220"/>
+    <rect x="378" y="300" width="28" height="230"/>
+    <rect x="798" y="300" width="28" height="230"/>
+    <rect x="940" y="310" width="26" height="220"/>
+  </g>
+  <text x="48" y="650" font-family="Verdana" font-size="36" fill="#2c5f39">Bosque de Ingenieria - Vista 2</text>
+</svg>

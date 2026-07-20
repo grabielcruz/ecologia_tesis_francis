@@ -6,6 +6,7 @@ import { seedDatabase } from "./seeds";
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 import surveyRoutes from "./routes/surveys";
+import greenSpaceRoutes from "./routes/greenSpaces";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -22,6 +23,7 @@ app.use("/uploads", express.static(uploadsDir));
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/surveys", surveyRoutes);
+app.use("/api/green-spaces", greenSpaceRoutes);
 
 initializeDatabase()
   .then(seedDatabase)

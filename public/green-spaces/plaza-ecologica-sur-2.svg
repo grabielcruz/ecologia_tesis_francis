@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <rect width="1200" height="700" fill="#eef9ff"/>
+  <rect y="410" width="1200" height="290" fill="#94d189"/>
+  <rect x="120" y="500" width="960" height="130" rx="20" fill="#d8c5a0"/>
+  <rect x="180" y="530" width="180" height="30" rx="10" fill="#9b8e7d"/>
+  <rect x="840" y="530" width="180" height="30" rx="10" fill="#9b8e7d"/>
+  <g fill="#7a5e4a">
+    <rect x="450" y="300" width="22" height="250"/>
+    <rect x="730" y="300" width="22" height="250"/>
+  </g>
+  <g fill="#4faa61">
+    <circle cx="461" cy="275" r="90"/>
+    <circle cx="741" cy="275" r="90"/>
+  </g>
+  <g fill="#4aa25c">
+    <circle cx="250" cy="340" r="76"/>
+    <circle cx="950" cy="340" r="76"/>
+  </g>
+  <g fill="#795d48">
+    <rect x="240" y="355" width="20" height="180"/>
+    <rect x="940" y="355" width="20" height="180"/>
+  </g>
+  <text x="48" y="650" font-family="Verdana" font-size="36" fill="#2c5f39">Plaza Ecologica Sur - Vista 2</text>
+</svg>

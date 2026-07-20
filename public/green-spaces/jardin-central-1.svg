@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="skyA" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#a7d7ff"/>
+      <stop offset="100%" stop-color="#eaf7ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#skyA)"/>
+  <rect y="420" width="1200" height="280" fill="#9bd38f"/>
+  <rect y="500" width="1200" height="200" fill="#7fbe74"/>
+  <circle cx="180" cy="120" r="58" fill="#ffd76b"/>
+  <rect x="530" y="430" width="140" height="160" fill="#8d6e63"/>
+  <rect x="555" y="370" width="90" height="60" fill="#795548"/>
+  <circle cx="600" cy="315" r="110" fill="#4fa963"/>
+  <circle cx="520" cy="330" r="70" fill="#58b16b"/>
+  <circle cx="680" cy="330" r="70" fill="#58b16b"/>
+  <path d="M120 520 Q600 420 1080 520" stroke="#6ea66a" stroke-width="14" fill="none"/>
+  <text x="48" y="650" font-family="Verdana" font-size="36" fill="#2c5f39">Jardin Central - Vista 1</text>
+</svg>
