@@ -1,0 +1,89 @@
+erDiagram
+    %% Capa de Usuarios y Roles
+    USUARIO {
+        int usuario_id PK
+        string codigo_universitario
+        string nombre_completo
+        string email_institucional
+        int rol_id FK
+    }
+
+    ROL {
+        int rol_id PK
+        string nombre_rol
+    }
+
+    %% Capa de Áreas Verdes (GIS/Inventario)
+    AREA_VERDE {
+        int area_id PK
+        string nombre
+        geometry poligono_geometria
+        float superficie_m2
+        int tipo_vegetacion_id FK
+    }
+
+    TIPO_VEGETACION {
+        int tipo_id PK
+        string descripcion
+    }
+
+    ARBOL_INVENTARIO {
+        int arbol_id PK
+        string especie
+        geometry ubicacion_punto
+        float salud_estado
+        int area_id FK
+    }
+
+    %% Capa de Participación Ciudadana
+    REPORTE_CIUDADANO {
+        int reporte_id PK
+        string titulo
+        text descripcion
+        string url_imagen
+        geometry ubicacion_reporte
+        string estado
+        timestamp fecha_creacion
+        int usuario_id FK
+    }
+
+    IDEA_PROYECTO {
+        int idea_id PK
+        string titulo
+        text propuesta
+        string categoria_greenmetric_objetivo
+        int votos_totales
+        int usuario_id FK
+    }
+
+    VOTO_IDEA {
+        int voto_id PK
+        int idea_id FK
+        int usuario_id FK
+        timestamp fecha_voto
+    }
+
+    %% Capa de Métricas GreenMetric
+    HISTORIAL_METRICA_GMETRIC {
+        int historico_id PK
+        timestamp fecha_calculo
+        int anio_referencia
+        float puntuacion_total_estimada
+        json datos_desglosados
+    }
+
+    %% Relaciones principales (físicas)
+    ROL ||--o{ USUARIO : asigna
+    USUARIO ||--o{ REPORTE_CIUDADANO : crea
+    USUARIO ||--o{ IDEA_PROYECTO : propone
+    USUARIO ||--o{ VOTO_IDEA : realiza
+    IDEA_PROYECTO ||--o{ VOTO_IDEA : recibe
+
+    TIPO_VEGETACION ||--o{ AREA_VERDE : clasifica
+    AREA_VERDE ||--o{ ARBOL_INVENTARIO : contiene
+
+    %% Relaciones conceptuales (sin FK explícita en el esquema)
+    AREA_VERDE o|..o{ REPORTE_CIUDADANO : puede_afectar_a
+    AREA_VERDE o|..o{ IDEA_PROYECTO : puede_proponerse_en
+    HISTORIAL_METRICA_GMETRIC o|..o{ REPORTE_CIUDADANO : aporte_ED
+    HISTORIAL_METRICA_GMETRIC o|..o{ AREA_VERDE : aporte_SI
