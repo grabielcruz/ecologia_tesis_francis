@@ -1,0 +1,90 @@
+Diagrama Entidad-Relación (Modelo de Datos)
+Este diagrama define la estructura de la base de datos, asegurando que se capturen las relaciones necesarias entre usuarios, sus acciones participativas, la geografía del campus y las métricas finales. Se asume el uso de PostgreSQL con PostGIS para los atributos geométricos (geometry).
+
+
+
+erDiagram
+    %% Capa de Usuarios y Roles (Seguridad)
+    USUARIO {
+        int usuario_id PK
+        string codigo_universitario
+        string nombre_completo
+        string email_institucional
+        int rol_id FK
+    }
+    ROL {
+        int rol_id PK
+        string nombre_rol "Estudiante, Docente, Gestor, Admin"
+    }
+
+    %% Capa de Áreas Verdes (GIS/Inventario)
+    AREA_VERDE {
+        int area_id PK
+        string nombre
+        geometry poligono_geometria "PostGIS Polygon"
+        float superficie_m2
+        int tipo_vegetacion_id FK
+    }
+    TIPO_VEGETACION {
+        int tipo_id PK
+        string descripcion "Bosque, Jardín Plantado, Césped, Huerto"
+    }
+    ARBOL_INVENTARIO {
+        int arbol_id PK
+        string especie
+        geometry ubicacion_punto "PostGIS Point"
+        float salud_estado
+        int area_id FK
+    }
+
+    %% Capa de Participación Ciudadana
+    REPORTE_CIUDADANO {
+        int reporte_id PK
+        string titulo
+        text descripcion
+        string url_imagen
+        geometry ubicacion_reporte "PostGIS Point/Polygon"
+        string estado "Abierto, En Proceso, Cerrado"
+        timestamp fecha_creacion
+        int usuario_id FK
+    }
+    IDEA_PROYECTO {
+        int idea_id PK
+        string titulo
+        text propuesta
+        string categoria_greenmetric_objetivo "SI, EC, WS, WR, TR, ED"
+        int votos_totales
+        int usuario_id FK
+    }
+    VOTO_IDEA {
+        int voto_id PK
+        int idea_id FK
+        int usuario_id FK
+        timestamp fecha_voto
+    }
+
+    %% Capa de Métricas Finales GreenMetric
+    HISTORIAL_METRICA_GMETRIC {
+        int historico_id PK
+        timestamp fecha_calculo
+        int año_referencia
+        float puntuación_total_estimada
+        json datos_desglosados "Guarda los coeficientes de SI, ED, etc."
+    }
+
+    %% Relaciones
+    USUARIO }|--|| ROL : "tiene"
+    USUARIO ||--o{ REPORTE_CIUDADANO : "crea"
+    USUARIO ||--o{ IDEA_PROYECTO : "propone"
+    USUARIO ||--o{ VOTO_IDEA : "realiza"
+    IDEA_PROYECTO ||--o{ VOTO_IDEA : "recibe"
+    
+    AREA_VERDE }|--|| TIPO_VEGETACION : "es"
+    AREA_VERDE ||--o{ ARBOL_INVENTARIO : "contiene"
+    
+    REPORTE_CIUDADANO }|..| AREA_VERDE : "puede afectar a"
+    IDEA_PROYECTO }|..| AREA_VERDE : "puede proponerse en"
+
+    %% Relación conceptual GMetric
+    REPORTE_CIUDADANO }|..| HISTORIAL_METRICA_GMETRIC : "aporta datos a categoría ED"
+    AREA_VERDE }|..| HISTORIAL_METRICA_GMETRIC : "aporta datos a categoría SI"

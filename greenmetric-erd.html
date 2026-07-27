@@ -1,101 +1,108 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GreenMetric ERD</title>
-  <style>
-    :root {
-      --bg1: #f3f9f1;
-      --bg2: #d8ebd2;
-      --panel: #ffffff;
-      --text: #1f2a1f;
-      --accent: #2e7d32;
-      --accent-2: #145a32;
-    }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      color: var(--text);
-      background: radial-gradient(circle at 10% 20%, var(--bg1) 0%, var(--bg2) 70%);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-    .toolbar {
-      width: min(1200px, 100%);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    h1 {
-      margin: 0;
-      font-size: clamp(20px, 3vw, 32px);
-      color: var(--accent-2);
-    }
-    .actions {
-      display: flex;
-      gap: 10px;
-    }
-    button {
-      border: 0;
-      padding: 10px 14px;
-      border-radius: 10px;
-      background: var(--accent);
-      color: #fff;
-      cursor: pointer;
-      font-weight: 600;
-      transition: transform 0.15s ease, filter 0.15s ease;
-    }
-    button:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.05);
-    }
-    .panel {
-      width: min(1200px, 100%);
-      background: var(--panel);
-      border-radius: 14px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-      padding: 18px;
-      overflow: auto;
-    }
-    #diagram {
-      min-width: 900px;
-    }
-    .hint {
-      width: min(1200px, 100%);
-      font-size: 14px;
-      opacity: 0.8;
-    }
-  </style>
-</head>
-<body>
-  <div class="toolbar">
-    <h1>GreenMetric Database ER Diagram</h1>
-    <div class="actions">
-      <button id="download-svg">Download SVG</button>
-      <button id="print-page">Print or Save PDF</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GreenMetric ERD</title>
+    <style>
+      :root {
+        --bg1: #f3f9f1;
+        --bg2: #d8ebd2;
+        --panel: #ffffff;
+        --text: #1f2a1f;
+        --accent: #2e7d32;
+        --accent-2: #145a32;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--text);
+        background: radial-gradient(
+          circle at 10% 20%,
+          var(--bg1) 0%,
+          var(--bg2) 70%
+        );
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      .toolbar {
+        width: min(1200px, 100%);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(20px, 3vw, 32px);
+        color: var(--accent-2);
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+      }
+      button {
+        border: 0;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 600;
+        transition:
+          transform 0.15s ease,
+          filter 0.15s ease;
+      }
+      button:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+      }
+      .panel {
+        width: min(1200px, 100%);
+        background: var(--panel);
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        padding: 18px;
+        overflow: auto;
+      }
+      #diagram {
+        min-width: 900px;
+      }
+      .hint {
+        width: min(1200px, 100%);
+        font-size: 14px;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <h1>GreenMetric Database ER Diagram</h1>
+      <div class="actions">
+        <button id="download-svg">Download SVG</button>
+        <button id="print-page">Print or Save PDF</button>
+      </div>
     </div>
-  </div>
 
-  <div class="panel">
-    <div id="diagram"></div>
-  </div>
+    <div class="panel">
+      <div id="diagram"></div>
+    </div>
 
-  <div class="hint">
-    Tip: Use Download SVG for image export, or Print/Save PDF for document export.
-  </div>
+    <div class="hint">
+      Tip: Use Download SVG for image export, or Print/Save PDF for document
+      export.
+    </div>
 
-  <script type="module">
-    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
-    const graphDefinition = String.raw`erDiagram
+      const graphDefinition = String.raw`erDiagram
     %% Capa de Usuarios y Roles
     USUARIO {
         int usuario_id PK
@@ -185,44 +192,46 @@
     HISTORIAL_METRICA_GMETRIC o|..o{ REPORTE_CIUDADANO : aporte_ED
     HISTORIAL_METRICA_GMETRIC o|..o{ AREA_VERDE : aporte_SI`;
 
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: 'loose',
-      theme: 'base',
-      themeVariables: {
-        primaryColor: '#d4efdf',
-        primaryTextColor: '#0b3d2e',
-        primaryBorderColor: '#1b5e20',
-        lineColor: '#2d6a4f',
-        tertiaryColor: '#f1f8f4'
-      }
-    });
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "loose",
+        theme: "base",
+        themeVariables: {
+          primaryColor: "#d4efdf",
+          primaryTextColor: "#0b3d2e",
+          primaryBorderColor: "#1b5e20",
+          lineColor: "#2d6a4f",
+          tertiaryColor: "#f1f8f4",
+        },
+      });
 
-    const { svg } = await mermaid.render('greenmetricErd', graphDefinition);
-    const container = document.getElementById('diagram');
-    container.innerHTML = svg;
+      const { svg } = await mermaid.render("greenmetricErd", graphDefinition);
+      const container = document.getElementById("diagram");
+      container.innerHTML = svg;
 
-    document.getElementById('download-svg').addEventListener('click', () => {
-      const svgEl = container.querySelector('svg');
-      if (!svgEl) return;
+      document.getElementById("download-svg").addEventListener("click", () => {
+        const svgEl = container.querySelector("svg");
+        if (!svgEl) return;
 
-      const serializer = new XMLSerializer();
-      const source = serializer.serializeToString(svgEl);
-      const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
+        const serializer = new XMLSerializer();
+        const source = serializer.serializeToString(svgEl);
+        const blob = new Blob([source], {
+          type: "image/svg+xml;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
 
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'greenmetric-erd.svg';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "greenmetric-erd.svg";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
 
-    document.getElementById('print-page').addEventListener('click', () => {
-      window.print();
-    });
-  </script>
-</body>
+      document.getElementById("print-page").addEventListener("click", () => {
+        window.print();
+      });
+    </script>
+  </body>
 </html>
