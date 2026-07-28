@@ -1,0 +1,35 @@
+sequenceDiagram
+    actor Estudiante
+    participant ClientWeb as Cliente Web/Mobile
+    participant AuthServ as Servicio Autenticacion
+    participant PartServ as Servicio Participacion
+    participant FileStore as Almacenamiento Archivos
+    participant GISServ as Servicio GIS
+    participant DB as Base de Datos
+
+    Note over Estudiante,ClientWeb: El estudiante detecta un problema y desea reportarlo.
+
+    Estudiante->>ClientWeb: Seleccionar Crear Reporte
+    ClientWeb->>AuthServ: Validar sesion (SSO)
+    AuthServ-->>ClientWeb: Sesion valida (JWT)
+
+    Estudiante->>ClientWeb: Completar formulario (titulo, desc, foto, ubicacion)
+
+    par Guardar foto
+        ClientWeb->>PartServ: Enviar reporte con foto
+        PartServ->>FileStore: Guardar imagen
+        FileStore-->>PartServ: URL imagen
+    and Validar ubicacion
+        ClientWeb->>GISServ: Validar coordenadas dentro del campus
+        GISServ-->>ClientWeb: Ubicacion valida
+    end
+
+    PartServ->>GISServ: Registrar geometria del reporte
+    GISServ->>DB: Guardar datos geograficos (PostGIS)
+    DB-->>GISServ: OK
+
+    PartServ->>DB: Guardar datos del reporte
+    DB-->>PartServ: OK (ReporteID)
+
+    PartServ-->>ClientWeb: Reporte creado exitosamente
+    ClientWeb-->>Estudiante: Mostrar confirmacion

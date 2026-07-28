@@ -1,0 +1,23 @@
+sequenceDiagram
+    actor GestorAmbiental as Gestor Ambiental
+    participant AdminWeb as Dashboard Admin
+    participant GMetricEngine as Motor Metricas GMetric
+    participant GISServ as Servicio GIS
+    participant DB as Base de Datos
+
+    GestorAmbiental->>AdminWeb: Acceder a Metricas GreenMetric
+    AdminWeb->>GMetricEngine: Solicitar estado actual (SI, ED, WS)
+
+    par Datos espaciales (SI)
+        GMetricEngine->>GISServ: Solicitar superficie total vs vegetada
+        GISServ->>DB: Query SQL/PostGIS areas verdes totales
+        DB-->>GISServ: Datos de superficies (m2)
+        GISServ-->>GMetricEngine: Totales m2
+    and Datos de participacion (ED)
+        GMetricEngine->>DB: Query cantidad de proyectos y actividades
+        DB-->>GMetricEngine: Cantidad de proyectos
+    end
+
+    GMetricEngine->>GMetricEngine: Calcular coeficientes GreenMetric
+    GMetricEngine-->>AdminWeb: Enviar datos calculados y graficos
+    AdminWeb-->>GestorAmbiental: Mostrar dashboard con puntuacion estimada

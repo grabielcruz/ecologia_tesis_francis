@@ -1,0 +1,29 @@
+B. Caso de Uso: Gestor Ambiental Visualiza el Dashboard de Impacto GreenMetric
+Muestra cómo el motor de métricas recopila datos de participación y espaciales para presentar el estado actual frente al estándar internacional.
+
+
+
+sequenceDiagram
+    actor GestorAmbiental as Gestor Ambiental
+    participant AdminWeb as Dashboard Admin
+    participant GMetricEngine as Motor Métricas GMetric
+    participant GISServ as Servicio GIS
+    database DB as Base de Datos
+
+    GestorAmbiental->>AdminWeb: Acceder a "Métricas GreenMetric"
+    AdminWeb->>GMetricEngine: Solicitar Estado Actual (Categorías SI, ED, WS)
+    
+    par Consultar Datos Espaciales (Categoría SI - Setting & Infrastructure)
+        GMetricEngine->>GISServ: Solicitar Superficie Total vs. Superficie Vegetada
+        GISServ->>DB: Query SQL/PostGIS (Áreas Verdes Totales)
+        DB-->>GISServ: Datos Superficies (m2)
+        GISServ-->>GMetricEngine: Totales m2
+    and Consultar Datos Participación (Categoría ED - Education)
+        GMetricEngine->>DB: Query Cantidad de Proyectos/Actividades de Participación Ciudadana
+        DB-->>GMetricEngine: Cantidad de Proyectos
+    end
+
+    GMetricEngine->>GMetricEngine: Calcular Coeficientes según Fórmulas UI GreenMetric
+
+    GMetricEngine-->>AdminWeb: Enviar Datos Calculados y Gráficos
+    AdminWeb-->>GestorAmbiental: Mostrar Dashboard con Puntuación Estimada

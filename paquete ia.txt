@@ -1,0 +1,60 @@
+1. Diagrama de Arquitectura Lógica del Sistema (Modelo de Paquetes UML)
+Este diagrama describe cómo se organizan los componentes del software y cómo interactúan las distintas capas, desde la interfaz de usuario hasta la base de datos y la integración con GreenMetric. Se recomienda un enfoque de Arquitectura de Microservicios o Monolito Modular para facilitar la escalabilidad de módulos específicos (ej. el módulo de mapas vs. el módulo de reportes).
+
+Descripción de Componentes:
+Capa de Presentación (Front-End): Aplicación web reactiva (ej. React, Angular, Vue) que incluye módulos para estudiantes (participación), docentes (proyectos) y administradores (dashboards GreenMetric y gestión).
+
+Capa de Aplicación/Servicios (Back-End):
+
+Servicio de Autenticación: Integración con el Single Sign-On (SSO) de la Universidad.
+
+Módulo de Participación: Gestiona reportes, encuestas, ideas y votaciones.
+
+Módulo de Áreas Verdes (GIS): Servicio geográfico para mapear el campus, inventariar especies y gestionar capas espaciales (ej. GeoServer, ArcGIS API).
+
+Motor de Métricas GreenMetric: Corazón del sistema. Recibe datos del módulo de participación y áreas verdes para calcular indicadores (ej. porcentaje de vegetación plantada vs. área total).
+
+Capa de Datos: Base de datos relacional (ej. PostgreSQL con PostGIS para datos espaciales) y almacenamiento de archivos (imágenes de reportes).
+
+
+
+
+package "Aplicación Web Participación Universitaria Áreas Verdes (Based on GreenMetric)" {
+
+    package "Capa de Presentación (Web/Mobile Client)" {
+        [Portal Estudiante/Docente] as ClientWeb
+        [Dashboard Admin/Gestor Ambiental] as AdminWeb
+        [Módulo de Mapas Interactivos] as MapsView
+    }
+
+    package "Capa de Servicios (API Gateway / Backend)" {
+        [Servicio de Autenticación (SSO Univ)] as AuthServ
+        [Servicio de Participación y Reportes] as PartServ
+        [Servicio de Áreas Verdes (GIS/Inventario)] as GISServ
+        [Motor de Cálculo de Métricas GreenMetric] as GMetricEngine
+    }
+
+    package "Capa de Datos" {
+        database "BD Relacional (Usuarios, Reportes, Métricas)" as DBRel
+        database "BD Espacial (PostGIS) (Mapas Campus, Vegetación)" as DBGeo
+        [Almacenamiento Archivos (Imágenes)] as FileStore
+    }
+
+    %% Conexiones Capa Presentación a Servicios
+    ClientWeb --> AuthServ : Login
+    ClientWeb --> PartServ : Enviar Reporte/Idea
+    ClientWeb --> MapsView : Visualizar
+    AdminWeb --> GMetricEngine : Ver Dashboard
+    MapsView --> GISServ : Obtener Capas
+
+    %% Conexiones Servicios a Datos
+    PartServ --> DBRel
+    PartServ --> FileStore : Guardar Fotos
+    GISServ --> DBGeo
+    GMetricEngine --> DBRel : Leer Totales Participación
+    GMetricEngine --> DBGeo : Leer Totales Superficie
+
+    %% Alineación GreenMetric
+    [GMetricEngine] -.> [UI GreenMetric Indicators (SI, ED, WS)] : Genera Datos para
+
+}

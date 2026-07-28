@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diagramas Descargables</title>
+    <style>
+      :root {
+        --bg-1: #f4f8ef;
+        --bg-2: #dcebd2;
+        --panel: #ffffff;
+        --ink: #163024;
+        --accent: #2f7a46;
+        --accent-2: #19482b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--ink);
+        background: linear-gradient(140deg, var(--bg-1), var(--bg-2));
+        min-height: 100vh;
+        padding: 24px;
+      }
+
+      .layout {
+        width: min(1200px, 100%);
+        margin: 0 auto;
+        display: grid;
+        gap: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.6rem, 2.8vw, 2.3rem);
+        color: var(--accent-2);
+      }
+
+      .sub {
+        margin: 0;
+        opacity: 0.85;
+      }
+
+      .card {
+        background: var(--panel);
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .card h2 {
+        margin: 0;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: 0;
+        background: var(--accent);
+        color: #fff;
+        padding: 9px 13px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: transform 0.15s ease, filter 0.15s ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.06);
+      }
+
+      .diagram-wrap {
+        overflow: auto;
+        border: 1px solid #e4eee2;
+        border-radius: 10px;
+        padding: 8px;
+      }
+
+      .diagram-wrap > div {
+        min-width: 780px;
+      }
+
+      .hint {
+        opacity: 0.8;
+        font-size: 0.95rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="layout">
+      <header>
+        <h1>Diagramas Generados</h1>
+        <p class="sub">Vista previa y descarga de cada diagrama en .mmd y .svg.</p>
+      </header>
+
+      <section id="cards"></section>
+
+      <p class="hint">
+        Sugerencia: para PDF, usa imprimir del navegador y selecciona Guardar como PDF.
+      </p>
+    </main>
+
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+      const diagrams = [
+        {
+          id: "dashboard",
+          title: "Caso de Uso 2 Dashboard",
+          fileName: "caso-uso-dashboard",
+          source: String.raw`sequenceDiagram
+    actor GestorAmbiental as Gestor Ambiental
+    participant AdminWeb as Dashboard Admin
+    participant GMetricEngine as Motor Metricas GMetric
+    participant GISServ as Servicio GIS
+    participant DB as Base de Datos
+
+    GestorAmbiental->>AdminWeb: Acceder a Metricas GreenMetric
+    AdminWeb->>GMetricEngine: Solicitar estado actual (SI, ED, WS)
+
+    par Datos espaciales (SI)
+        GMetricEngine->>GISServ: Solicitar superficie total vs vegetada
+        GISServ->>DB: Query SQL/PostGIS areas verdes totales
+        DB-->>GISServ: Datos de superficies (m2)
+        GISServ-->>GMetricEngine: Totales m2
+    and Datos de participacion (ED)
+        GMetricEngine->>DB: Query cantidad de proyectos y actividades
+        DB-->>GMetricEngine: Cantidad de proyectos
+    end
+
+    GMetricEngine->>GMetricEngine: Calcular coeficientes GreenMetric
+    GMetricEngine-->>AdminWeb: Enviar datos calculados y graficos
+    AdminWeb-->>GestorAmbiental: Mostrar dashboard con puntuacion estimada`
+        },
+        {
+          id: "reporte",
+          title: "Caso de Uso Estudiante Reportar Area Verde",
+          fileName: "caso-uso-estudiante-reporte",
+          source: String.raw`sequenceDiagram
+    actor Estudiante
+    participant ClientWeb as Cliente Web/Mobile
+    participant AuthServ as Servicio Autenticacion
+    participant PartServ as Servicio Participacion
+    participant FileStore as Almacenamiento Archivos
+    participant GISServ as Servicio GIS
+    participant DB as Base de Datos
+
+    Note over Estudiante,ClientWeb: El estudiante detecta un problema y desea reportarlo.
+
+    Estudiante->>ClientWeb: Seleccionar Crear Reporte
+    ClientWeb->>AuthServ: Validar sesion (SSO)
+    AuthServ-->>ClientWeb: Sesion valida (JWT)
+
+    Estudiante->>ClientWeb: Completar formulario (titulo, desc, foto, ubicacion)
+
+    par Guardar foto
+        ClientWeb->>PartServ: Enviar reporte con foto
+        PartServ->>FileStore: Guardar imagen
+        FileStore-->>PartServ: URL imagen
+    and Validar ubicacion
+        ClientWeb->>GISServ: Validar coordenadas dentro del campus
+        GISServ-->>ClientWeb: Ubicacion valida
+    end
+
+    PartServ->>GISServ: Registrar geometria del reporte
+    GISServ->>DB: Guardar datos geograficos (PostGIS)
+    DB-->>GISServ: OK
+
+    PartServ->>DB: Guardar datos del reporte
+    DB-->>PartServ: OK (ReporteID)
+
+    PartServ-->>ClientWeb: Reporte creado exitosamente
+    ClientWeb-->>Estudiante: Mostrar confirmacion`
+        },
+        {
+          id: "paquete",
+          title: "Paquete IA - Arquitectura Logica",
+          fileName: "paquete-ia",
+          source: String.raw`flowchart TB
+    subgraph Presentacion["Capa de Presentacion (Web/Mobile Client)"]
+        ClientWeb["Portal Estudiante/Docente"]
+        AdminWeb["Dashboard Admin/Gestor Ambiental"]
+        MapsView["Modulo de Mapas Interactivos"]
+    end
+
+    subgraph Servicios["Capa de Servicios (API Gateway/Backend)"]
+        AuthServ["Servicio de Autenticacion (SSO Univ)"]
+        PartServ["Servicio de Participacion y Reportes"]
+        GISServ["Servicio de Areas Verdes (GIS/Inventario)"]
+        GMetricEngine["Motor de Calculo de Metricas GreenMetric"]
+    end
+
+    subgraph Datos["Capa de Datos"]
+      DBRel["BD Relacional - Usuarios, Reportes, Metricas"]
+      DBGeo["BD Espacial PostGIS - Mapas Campus, Vegetacion"]
+      FileStore["Almacenamiento Archivos (Imagenes)"]
+    end
+
+    UIGM["UI GreenMetric Indicators (SI, ED, WS)"]
+
+    ClientWeb -->|Login| AuthServ
+    ClientWeb -->|Enviar Reporte/Idea| PartServ
+    ClientWeb -->|Visualizar| MapsView
+    AdminWeb -->|Ver Dashboard| GMetricEngine
+    MapsView -->|Obtener Capas| GISServ
+
+    PartServ --> DBRel
+    PartServ -->|Guardar Fotos| FileStore
+    GISServ --> DBGeo
+    GMetricEngine -->|Leer Totales Participacion| DBRel
+    GMetricEngine -->|Leer Totales Superficie| DBGeo
+    GMetricEngine -.->|Genera datos para| UIGM`
+        }
+      ];
+
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "loose",
+        theme: "base",
+        themeVariables: {
+          primaryColor: "#deefdf",
+          primaryBorderColor: "#2b6b3d",
+          primaryTextColor: "#10251c",
+          lineColor: "#2b6b3d",
+          tertiaryColor: "#f4faf2"
+        }
+      });
+
+      const cards = document.getElementById("cards");
+
+      const downloadText = (fileName, source) => {
+        const blob = new Blob([source], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${fileName}.mmd`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      };
+
+      const downloadSvg = (fileName, svgElement) => {
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svgElement);
+        const blob = new Blob([svgString], {
+          type: "image/svg+xml;charset=utf-8"
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${fileName}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      };
+
+      for (let i = 0; i < diagrams.length; i += 1) {
+        const d = diagrams[i];
+        const card = document.createElement("article");
+        card.className = "card";
+
+        const title = document.createElement("h2");
+        title.textContent = d.title;
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const btnMmd = document.createElement("button");
+        btnMmd.textContent = "Descargar .mmd";
+
+        const btnSvg = document.createElement("button");
+        btnSvg.textContent = "Descargar .svg";
+
+        const wrap = document.createElement("div");
+        wrap.className = "diagram-wrap";
+
+        const view = document.createElement("div");
+        wrap.appendChild(view);
+
+        try {
+          const { svg } = await mermaid.render(`diag-${d.id}-${i}`, d.source);
+          view.innerHTML = svg;
+        } catch (err) {
+          const pre = document.createElement("pre");
+          pre.style.whiteSpace = "pre-wrap";
+          pre.style.margin = "0";
+          pre.textContent =
+            "Error al renderizar este diagrama.\n\n" +
+            (err && err.message ? err.message : String(err));
+          view.innerHTML = "";
+          view.appendChild(pre);
+        }
+
+        btnMmd.addEventListener("click", () => {
+          downloadText(d.fileName, d.source);
+        });
+
+        btnSvg.addEventListener("click", () => {
+          const svgEl = view.querySelector("svg");
+          if (!svgEl) {
+            return;
+          }
+          downloadSvg(d.fileName, svgEl);
+        });
+
+        actions.appendChild(btnMmd);
+        actions.appendChild(btnSvg);
+        card.appendChild(title);
+        card.appendChild(actions);
+        card.appendChild(wrap);
+        cards.appendChild(card);
+      }
+    </script>
+  </body>
+</html>

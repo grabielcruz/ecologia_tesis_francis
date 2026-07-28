@@ -1,0 +1,46 @@
+
+2. Diagramas de Secuencia UML
+Estos diagramas muestran la interacción dinámica entre los componentes para cumplir un caso de uso específico. Veremos dos casos clave: la participación (reporte) y la gestión (cálculo de métricas).
+
+A. Caso de Uso: Estudiante realiza un Reporte de Mejora en Área Verde
+Muestra el flujo desde que el usuario detecta un problema (ej. zona sin riego, necesidad de reforestación) hasta que se guarda y se indexa espacialmente.
+
+
+
+
+
+sequenceDiagram
+    actor Estudiante
+    participant ClientWeb as Cliente Web/Móvil
+    participant AuthServ as Servicio Autenticación
+    participant PartServ as Servicio Participación
+    participant FileStore as Almacenamiento Archivos
+    participant GISServ as Servicio GIS
+    database DB as Base de Datos
+
+    Note over Estudiante, ClientWeb: El estudiante ve un área maltratada y quiere reportar.
+
+    Estudiante->>ClientWeb: Seleccionar "Crear Reporte"
+    ClientWeb->>AuthServ: Validar Sesión (SSO)
+    AuthServ-->>ClientWeb: Sesión Válida (Token JWT)
+
+    Estudiante->>ClientWeb: Rellenar formulario (Título, Desc, Foto, Ubicación en Mapa)
+    
+    par Guardar Foto
+        ClientWeb->>PartServ: Enviar Reporte (con Foto)
+        PartServ->>FileStore: Guardar Imagen
+        FileStore-->>PartServ: URL_Imagen
+    and Validar Ubicación
+        ClientWeb->>GISServ: Validar Coordenadas dentro del Campus
+        GISServ-->>ClientWeb: Ubicación Válida
+    end
+
+    PartServ->>GISServ: Registrar Geometría del Reporte (Punto/Polígono)
+    GISServ->>DB: Guardar Datos Geográficos (PostGIS)
+    DB-->>GISServ: OK
+
+    PartServ->>DB: Guardar Datos Reporte (Título, Desc, URL_Imagen, UserID, GeometríaID)
+    DB-->>PartServ: OK (ReporteID)
+
+    PartServ-->>ClientWeb: Reporte Creado Exitosamente
+    ClientWeb-->>Estudiante: Mostrar Confirmación

@@ -1,0 +1,34 @@
+flowchart TB
+    subgraph Presentacion["Capa de Presentacion (Web/Mobile Client)"]
+        ClientWeb["Portal Estudiante/Docente"]
+        AdminWeb["Dashboard Admin/Gestor Ambiental"]
+        MapsView["Modulo de Mapas Interactivos"]
+    end
+
+    subgraph Servicios["Capa de Servicios (API Gateway/Backend)"]
+        AuthServ["Servicio de Autenticacion (SSO Univ)"]
+        PartServ["Servicio de Participacion y Reportes"]
+        GISServ["Servicio de Areas Verdes (GIS/Inventario)"]
+        GMetricEngine["Motor de Calculo de Metricas GreenMetric"]
+    end
+
+    subgraph Datos["Capa de Datos"]
+        DBRel["BD Relacional - Usuarios, Reportes, Metricas"]
+        DBGeo["BD Espacial PostGIS - Mapas Campus, Vegetacion"]
+        FileStore["Almacenamiento Archivos (Imagenes)"]
+    end
+
+    UIGM["UI GreenMetric Indicators (SI, ED, WS)"]
+
+    ClientWeb -->|Login| AuthServ
+    ClientWeb -->|Enviar Reporte/Idea| PartServ
+    ClientWeb -->|Visualizar| MapsView
+    AdminWeb -->|Ver Dashboard| GMetricEngine
+    MapsView -->|Obtener Capas| GISServ
+
+    PartServ --> DBRel
+    PartServ -->|Guardar Fotos| FileStore
+    GISServ --> DBGeo
+    GMetricEngine -->|Leer Totales Participacion| DBRel
+    GMetricEngine -->|Leer Totales Superficie| DBGeo
+    GMetricEngine -.->|Genera datos para| UIGM
