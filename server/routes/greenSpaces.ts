@@ -8,6 +8,7 @@ import { GreenSpace, GreenSpaceReview, User } from "../models";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "secret_key";
+
 const greenSpaceUploadsDir = path.resolve(
   process.cwd(),
   "public",
@@ -19,19 +20,11 @@ if (!fs.existsSync(greenSpaceUploadsDir)) {
   fs.mkdirSync(greenSpaceUploadsDir, { recursive: true });
 }
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 6 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Solo se permiten imagenes") as any, false);
-    }
-    cb(null, true);
-  },
-});
-
 interface AuthRequest extends Request {
-  user?: { id: number; role: string };
+  user?: {
+    user_id: number;
+    role: string;
+  };
 }
 
 const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -43,7 +36,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   const token = authHeader.split(" ")[1];
   try {
     const payload = jwt.verify(token, JWT_SECRET) as {
-      id: number;
+      user_id: number;
       role: string;
     };
     req.user = payload;
@@ -53,96 +46,107 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   }
 };
 
-const requireAdmin = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-) => {
-  if (!req.user) {
-    return res.status(401).json({ error: "No autorizado" });
-  }
-
-  const user = await User.findByPk(req.user.id);
-  if (!user || user.role !== "admin") {
+const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ error: "Solo administradores" });
   }
-
   next();
 };
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Solo se permiten imagenes") as any, false);
+    }
+    cb(null, true);
+  },
+});
+
+const parseImages = (value: string) => {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const serializeGreenSpace = (row: GreenSpace) => ({
+  id: row.getDataValue("space_id"),
+  name: row.getDataValue("name"),
+  location: row.getDataValue("location"),
+  totalAreaM2: row.getDataValue("total_area_m2"),
+  tallTreeCount: row.getDataValue("trees_count"),
+  images: parseImages(String(row.getDataValue("images") || "[]")),
+  updatedAt: row.getDataValue("updated_at"),
+});
 
 router.get("/", async (_req, res) => {
   const rows = await GreenSpace.findAll({
     order: [
-      ["updatedAt", "DESC"],
-      ["id", "DESC"],
+      ["updated_at", "DESC"],
+      ["space_id", "DESC"],
     ],
   });
-  const spaceIds = rows.map((row) => row.id);
+
+  const spaceIds = rows.map((row) => row.getDataValue("space_id"));
   const reviews = spaceIds.length
     ? await GreenSpaceReview.findAll({
-        where: { greenSpaceId: spaceIds },
-        order: [["updatedAt", "DESC"]],
+        where: {
+          space_id: spaceIds,
+        },
+        include: [{ model: User, attributes: ["username"] }],
+        order: [["updated_at", "DESC"]],
       })
     : [];
 
-  const reviewStatsBySpace: Record<number, { total: number; sum: number }> = {};
-  const recentReviewsBySpace: Record<
+  const reviewsBySpace: Record<
     number,
-    Array<{
-      username: string;
-      rating: number;
-      comment: string;
-      updatedAt?: string;
-    }>
+    Array<{ username: string; rating: number; comment: string; updatedAt?: string }>
   > = {};
 
   for (const review of reviews) {
-    const spaceId = review.greenSpaceId;
-    if (!reviewStatsBySpace[spaceId]) {
-      reviewStatsBySpace[spaceId] = { total: 0, sum: 0 };
-      recentReviewsBySpace[spaceId] = [];
-    }
-    reviewStatsBySpace[spaceId].total += 1;
-    reviewStatsBySpace[spaceId].sum += review.rating;
+    const spaceId = Number(review.getDataValue("space_id"));
+    const rating = Number(review.getDataValue("rating")) || 0;
+    const comment = String(review.getDataValue("review_notes") || "");
+    const user = review.get("User") as User | undefined;
+    const username = String(user?.getDataValue("username") || "anonimo");
+    const updatedAt = review.getDataValue("updated_at");
 
-    if (recentReviewsBySpace[spaceId].length < 3) {
-      const reviewUpdatedAt = (review as any).updatedAt;
-      recentReviewsBySpace[spaceId].push({
-        username: review.username,
-        rating: review.rating,
-        comment: review.comment,
-        updatedAt:
-          reviewUpdatedAt instanceof Date
-            ? reviewUpdatedAt.toISOString()
-            : undefined,
-      });
+    if (!reviewsBySpace[spaceId]) {
+      reviewsBySpace[spaceId] = [];
     }
+
+    reviewsBySpace[spaceId].push({
+      username,
+      rating,
+      comment,
+      updatedAt: updatedAt ? String(updatedAt) : undefined,
+    });
   }
 
-  const spaces = rows.map((row) => {
-    const data = row.toJSON() as any;
-    let images: string[] = [];
-    try {
-      images = JSON.parse(data.images || "[]");
-    } catch {
-      images = [];
-    }
+  res.json(
+    rows.map((row) => {
+      const base = serializeGreenSpace(row);
+      const rowReviews = reviewsBySpace[base.id] || [];
+      const totalReviews = rowReviews.length;
+      const averageRating =
+        totalReviews > 0
+          ? rowReviews.reduce((acc, item) => acc + item.rating, 0) / totalReviews
+          : 0;
 
-    const stats = reviewStatsBySpace[row.id] || { total: 0, sum: 0 };
-    const averageRating = stats.total ? stats.sum / stats.total : 0;
-
-    return {
-      ...data,
-      images,
-      reviewSummary: {
-        totalReviews: stats.total,
-        averageRating,
-      },
-      recentReviews: recentReviewsBySpace[row.id] || [],
-    };
-  });
-
-  res.json(spaces);
+      return {
+        ...base,
+        reviewSummary: {
+          totalReviews,
+          averageRating,
+        },
+        recentReviews: rowReviews.slice(0, 3),
+      };
+    }),
+  );
 });
 
 router.post(
@@ -164,8 +168,8 @@ router.post(
         const outputPath = path.join(greenSpaceUploadsDir, filename);
 
         await sharp(file.buffer)
-          .resize(1600, 1200, { fit: "inside", withoutEnlargement: true })
-          .jpeg({ quality: 82 })
+          .resize(1800, 1400, { fit: "inside", withoutEnlargement: true })
+          .jpeg({ quality: 84 })
           .toFile(outputPath);
 
         savedUrls.push(`/uploads/green-spaces/${filename}`);
@@ -173,151 +177,128 @@ router.post(
 
       return res.status(201).json({ images: savedUrls });
     } catch {
-      return res
-        .status(500)
-        .json({ error: "No se pudieron subir las imagenes" });
+      return res.status(500).json({ error: "No se pudieron subir las imagenes" });
     }
   },
 );
 
-router.post(
-  "/",
-  authenticate,
-  requireAdmin,
-  async (req: AuthRequest, res: Response) => {
-    const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
+router.post("/", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+  const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
 
-    if (!name || !location) {
-      return res
-        .status(400)
-        .json({ error: "Nombre y ubicacion son obligatorios" });
-    }
+  if (!name || !location) {
+    return res.status(400).json({ error: "Nombre y ubicacion son obligatorios" });
+  }
 
-    const imageList = Array.isArray(images)
-      ? images.filter((img) => typeof img === "string")
-      : [];
+  const imageList = Array.isArray(images)
+    ? images.filter((img) => typeof img === "string" && img.trim().length > 0)
+    : [];
 
-    const created = await GreenSpace.create({
-      name,
-      location,
-      totalAreaM2: Number(totalAreaM2) || 0,
-      tallTreeCount: Number(tallTreeCount) || 0,
-      images: JSON.stringify(imageList),
-    });
+  if (!imageList.length) {
+    return res.status(400).json({ error: "Debes incluir al menos una imagen" });
+  }
 
-    res.status(201).json({
-      ...created.toJSON(),
-      images: imageList,
-    });
-  },
-);
+  const created = await GreenSpace.create({
+    name,
+    location,
+    total_area_m2: Number(totalAreaM2) || 0,
+    trees_count: Number(tallTreeCount) || 0,
+    images: JSON.stringify(imageList),
+    updated_at: new Date(),
+  });
 
-router.post(
-  "/:id/reviews",
-  authenticate,
-  async (req: AuthRequest, res: Response) => {
-    const { id } = req.params;
-    if (!req.user) {
-      return res.status(401).json({ error: "No autorizado" });
-    }
+  return res.status(201).json(serializeGreenSpace(created));
+});
 
-    const greenSpace = await GreenSpace.findByPk(id);
-    if (!greenSpace) {
-      return res.status(404).json({ error: "Area verde no encontrada" });
-    }
+router.put("/:id", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+  const row = await GreenSpace.findByPk(req.params.id);
+  if (!row) {
+    return res.status(404).json({ error: "Area verde no encontrada" });
+  }
 
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(401).json({ error: "No autorizado" });
-    }
+  const updates: Record<string, unknown> = {
+    updated_at: new Date(),
+  };
+  const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
 
-    const rawRating = Number(req.body.rating);
-    if (Number.isNaN(rawRating) || rawRating < 0 || rawRating > 5) {
-      return res
-        .status(400)
-        .json({ error: "La calificacion debe estar entre 0 y 5" });
-    }
+  if (typeof name !== "undefined") updates.name = name;
+  if (typeof location !== "undefined") updates.location = location;
+  if (typeof totalAreaM2 !== "undefined") {
+    updates.total_area_m2 = Number(totalAreaM2) || 0;
+  }
+  if (typeof tallTreeCount !== "undefined") {
+    updates.trees_count = Number(tallTreeCount) || 0;
+  }
+  if (Array.isArray(images)) {
+    updates.images = JSON.stringify(
+      images.filter((img) => typeof img === "string" && img.trim().length > 0),
+    );
+  }
 
-    const rating = Math.round(rawRating);
-    const comment = String(req.body.comment || "").trim();
-    if (!comment) {
-      return res.status(400).json({ error: "El comentario es obligatorio" });
-    }
+  await row.update(updates);
+  return res.json(serializeGreenSpace(row));
+});
 
-    const existing = await GreenSpaceReview.findOne({
-      where: {
-        greenSpaceId: Number(id),
-        username: user.username,
-      },
-    });
+router.delete("/:id", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+  const row = await GreenSpace.findByPk(req.params.id);
+  if (!row) {
+    return res.status(404).json({ error: "Area verde no encontrada" });
+  }
 
-    if (existing) {
-      await existing.update({ rating, comment });
-      return res.json(existing);
-    }
+  await row.destroy();
+  return res.status(204).end();
+});
 
-    const created = await GreenSpaceReview.create({
-      greenSpaceId: Number(id),
-      username: user.username,
-      rating,
-      comment,
-    });
+router.post("/:id/reviews", authenticate, async (req: AuthRequest, res: Response) => {
+  const spaceId = Number(req.params.id);
+  if (!Number.isFinite(spaceId)) {
+    return res.status(400).json({ error: "Identificador de area verde invalido" });
+  }
 
-    return res.status(201).json(created);
-  },
-);
+  if (!req.user) {
+    return res.status(401).json({ error: "No autorizado" });
+  }
 
-router.put(
-  "/:id",
-  authenticate,
-  requireAdmin,
-  async (req: AuthRequest, res: Response) => {
-    const row = await GreenSpace.findByPk(req.params.id);
-    if (!row)
-      return res.status(404).json({ error: "Area verde no encontrada" });
+  const greenSpace = await GreenSpace.findByPk(spaceId);
+  if (!greenSpace) {
+    return res.status(404).json({ error: "Area verde no encontrada" });
+  }
 
-    const updates: Record<string, unknown> = {};
-    const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
+  const rawRating = Number(req.body?.rating);
+  if (Number.isNaN(rawRating) || rawRating < 0 || rawRating > 5) {
+    return res.status(400).json({ error: "La calificacion debe estar entre 0 y 5" });
+  }
 
-    if (typeof name !== "undefined") updates.name = name;
-    if (typeof location !== "undefined") updates.location = location;
-    if (typeof totalAreaM2 !== "undefined")
-      updates.totalAreaM2 = Number(totalAreaM2) || 0;
-    if (typeof tallTreeCount !== "undefined")
-      updates.tallTreeCount = Number(tallTreeCount) || 0;
-    if (Array.isArray(images)) {
-      updates.images = JSON.stringify(
-        images.filter((img) => typeof img === "string"),
-      );
-    }
+  const rating = Math.round(rawRating);
+  const comment = String(req.body?.comment || "").trim();
+  if (!comment) {
+    return res.status(400).json({ error: "El comentario es obligatorio" });
+  }
 
-    await row.update(updates);
+  const existing = await GreenSpaceReview.findOne({
+    where: {
+      user_id: req.user.user_id,
+      space_id: spaceId,
+    },
+  });
 
-    let parsedImages: string[] = [];
-    try {
-      parsedImages = JSON.parse(row.images || "[]");
-    } catch {
-      parsedImages = [];
-    }
+  const payload = {
+    review_notes: comment,
+    rating,
+    user_id: req.user.user_id,
+    space_id: spaceId,
+    updated_at: new Date(),
+  };
 
-    res.json({
-      ...row.toJSON(),
-      images: parsedImages,
-    });
-  },
-);
+  if (existing) {
+    await existing.update(payload);
+    return res.json({ ok: true });
+  }
 
-router.delete(
-  "/:id",
-  authenticate,
-  requireAdmin,
-  async (req: AuthRequest, res: Response) => {
-    const row = await GreenSpace.findByPk(req.params.id);
-    if (!row)
-      return res.status(404).json({ error: "Area verde no encontrada" });
-    await row.destroy();
-    res.status(204).end();
-  },
-);
+  await GreenSpaceReview.create({
+    ...payload,
+    created_at: new Date(),
+  });
+  return res.status(201).json({ ok: true });
+});
 
 export default router;

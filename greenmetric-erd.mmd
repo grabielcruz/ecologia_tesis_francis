@@ -1,89 +1,109 @@
 erDiagram
     %% Capa de Usuarios y Roles
-    USUARIO {
-        int usuario_id PK
-        string codigo_universitario
-        string nombre_completo
-        string email_institucional
-        int rol_id FK
+    User {
+        int user_id PK
+        string name
+        string email
+        string username
+        string password_hash
+        string avatar_url
+        boolean is_active
+        int role_id FK
+        datetime created_at
+        datetime updated_at
     }
 
-    ROL {
-        int rol_id PK
-        string nombre_rol
+    Role {
+        int role_id PK
+        string role_name
+        string description
+        datetime created_at
+        datetime updated_at
     }
 
     %% Capa de Áreas Verdes (GIS/Inventario)
-    AREA_VERDE {
-        int area_id PK
-        string nombre
-        geometry poligono_geometria
-        float superficie_m2
-        int tipo_vegetacion_id FK
+    GreenSpace {
+        int space_id PK
+        string name
+        string location 
+        int total_area_m2
+        int trees_count
+        string images
+        datetime created_at
+        datetime updated_at
     }
 
-    TIPO_VEGETACION {
-        int tipo_id PK
-        string descripcion
+    GreenSpaceReview {
+        int green_space_review_id PK
+        int space_id FK
+        int user_id FK
+        string review_notes
+        int rating
+        datetime created_at
+        datetime updated_at
     }
 
-    ARBOL_INVENTARIO {
-        int arbol_id PK
-        string especie
-        geometry ubicacion_punto
-        float salud_estado
-        int area_id FK
+    TreeType {
+        int type_id PK
+        string name
+        string description
+        string reference_images
+        datetime created_at
+        datetime updated_at
+    }
+
+    TreeInventory {
+        int tree_id PK
+        string name
+        enum health_status
+        int space_id FK
+        int type_id FK
+        datetime created_at
+        datetime updated_at
     }
 
     %% Capa de Participación Ciudadana
-    REPORTE_CIUDADANO {
-        int reporte_id PK
-        string titulo
-        text descripcion
-        string url_imagen
-        geometry ubicacion_reporte
-        string estado
-        timestamp fecha_creacion
-        int usuario_id FK
+    ReportOfGreenArea {
+        int report_of_green_area_id PK
+        string title
+        text description
+        string url_images
+        string state
+        datetime created_at
+        datetime updated_at
+        int user_id FK
+        int space_id FK
     }
 
-    IDEA_PROYECTO {
-        int idea_id PK
-        string titulo
-        text propuesta
-        string categoria_greenmetric_objetivo
-        int votos_totales
-        int usuario_id FK
+    ProposalOfGreenArea {
+        int proposal_of_green_area_id PK
+        string title
+        string description
+        enum status 
+        int total_votes
+        int user_id FK
+        int space_id FK
     }
 
-    VOTO_IDEA {
-        int voto_id PK
-        int idea_id FK
-        int usuario_id FK
-        timestamp fecha_voto
-    }
-
-    %% Capa de Métricas GreenMetric
-    HISTORIAL_METRICA_GMETRIC {
-        int historico_id PK
-        timestamp fecha_calculo
-        int anio_referencia
-        float puntuacion_total_estimada
-        json datos_desglosados
+    VoteOfProposal {
+        int vote_of_proposal_id PK
+        int proposal_of_green_area_id FK
+        int user_id FK
+        datetime created_at
     }
 
     %% Relaciones principales (físicas)
-    ROL ||--o{ USUARIO : asigna
-    USUARIO ||--o{ REPORTE_CIUDADANO : crea
-    USUARIO ||--o{ IDEA_PROYECTO : propone
-    USUARIO ||--o{ VOTO_IDEA : realiza
-    IDEA_PROYECTO ||--o{ VOTO_IDEA : recibe
+    Role ||--o{ User : asigna
+    User ||--o{ ReportOfGreenArea : crea
+    User ||--o{ ProposalOfGreenArea : propone
+    User ||--o{ VoteOfProposal : realiza
+    User ||--o{ GreenSpaceReview : realiza
+    ProposalOfGreenArea ||--o{ VoteOfProposal : recibe
 
-    TIPO_VEGETACION ||--o{ AREA_VERDE : clasifica
-    AREA_VERDE ||--o{ ARBOL_INVENTARIO : contiene
+    TreeType ||--o{ TreeInventory : clasifica
+    GreenSpace ||--o{ TreeInventory : contiene
+    GreenSpace ||--o{ GreenSpaceReview : contiene
 
     %% Relaciones conceptuales (sin FK explícita en el esquema)
-    AREA_VERDE o|..o{ REPORTE_CIUDADANO : puede_afectar_a
-    AREA_VERDE o|..o{ IDEA_PROYECTO : puede_proponerse_en
-    HISTORIAL_METRICA_GMETRIC o|..o{ REPORTE_CIUDADANO : aporte_ED
-    HISTORIAL_METRICA_GMETRIC o|..o{ AREA_VERDE : aporte_SI
+    GreenSpace o|..o{ ReportOfGreenArea : puede_afectar_a
+    GreenSpace o|..o{ ProposalOfGreenArea : puede_proponerse_en

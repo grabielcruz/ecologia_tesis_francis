@@ -1,137 +1,62 @@
 import bcrypt from "bcryptjs";
-import { Op } from "sequelize";
-import {
-  User,
-  Survey,
-  Response,
-  GreenSpace,
-  GreenSpaceReview,
-  initializeDatabase,
-} from "./models";
-import seeds from "./seeds.json";
+import { GreenSpace, Role, User, sequelize } from "./models";
+import { greenSpaceSeeds, roleSeeds, userSeeds } from "./seedData";
 
 export async function seedDatabase() {
-  // Seed users
-  for (const u of (seeds as any).users) {
-    const existing = await User.findOne({
-      where: {
-        [Op.or]: [{ username: u.username }, { email: u.email }],
-      },
-    });
+  await sequelize.sync({ force: true });
 
-    const hash = await bcrypt.hash(u.password, 10);
-    if (existing) {
-      await existing.update({
-        name: u.name || u.username,
-        username: u.username,
-        password: hash,
-        role: u.role,
-        email: u.email,
-        points: u.points ?? 0,
-      });
-      console.log(`Updated existing user ${u.username} / ${u.email}`);
-      continue;
+  const roleByName: Record<string, number> = {};
+
+  for (const role of roleSeeds) {
+    const createdRole = await Role.create({
+      role_name: role.role_name,
+      description: role.description,
+    });
+    roleByName[role.role_name] = createdRole.getDataValue("role_id");
+  }
+
+  for (const user of userSeeds) {
+    const roleId = roleByName[user.role_name];
+    if (!roleId) {
+      throw new Error(`Role not found for user: ${user.username}`);
     }
 
+    const passwordHash = await bcrypt.hash(user.password, 10);
     await User.create({
-      name: u.name || u.username,
-      username: u.username,
-      password: hash,
-      role: u.role,
-      email: u.email,
-      points: u.points ?? 0,
+      name: user.name,
+      email: user.email,
+      username: user.username,
+      password_hash: passwordHash,
+      avatar_url: user.avatar_url,
+      is_active: user.is_active,
+      role_id: roleId,
     });
   }
 
-  // Seed surveys
-  for (const s of (seeds as any).surveys) {
-    const existing = await Survey.findOne({ where: { title: s.title } });
-    if (existing) continue;
-    await Survey.create({
-      title: s.title,
-      description: s.description,
-      type: s.type ?? "yesno",
-      active: s.active ?? true,
+  for (const greenSpaceSeed of greenSpaceSeeds) {
+    await GreenSpace.create({
+      name: greenSpaceSeed.name,
+      location: greenSpaceSeed.location,
+      total_area_m2: greenSpaceSeed.total_area_m2,
+      trees_count: greenSpaceSeed.trees_count,
+      images: JSON.stringify(greenSpaceSeed.images),
     });
   }
 
-  // Seed responses
-  for (const r of (seeds as any).responses || []) {
-    const existing = await Response.findOne({
-      where: { surveyTitle: r.surveyTitle, username: r.username },
-    });
-
-    const answerData =
-      typeof r.answers === "string" ? r.answers : JSON.stringify(r.answers);
-    if (existing) {
-      await existing.update({ answers: answerData });
-      continue;
-    }
-
-    await Response.create({
-      surveyTitle: r.surveyTitle,
-      username: r.username,
-      answers: answerData,
-    });
-  }
-
-  // Seed green spaces
-  for (const g of (seeds as any).greenSpaces || []) {
-    const existing = await GreenSpace.findOne({ where: { name: g.name } });
-    const payload = {
-      name: g.name,
-      location: g.location,
-      totalAreaM2: Number(g.totalAreaM2) || 0,
-      tallTreeCount: Number(g.tallTreeCount) || 0,
-      images: JSON.stringify(Array.isArray(g.images) ? g.images : []),
-    };
-
-    if (existing) {
-      await existing.update(payload);
-      continue;
-    }
-
-    await GreenSpace.create(payload);
-  }
-
-  // Seed green space reviews
-  for (const r of (seeds as any).greenSpaceReviews || []) {
-    const space = await GreenSpace.findOne({
-      where: { name: r.greenSpaceName },
-    });
-    if (!space) continue;
-
-    const existing = await GreenSpaceReview.findOne({
-      where: {
-        greenSpaceId: space.id,
-        username: r.username,
-      },
-    });
-
-    const payload = {
-      greenSpaceId: space.id,
-      username: r.username,
-      rating: Number(r.rating) || 0,
-      comment: r.comment || "",
-    };
-
-    if (existing) {
-      await existing.update(payload);
-      continue;
-    }
-
-    await GreenSpaceReview.create(payload);
-  }
-
-  console.log("Seeding complete.");
+  console.log(
+    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users and ${greenSpaceSeeds.length} green spaces created.`,
+  );
 }
 
 if (require.main === module) {
-  initializeDatabase()
-    .then(seedDatabase)
-    .then(() => process.exit(0))
-    .catch((err) => {
-      console.error("Seeding failed:", err);
+  seedDatabase()
+    .then(async () => {
+      await sequelize.close();
+      process.exit(0);
+    })
+    .catch(async (error) => {
+      console.error("Seeding failed:", error);
+      await sequelize.close();
       process.exit(1);
     });
 }

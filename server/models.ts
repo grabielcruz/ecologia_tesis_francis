@@ -1,4 +1,3 @@
-import bcrypt from "bcryptjs";
 import { Sequelize, DataTypes, Model } from "sequelize";
 
 export const sequelize = new Sequelize({
@@ -7,46 +6,53 @@ export const sequelize = new Sequelize({
   logging: false,
 });
 
-export class User extends Model {
-  public id!: number;
-  public name!: string;
-  public username!: string;
-  public password!: string;
-  public role!: "admin" | "student";
-  public email!: string;
-  public points!: number;
-  public avatarUrl!: string;
-}
+export class Role extends Model {}
+Role.init(
+  {
+    role_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    role_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "Role",
+    tableName: "Role",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
 
-const DEFAULT_AVATAR_URL = "/default-avatar.svg";
-
+export class User extends Model {}
 User.init(
   {
-    id: {
+    user_id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
     name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "",
-    },
-    avatarUrl: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: DEFAULT_AVATAR_URL,
-    },
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    role: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -55,130 +61,57 @@ User.init(
       allowNull: false,
       unique: true,
     },
-    points: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
     },
-  },
-  { sequelize, modelName: "User" },
-);
-
-export class Survey extends Model {
-  public id!: number;
-  public title!: string;
-  public description!: string;
-  public active!: boolean;
-  public type!: "yesno" | "rating";
-}
-
-Survey.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    title: {
+    password_hash: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    type: {
+    avatar_url: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "yesno",
-      validate: {
-        isIn: [["yesno", "rating"]],
-      },
+      defaultValue: "",
     },
-    active: {
+    is_active: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: true,
     },
-  },
-  { sequelize, modelName: "Survey" },
-);
-
-export class Response extends Model {
-  public id!: number;
-  public surveyTitle!: string;
-  public username!: string;
-  public answers!: string;
-}
-
-Response.init(
-  {
-    id: {
+    role_id: {
       type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    surveyTitle: {
-      type: DataTypes.STRING,
       allowNull: false,
+      references: {
+        model: "Role",
+        key: "role_id",
+      },
     },
-    username: {
-      type: DataTypes.STRING,
+    created_at: {
+      type: DataTypes.DATE,
       allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
-    answers: {
-      type: DataTypes.TEXT,
+    updated_at: {
+      type: DataTypes.DATE,
       allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
   },
-  { sequelize, modelName: "Response" },
-);
-
-export class Suggestion extends Model {
-  public id!: number;
-  public title!: string;
-  public description!: string;
-  public username!: string;
-  public reviewed!: boolean;
-}
-
-Suggestion.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    title: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    reviewed: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
+    sequelize,
+    modelName: "User",
+    tableName: "User",
+    freezeTableName: true,
+    timestamps: false,
   },
-  { sequelize, modelName: "Suggestion" },
 );
 
-export class GreenSpace extends Model {
-  public id!: number;
-  public name!: string;
-  public location!: string;
-  public totalAreaM2!: number;
-  public tallTreeCount!: number;
-  public images!: string;
-}
-
+export class GreenSpace extends Model {}
 GreenSpace.init(
   {
-    id: {
+    space_id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
@@ -191,12 +124,12 @@ GreenSpace.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    totalAreaM2: {
-      type: DataTypes.FLOAT,
+    total_area_m2: {
+      type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
     },
-    tallTreeCount: {
+    trees_count: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
@@ -206,71 +139,424 @@ GreenSpace.init(
       allowNull: false,
       defaultValue: "[]",
     },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
   },
-  { sequelize, modelName: "GreenSpace" },
+  {
+    sequelize,
+    modelName: "GreenSpace",
+    tableName: "GreenSpace",
+    freezeTableName: true,
+    timestamps: false,
+  },
 );
 
-export class GreenSpaceReview extends Model {
-  public id!: number;
-  public greenSpaceId!: number;
-  public username!: string;
-  public rating!: number;
-  public comment!: string;
-}
-
+export class GreenSpaceReview extends Model {}
 GreenSpaceReview.init(
   {
-    id: {
+    green_space_review_id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    greenSpaceId: {
+    space_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-    },
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    rating: {
-      type: DataTypes.FLOAT,
-      allowNull: false,
-      defaultValue: 0,
-      validate: {
-        min: 0,
-        max: 5,
+      references: {
+        model: "GreenSpace",
+        key: "space_id",
       },
     },
-    comment: {
-      type: DataTypes.TEXT,
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    review_notes: {
+      type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "",
     },
+    rating: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
   },
-  { sequelize, modelName: "GreenSpaceReview" },
+  {
+    sequelize,
+    modelName: "GreenSpaceReview",
+    tableName: "GreenSpaceReview",
+    freezeTableName: true,
+    timestamps: false,
+  },
 );
+
+export class TreeType extends Model {}
+TreeType.init(
+  {
+    type_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
+    },
+    reference_images: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "TreeType",
+    tableName: "TreeType",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
+export class TreeInventory extends Model {}
+TreeInventory.init(
+  {
+    tree_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    health_status: {
+      type: DataTypes.ENUM("healthy", "regular", "sick", "dead"),
+      allowNull: false,
+      defaultValue: "healthy",
+    },
+    space_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "GreenSpace",
+        key: "space_id",
+      },
+    },
+    type_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "TreeType",
+        key: "type_id",
+      },
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "TreeInventory",
+    tableName: "TreeInventory",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
+export class ReportOfGreenArea extends Model {}
+ReportOfGreenArea.init(
+  {
+    report_of_green_area_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    url_images: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    },
+    state: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "open",
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    space_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "GreenSpace",
+        key: "space_id",
+      },
+    },
+  },
+  {
+    sequelize,
+    modelName: "ReportOfGreenArea",
+    tableName: "ReportOfGreenArea",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
+export class ProposalOfGreenArea extends Model {}
+ProposalOfGreenArea.init(
+  {
+    proposal_of_green_area_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.ENUM("draft", "open", "closed", "approved", "rejected"),
+      allowNull: false,
+      defaultValue: "open",
+    },
+    total_votes: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    space_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "GreenSpace",
+        key: "space_id",
+      },
+    },
+  },
+  {
+    sequelize,
+    modelName: "ProposalOfGreenArea",
+    tableName: "ProposalOfGreenArea",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
+export class VoteOfProposal extends Model {}
+VoteOfProposal.init(
+  {
+    vote_of_proposal_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    proposal_of_green_area_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "ProposalOfGreenArea",
+        key: "proposal_of_green_area_id",
+      },
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "VoteOfProposal",
+    tableName: "VoteOfProposal",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
+Role.hasMany(User, { foreignKey: "role_id" });
+User.belongsTo(Role, { foreignKey: "role_id" });
+
+User.hasMany(ReportOfGreenArea, { foreignKey: "user_id" });
+ReportOfGreenArea.belongsTo(User, { foreignKey: "user_id" });
+
+GreenSpace.hasMany(ReportOfGreenArea, { foreignKey: "space_id" });
+ReportOfGreenArea.belongsTo(GreenSpace, { foreignKey: "space_id" });
+
+User.hasMany(GreenSpaceReview, { foreignKey: "user_id" });
+GreenSpaceReview.belongsTo(User, { foreignKey: "user_id" });
+
+GreenSpace.hasMany(GreenSpaceReview, { foreignKey: "space_id" });
+GreenSpaceReview.belongsTo(GreenSpace, { foreignKey: "space_id" });
+
+User.hasMany(ProposalOfGreenArea, { foreignKey: "user_id" });
+ProposalOfGreenArea.belongsTo(User, { foreignKey: "user_id" });
+
+GreenSpace.hasMany(ProposalOfGreenArea, { foreignKey: "space_id" });
+ProposalOfGreenArea.belongsTo(GreenSpace, { foreignKey: "space_id" });
+
+ProposalOfGreenArea.hasMany(VoteOfProposal, {
+  foreignKey: "proposal_of_green_area_id",
+});
+VoteOfProposal.belongsTo(ProposalOfGreenArea, {
+  foreignKey: "proposal_of_green_area_id",
+});
+
+User.hasMany(VoteOfProposal, { foreignKey: "user_id" });
+VoteOfProposal.belongsTo(User, { foreignKey: "user_id" });
+
+GreenSpace.hasMany(TreeInventory, { foreignKey: "space_id" });
+TreeInventory.belongsTo(GreenSpace, { foreignKey: "space_id" });
+
+TreeType.hasMany(TreeInventory, { foreignKey: "type_id" });
+TreeInventory.belongsTo(TreeType, { foreignKey: "type_id" });
+
+const enforceFixedRoles = async () => {
+  const fixedRoles = [
+    { role_name: "admin", description: "System administrator" },
+    { role_name: "regular", description: "Regular platform user" },
+  ] as const;
+
+  const roleByName: Record<string, number> = {};
+  for (const fixedRole of fixedRoles) {
+    const [role] = await Role.findOrCreate({
+      where: { role_name: fixedRole.role_name },
+      defaults: {
+        role_name: fixedRole.role_name,
+        description: fixedRole.description,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+    });
+
+    if (String(role.getDataValue("description") || "") !== fixedRole.description) {
+      await role.update({
+        description: fixedRole.description,
+        updated_at: new Date(),
+      });
+    }
+
+    roleByName[fixedRole.role_name] = Number(role.getDataValue("role_id"));
+  }
+
+  const adminRoleId = roleByName.admin;
+  const regularRoleId = roleByName.regular;
+
+  const allRoles = await Role.findAll();
+  const fixedRoleIds = new Set<number>([adminRoleId, regularRoleId]);
+
+  for (const role of allRoles) {
+    const roleId = Number(role.getDataValue("role_id"));
+    if (fixedRoleIds.has(roleId)) {
+      continue;
+    }
+
+    // Reassign users from non-fixed roles to regular before deleting the role.
+    await User.update(
+      {
+        role_id: regularRoleId,
+        updated_at: new Date(),
+      },
+      { where: { role_id: roleId } },
+    );
+
+    await role.destroy();
+  }
+};
 
 export const initializeDatabase = async () => {
   try {
-    // Use alter to update the database schema for newly added fields.
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
+    await enforceFixedRoles();
   } catch (err) {
     console.error("Database sync failed:", err);
     throw err;
-  }
-
-  const adminExists = await User.findOne({ where: { username: "admin" } });
-  if (!adminExists) {
-    const hashedPassword = await bcrypt.hash("admin123", 10);
-    await User.create({
-      name: "Admin User",
-      username: "admin",
-      password: hashedPassword,
-      role: "admin",
-      email: "admin@example.com",
-      points: 0,
-      avatarUrl: DEFAULT_AVATAR_URL,
-    });
   }
 };

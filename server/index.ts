@@ -2,14 +2,14 @@ import express from "express";
 import path from "path";
 import cors from "cors";
 import { initializeDatabase } from "./models";
-import { seedDatabase } from "./seeds";
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
-import surveyRoutes from "./routes/surveys";
 import greenSpaceRoutes from "./routes/greenSpaces";
+import suggestionRoutes from "./routes/suggestions";
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT || 4000);
+const HOST = process.env.HOST || "127.0.0.1";
 const publicDir = path.resolve(process.cwd(), "public");
 const uploadsDir = path.join(publicDir, "uploads");
 
@@ -22,14 +22,13 @@ app.use("/uploads", express.static(uploadsDir));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/surveys", surveyRoutes);
 app.use("/api/green-spaces", greenSpaceRoutes);
+app.use("/api/suggestions", suggestionRoutes);
 
 initializeDatabase()
-  .then(seedDatabase)
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server listening on http://localhost:${PORT}`);
+    app.listen(PORT, HOST, () => {
+      console.log(`Server listening on http://${HOST}:${PORT}`);
     });
   })
   .catch((error) => {

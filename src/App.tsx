@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface SurveySummary {
@@ -42,6 +42,101 @@ interface GreenSpace {
 interface GreenSpaceReviewDraft {
   rating: number;
   comment: string;
+}
+
+interface AdminRole {
+  id: number;
+  name: string;
+  description: string;
+}
+
+interface AdminUser {
+  id: number;
+  name: string;
+  username: string;
+  email: string;
+  isActive: boolean;
+  roleId: number;
+  roleName: string;
+}
+
+type SortDirection = "asc" | "desc";
+
+interface StandardTableColumn<T> {
+  key: string;
+  label: string;
+  sortable?: boolean;
+  sortKey?: string;
+  render: (row: T) => ReactNode;
+}
+
+interface StandardTableProps<T> {
+  columns: StandardTableColumn<T>[];
+  rows: T[];
+  sortKey: string;
+  sortDirection: SortDirection;
+  onSort: (sortKey: string) => void;
+  emptyMessage: string;
+}
+
+function StandardTable<T>({
+  columns,
+  rows,
+  sortKey,
+  sortDirection,
+  onSort,
+  emptyMessage,
+}: StandardTableProps<T>) {
+  if (rows.length === 0) {
+    return <p>{emptyMessage}</p>;
+  }
+
+  return (
+    <div className="standard-table-wrap">
+      <table className="standard-table">
+        <thead>
+          <tr>
+            {columns.map((column) => {
+              const sortable = Boolean(column.sortable && column.sortKey);
+              const activeSort = sortable && sortKey === column.sortKey;
+
+              return (
+                <th key={column.key}>
+                  {sortable ? (
+                    <button
+                      type="button"
+                      className={`table-sort-button ${activeSort ? "active" : ""}`}
+                      onClick={() => onSort(String(column.sortKey))}
+                    >
+                      {column.label}
+                      <span className="sort-indicator">
+                        {activeSort
+                          ? sortDirection === "asc"
+                            ? "↑"
+                            : "↓"
+                          : "↕"}
+                      </span>
+                    </button>
+                  ) : (
+                    <span>{column.label}</span>
+                  )}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={index}>
+              {columns.map((column) => (
+                <td key={column.key}>{column.render(row)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function App() {
@@ -107,6 +202,7 @@ function App() {
   const [profileAvatarUrl, setProfileAvatarUrl] = useState(
     "/default-avatar.svg",
   );
+  const [isProfileEditing, setIsProfileEditing] = useState(false);
   const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -206,11 +302,34 @@ function App() {
   const [spaceTrees, setSpaceTrees] = useState("");
   const [spaceImagesInput, setSpaceImagesInput] = useState("");
   const [uploadingSpaceImages, setUploadingSpaceImages] = useState(false);
+  const [showGreenSpaceModal, setShowGreenSpaceModal] = useState(false);
   const [editingGreenSpace, setEditingGreenSpace] = useState<GreenSpace | null>(
     null,
   );
+  const [adminRoles, setAdminRoles] = useState<AdminRole[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [userNameInput, setUserNameInput] = useState("");
+  const [userUsernameInput, setUserUsernameInput] = useState("");
+  const [userEmailInput, setUserEmailInput] = useState("");
+  const [userPasswordInput, setUserPasswordInput] = useState("");
+  const [userRoleIdInput, setUserRoleIdInput] = useState(0);
+  const [userIsActiveInput, setUserIsActiveInput] = useState(true);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
+  const [detailsUserId, setDetailsUserId] = useState<number | null>(null);
+  const [usersSortKey, setUsersSortKey] = useState<
+    "name" | "username" | "email" | "roleName" | "isActive"
+  >("name");
+  const [usersSortDirection, setUsersSortDirection] =
+    useState<SortDirection>("asc");
+  const [usersTablePage, setUsersTablePage] = useState(1);
+  const usersTablePageSize = 6;
   const [reviewDrafts, setReviewDrafts] = useState<
     Record<number, GreenSpaceReviewDraft>
+  >({});
+  const [activeGreenSpaceImageIndex, setActiveGreenSpaceImageIndex] = useState<
+    Record<number, number>
   >({});
   const spaceImagePreviewList = spaceImagesInput
     .split("\n")
@@ -263,33 +382,43 @@ function App() {
 
   useEffect(() => {
     if (!token) return;
-    if (user?.role === "admin") {
-      fetchAdminSurveys(adminPage);
-      fetchAdminSurveyOverview();
-    } else {
-      fetchSurveys();
+
+    // Survey module was removed from backend; keep only active modules loading.
+    if (route === "/surveys") {
+      navigate("/", true);
+      return;
     }
+
     fetchGreenSpaces();
-  }, [
-    token,
-    user?.role,
-    adminPage,
-    searchTerm,
-    filterType,
-    filterStatus,
-    sortOrder,
-  ]);
+
+    if (user?.role === "admin" && route === "/admin-users") {
+      fetchAdminRoles();
+      fetchAdminUsers();
+    }
+  }, [token, route, user]);
+
+  useEffect(() => {
+    const maxPage = Math.max(
+      1,
+      Math.ceil(adminUsers.length / usersTablePageSize),
+    );
+    if (usersTablePage > maxPage) {
+      setUsersTablePage(maxPage);
+    }
+  }, [adminUsers, usersTablePage, usersTablePageSize]);
 
   const fetchGreenSpaces = async () => {
     try {
       const res = await fetch("/api/green-spaces");
       if (!res.ok) {
+        setGreenSpaces([]);
         setError("No se pudieron cargar las areas verdes");
         return;
       }
       const data = await res.json();
       setGreenSpaces(Array.isArray(data) ? data : []);
     } catch {
+      setGreenSpaces([]);
       setError("No se pudieron cargar las areas verdes");
     }
   };
@@ -297,11 +426,65 @@ function App() {
   const fetchSurveys = async () => {
     try {
       const res = await fetch("/api/surveys?active=true&page=1&limit=1000");
+      if (!res.ok) {
+        setSurveys([]);
+        setUserPage(1);
+        setError("El modulo de encuestas aun no esta disponible");
+        return;
+      }
       const data = await res.json();
-      setSurveys(data.surveys || data);
+      const surveyList = Array.isArray(data?.surveys)
+        ? data.surveys
+        : Array.isArray(data)
+          ? data
+          : [];
+      setSurveys(surveyList);
       setUserPage(1);
     } catch {
+      setSurveys([]);
       setError("No se pudieron cargar las encuestas");
+    }
+  };
+
+  const fetchAdminRoles = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/admin/roles", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        setAdminRoles([]);
+        setError("No se pudieron cargar los roles");
+        return;
+      }
+      const data = await res.json();
+      const roleList = Array.isArray(data) ? data : [];
+      setAdminRoles(roleList);
+      if (roleList.length > 0 && !editingUserId && userRoleIdInput === 0) {
+        setUserRoleIdInput(Number(roleList[0].id) || 0);
+      }
+    } catch {
+      setAdminRoles([]);
+      setError("No se pudieron cargar los roles");
+    }
+  };
+
+  const fetchAdminUsers = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/admin/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        setAdminUsers([]);
+        setError("No se pudieron cargar los usuarios");
+        return;
+      }
+      const data = await res.json();
+      setAdminUsers(Array.isArray(data) ? data : []);
+    } catch {
+      setAdminUsers([]);
+      setError("No se pudieron cargar los usuarios");
     }
   };
 
@@ -325,10 +508,25 @@ function App() {
       params.set("sort", sortOrder);
 
       const res = await fetch(`/api/surveys?${params.toString()}`);
+      if (!res.ok) {
+        setSurveys([]);
+        setTotalPages(1);
+        setError(
+          "El modulo de encuestas de administrador aun no esta disponible",
+        );
+        return;
+      }
       const data = await res.json();
-      setSurveys(data.surveys);
-      setTotalPages(data.totalPages);
+      const surveyList = Array.isArray(data?.surveys) ? data.surveys : [];
+      setSurveys(surveyList);
+      setTotalPages(
+        typeof data?.totalPages === "number" && data.totalPages > 0
+          ? data.totalPages
+          : 1,
+      );
     } catch {
+      setSurveys([]);
+      setTotalPages(1);
       setError("No se pudieron cargar las encuestas de administrador");
     }
   };
@@ -338,10 +536,14 @@ function App() {
       const res = await fetch(
         "/api/surveys?admin=true&page=1&limit=1000&sort=desc",
       );
-      if (!res.ok) return;
+      if (!res.ok) {
+        setAdminSurveyOverview([]);
+        return;
+      }
       const data = await res.json();
-      setAdminSurveyOverview(data.surveys || []);
+      setAdminSurveyOverview(Array.isArray(data?.surveys) ? data.surveys : []);
     } catch {
+      setAdminSurveyOverview([]);
       // Keep UI functional even if overview fails.
     }
   };
@@ -458,6 +660,46 @@ function App() {
     (safeUserPage - 1) * limit,
     safeUserPage * limit,
   );
+
+  const sortedAdminUsers = [...adminUsers].sort((a, b) => {
+    const key = usersSortKey;
+    if (key === "isActive") {
+      const left = a.isActive ? 1 : 0;
+      const right = b.isActive ? 1 : 0;
+      return usersSortDirection === "asc" ? left - right : right - left;
+    }
+
+    const left = String(a[key] ?? "").toLowerCase();
+    const right = String(b[key] ?? "").toLowerCase();
+    const comparison = left.localeCompare(right, "es", { sensitivity: "base" });
+    return usersSortDirection === "asc" ? comparison : -comparison;
+  });
+
+  const usersTableTotalPages = Math.max(
+    1,
+    Math.ceil(sortedAdminUsers.length / usersTablePageSize),
+  );
+  const safeUsersTablePage = Math.min(usersTablePage, usersTableTotalPages);
+  const pagedAdminUsers = sortedAdminUsers.slice(
+    (safeUsersTablePage - 1) * usersTablePageSize,
+    safeUsersTablePage * usersTablePageSize,
+  );
+
+  const handleUsersSort = (key: string) => {
+    const normalized = key as
+      | "name"
+      | "username"
+      | "email"
+      | "roleName"
+      | "isActive";
+    if (usersSortKey === normalized) {
+      setUsersSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setUsersSortKey(normalized);
+      setUsersSortDirection("asc");
+    }
+    setUsersTablePage(1);
+  };
   const isGreenSpacesRoute =
     route === "/green-spaces" || route.startsWith("/green-spaces/");
   const selectedGreenSpaceId = (() => {
@@ -473,25 +715,25 @@ function App() {
       ? "Principal"
       : route === "/profile"
         ? "Mi perfil"
-        : route === "/surveys"
-          ? user?.role === "admin"
-            ? "Encuestas"
-            : "Encuestas disponibles"
+        : route === "/admin-users"
+          ? "Usuarios"
           : route.startsWith("/green-spaces/")
             ? "Detalle de area verde"
             : route === "/green-spaces"
               ? "Areas verdes del campus"
-              : "Encuestas disponibles";
+              : "Principal";
   const pageSubtitle =
     route === "/"
       ? "Resumen general de encuestas y areas verdes"
       : route === "/profile"
         ? "Actualiza tus datos personales"
-        : route.startsWith("/green-spaces/")
-          ? "Informacion completa, resenas y sugerencias del espacio"
-          : route === "/green-spaces"
-            ? "Registro y consulta de espacios verdes universitarios"
-            : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
+        : route === "/admin-users"
+          ? "Gestion integral de usuarios del sistema"
+          : route.startsWith("/green-spaces/")
+            ? "Informacion completa, resenas y sugerencias del espacio"
+            : route === "/green-spaces"
+              ? "Registro y consulta de espacios verdes universitarios"
+              : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
 
   const resetAdminForm = () => {
     setEditingSurvey(null);
@@ -575,6 +817,154 @@ function App() {
     setUploadingSpaceImages(false);
   };
 
+  const openCreateGreenSpaceModal = () => {
+    resetGreenSpaceForm();
+    setShowGreenSpaceModal(true);
+  };
+
+  const closeGreenSpaceModal = () => {
+    setShowGreenSpaceModal(false);
+    resetGreenSpaceForm();
+  };
+
+  const resetUserForm = () => {
+    setEditingUserId(null);
+    setUserNameInput("");
+    setUserUsernameInput("");
+    setUserEmailInput("");
+    setUserPasswordInput("");
+    setUserRoleIdInput(adminRoles[0]?.id || 0);
+    setUserIsActiveInput(true);
+  };
+
+  const openCreateUserModal = () => {
+    resetUserForm();
+    setShowUserModal(true);
+  };
+
+  const openEditUserModal = (entry: AdminUser) => {
+    setEditingUserId(entry.id);
+    setUserNameInput(entry.name);
+    setUserUsernameInput(entry.username);
+    setUserEmailInput(entry.email);
+    setUserPasswordInput("");
+    setUserRoleIdInput(entry.roleId);
+    setUserIsActiveInput(entry.isActive);
+    setShowUserModal(true);
+  };
+
+  const closeUserModal = () => {
+    setShowUserModal(false);
+    resetUserForm();
+  };
+
+  const openUserDetailsModal = (entry: AdminUser) => {
+    setDetailsUserId(entry.id);
+    setShowUserDetailsModal(true);
+  };
+
+  const closeUserDetailsModal = () => {
+    setShowUserDetailsModal(false);
+    setDetailsUserId(null);
+  };
+
+  const saveAdminUser = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token) return;
+
+    const editingUser = adminUsers.find((entry) => entry.id === editingUserId);
+    const isOriginalAdminUser = editingUser?.username === "admin";
+
+    const payload: Record<string, unknown> = {
+      name: userNameInput,
+      username: userUsernameInput,
+      email: userEmailInput,
+      isActive: userIsActiveInput,
+    };
+
+    if (!isOriginalAdminUser) {
+      payload.roleId = userRoleIdInput;
+    }
+
+    if (userPasswordInput.trim()) {
+      payload.password = userPasswordInput;
+    }
+
+    try {
+      const res = await fetch(
+        editingUserId
+          ? `/api/admin/users/${editingUserId}`
+          : "/api/admin/users",
+        {
+          method: editingUserId ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "No se pudo guardar el usuario");
+        return;
+      }
+
+      setSuccessMessage(
+        editingUserId
+          ? "Usuario actualizado correctamente."
+          : "Usuario creado correctamente.",
+      );
+      setError(null);
+      resetUserForm();
+      setShowUserModal(false);
+      fetchAdminUsers();
+    } catch {
+      setError("No se pudo guardar el usuario");
+    }
+  };
+
+  const deleteAdminUser = async (userId: number) => {
+    if (!token) return;
+
+    const targetUser = adminUsers.find((entry) => entry.id === userId);
+    if (targetUser?.username === "admin") {
+      setError("No se puede eliminar el usuario administrador original");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "Esta accion eliminara el usuario de forma permanente. Continuar?",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "No se pudo eliminar el usuario");
+        return;
+      }
+
+      if (editingUserId === userId) {
+        resetUserForm();
+        setShowUserModal(false);
+      }
+      setSuccessMessage("Usuario eliminado correctamente.");
+      setError(null);
+      fetchAdminUsers();
+    } catch {
+      setError("No se pudo eliminar el usuario");
+    }
+  };
+
   const uploadGreenSpaceImages = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -639,6 +1029,11 @@ function App() {
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
 
+    if (images.length === 0) {
+      setError("Debes subir al menos una imagen desde tu equipo");
+      return;
+    }
+
     const payload = {
       name: spaceName,
       location: spaceLocation,
@@ -667,6 +1062,7 @@ function App() {
       }
 
       resetGreenSpaceForm();
+      setShowGreenSpaceModal(false);
       fetchGreenSpaces();
       setSuccessMessage(
         editingGreenSpace
@@ -686,6 +1082,7 @@ function App() {
     setSpaceArea(String(space.totalAreaM2));
     setSpaceTrees(String(space.tallTreeCount));
     setSpaceImagesInput((space.images || []).join("\n"));
+    setShowGreenSpaceModal(true);
   };
 
   const deleteGreenSpace = async (id: number) => {
@@ -882,6 +1279,205 @@ function App() {
     );
   };
 
+  const renderUserModal = () => {
+    if (!showUserModal) return null;
+
+    const editingUser = adminUsers.find((entry) => entry.id === editingUserId);
+    const isOriginalAdminUser = editingUser?.username === "admin";
+
+    return createPortal(
+      <div className="modal-overlay" onClick={closeUserModal}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <div>
+              <h3>{editingUserId ? "Editar usuario" : "Crear usuario"}</h3>
+              <p>
+                {editingUserId
+                  ? "Actualiza datos del usuario o elimina si no tiene registros relacionados."
+                  : "Completa la informacion para crear un nuevo usuario del sistema."}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="modal-close"
+              onClick={closeUserModal}
+            >
+              ×
+            </button>
+          </div>
+
+          <form className="admin-form" onSubmit={saveAdminUser}>
+            <div className="field-row">
+              <label>
+                Nombre
+                <input
+                  value={userNameInput}
+                  onChange={(e) => setUserNameInput(e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                Usuario
+                <input
+                  value={userUsernameInput}
+                  onChange={(e) => setUserUsernameInput(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+
+            <div className="field-row">
+              <label>
+                Correo
+                <input
+                  type="email"
+                  value={userEmailInput}
+                  onChange={(e) => setUserEmailInput(e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                Contrasena {editingUserId ? "(opcional)" : ""}
+                <input
+                  type="password"
+                  value={userPasswordInput}
+                  onChange={(e) => setUserPasswordInput(e.target.value)}
+                  required={!editingUserId}
+                />
+              </label>
+            </div>
+
+            <div className="field-row">
+              {!isOriginalAdminUser && (
+                <label>
+                  Rol
+                  <select
+                    value={String(userRoleIdInput)}
+                    onChange={(e) => setUserRoleIdInput(Number(e.target.value))}
+                    required
+                  >
+                    <option value="0" disabled>
+                      Selecciona un rol
+                    </option>
+                    {adminRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={userIsActiveInput}
+                  onChange={(e) => setUserIsActiveInput(e.target.checked)}
+                />
+                Usuario activo
+              </label>
+            </div>
+
+            <div className="button-row user-modal-actions">
+              <button type="submit">
+                {editingUserId ? "Guardar cambios" : "Crear usuario"}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={closeUserModal}
+              >
+                Cancelar
+              </button>
+              {editingUserId && !isOriginalAdminUser && (
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => deleteAdminUser(editingUserId)}
+                >
+                  Eliminar usuario
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      </div>,
+      document.body,
+    );
+  };
+
+  const renderUserDetailsModal = () => {
+    if (!showUserDetailsModal) return null;
+
+    const targetUser = adminUsers.find((entry) => entry.id === detailsUserId);
+    if (!targetUser) return null;
+
+    return createPortal(
+      <div className="modal-overlay" onClick={closeUserDetailsModal}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <div>
+              <h3>Detalle de usuario</h3>
+              <p>Informacion completa del registro seleccionado.</p>
+            </div>
+            <button
+              type="button"
+              className="modal-close"
+              onClick={closeUserDetailsModal}
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="admin-form">
+            <div className="field-row">
+              <label>
+                Nombre
+                <input value={targetUser.name} readOnly disabled />
+              </label>
+              <label>
+                Usuario
+                <input value={targetUser.username} readOnly disabled />
+              </label>
+            </div>
+
+            <div className="field-row">
+              <label>
+                Correo
+                <input value={targetUser.email} readOnly disabled />
+              </label>
+              <label>
+                Rol
+                <input value={targetUser.roleName} readOnly disabled />
+              </label>
+            </div>
+
+            <div className="field-row">
+              <label>
+                Estado
+                <input
+                  value={targetUser.isActive ? "Activo" : "Inactivo"}
+                  readOnly
+                  disabled
+                />
+              </label>
+            </div>
+
+            <div className="button-row user-modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={closeUserDetailsModal}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  };
+
   const deleteSurvey = async (id: number) => {
     setError(null);
     try {
@@ -950,6 +1546,7 @@ function App() {
     setProfileUsername(user.username);
     setProfileEmail(user.email);
     setProfileAvatarUrl(resolveAvatarUrl(user.avatarUrl));
+    setIsProfileEditing(false);
   };
 
   useEffect(() => {
@@ -957,6 +1554,11 @@ function App() {
       loadProfileForm();
     }
   }, [route, user]);
+
+  const cancelProfileEditing = () => {
+    loadProfileForm();
+    setError(null);
+  };
 
   const updateProfile = async () => {
     if (!user || !token) return;
@@ -1226,7 +1828,12 @@ function App() {
         </div>
         <div className="profile-avatar-controls">
           <label className="small">Subir imagen</label>
-          <input type="file" accept="image/*" onChange={handleAvatarFile} />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarFile}
+            disabled={!isProfileEditing}
+          />
           <p className="muted">
             O pega una URL en el campo Avatar URL más abajo.
           </p>
@@ -1237,6 +1844,8 @@ function App() {
         <input
           value={profileName}
           onChange={(e) => setProfileName(e.target.value)}
+          readOnly={!isProfileEditing}
+          disabled={!isProfileEditing}
         />
       </label>
       <label>
@@ -1244,6 +1853,8 @@ function App() {
         <input
           value={profileUsername}
           onChange={(e) => setProfileUsername(e.target.value)}
+          readOnly={!isProfileEditing}
+          disabled={!isProfileEditing}
         />
       </label>
       <label>
@@ -1251,6 +1862,8 @@ function App() {
         <input
           value={profileEmail}
           onChange={(e) => setProfileEmail(e.target.value)}
+          readOnly={!isProfileEditing}
+          disabled={!isProfileEditing}
         />
       </label>
       <label>
@@ -1259,14 +1872,39 @@ function App() {
           value={profileAvatarUrl}
           onChange={(e) => setProfileAvatarUrl(e.target.value)}
           placeholder="https://..."
+          readOnly={!isProfileEditing}
+          disabled={!isProfileEditing}
         />
       </label>
       <div className="button-row">
-        <button onClick={updateProfile}>Guardar cambios</button>
-        <button type="button" className="secondary" onClick={openPasswordModal}>
-          Cambiar contraseña
-        </button>
-        <button className="secondary" onClick={() => navigate("/")}>
+        {!isProfileEditing ? (
+          <button type="button" onClick={() => setIsProfileEditing(true)}>
+            Editar perfil
+          </button>
+        ) : (
+          <>
+            <button type="button" onClick={updateProfile}>
+              Guardar cambios
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={cancelProfileEditing}
+            >
+              Cancelar
+            </button>
+          </>
+        )}
+        {isProfileEditing && (
+          <button
+            type="button"
+            className="secondary"
+            onClick={openPasswordModal}
+          >
+            Cambiar contraseña
+          </button>
+        )}
+        <button type="button" className="secondary" onClick={() => navigate("/")}>
           Volver
         </button>
       </div>
@@ -1576,13 +2214,34 @@ function App() {
     </section>
   );
 
-  const renderGreenSpacesSection = () => (
-    <section className="box green-spaces-box">
-      {user?.role === "admin" && (
-        <div className="green-space-form-wrap">
-          <h2>
-            {editingGreenSpace ? "Editar area verde" : "Registrar area verde"}
-          </h2>
+  const renderGreenSpaceModal = () => {
+    if (!showGreenSpaceModal || user?.role !== "admin") return null;
+
+    return createPortal(
+      <div className="modal-overlay" onClick={closeGreenSpaceModal}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <div>
+              <h3>
+                {editingGreenSpace
+                  ? "Editar area verde"
+                  : "Registrar area verde"}
+              </h3>
+              <p>
+                {editingGreenSpace
+                  ? "Actualiza la informacion del espacio verde."
+                  : "Completa la informacion para registrar un nuevo espacio verde."}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="modal-close"
+              onClick={closeGreenSpaceModal}
+            >
+              ×
+            </button>
+          </div>
+
           <form className="admin-form" onSubmit={saveGreenSpace}>
             <div className="field-row">
               <label>
@@ -1628,15 +2287,11 @@ function App() {
                 />
               </label>
             </div>
-            <label>
-              Imagenes (una ruta o URL por linea)
-              <textarea
-                value={spaceImagesInput}
-                onChange={(e) => setSpaceImagesInput(e.target.value)}
-                placeholder="/green-spaces/jardin-central-1.svg"
-                required
-              />
-            </label>
+
+            <p className="muted">
+              Las imagenes se agregan solo desde tu equipo con el boton "Elegir
+              archivos".
+            </p>
             {spaceImagePreviewList.length > 0 && (
               <div className="green-space-preview-list">
                 {spaceImagePreviewList.map((image, index) => (
@@ -1653,8 +2308,9 @@ function App() {
                 ))}
               </div>
             )}
+
             <label>
-              Subir imagenes desde tu equipo
+              Imagenes del area verde (solo carga local)
               <input
                 type="file"
                 accept="image/*"
@@ -1663,61 +2319,122 @@ function App() {
                 disabled={uploadingSpaceImages}
               />
             </label>
+            {spaceImagePreviewList.length === 0 && (
+              <p className="muted">Aun no se han subido imagenes.</p>
+            )}
             {uploadingSpaceImages && (
               <p className="muted">Subiendo imagenes, por favor espera...</p>
             )}
-            <div className="button-row">
+
+            <div className="button-row user-modal-actions">
               <button type="submit">
                 {editingGreenSpace ? "Guardar cambios" : "Registrar"}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={closeGreenSpaceModal}
+              >
+                Cancelar
               </button>
               {editingGreenSpace && (
                 <button
                   type="button"
-                  className="secondary"
-                  onClick={resetGreenSpaceForm}
+                  className="danger"
+                  onClick={() => {
+                    deleteGreenSpace(editingGreenSpace.id);
+                    closeGreenSpaceModal();
+                  }}
                 >
-                  Cancelar edicion
+                  Eliminar
                 </button>
               )}
             </div>
           </form>
         </div>
-      )}
+      </div>,
+      document.body,
+    );
+  };
 
-      <div className="green-space-grid compact">
+  const renderGreenSpacesSection = () => (
+    <section className="box admin-box">
+      <div className="admin-header">
+        <div>
+          <h2>Administracion de areas verdes</h2>
+          <p>Gestiona los espacios verdes del campus.</p>
+        </div>
+      </div>
+
+      <article className="principal-panel">
+        <div className="users-panel-header">
+          <h3>Areas verdes del campus</h3>
+          {user?.role === "admin" && (
+            <button type="button" onClick={openCreateGreenSpaceModal}>
+              Nueva area verde
+            </button>
+          )}
+        </div>
+
         {greenSpaces.length === 0 ? (
           <p>No hay areas verdes registradas.</p>
         ) : (
-          greenSpaces.map((space) => (
-            <article key={space.id} className="green-space-mini-card">
-              <img
-                src={resolveAssetUrl(
-                  space.images?.[0] || "/default-avatar.svg",
-                )}
-                alt={`${space.name} portada`}
-                className="green-space-mini-cover"
-              />
-              <div className="green-space-mini-content">
-                <h3>{space.name}</h3>
-                <p>{space.location}</p>
-                <div className="mini-rating-row">
-                  {renderAverageStars(space.reviewSummary?.averageRating ?? 0)}
-                  <span>
-                    {(space.reviewSummary?.averageRating ?? 0).toFixed(1)} / 5 ·{" "}
-                    {space.reviewSummary?.totalReviews ?? 0} resenas
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/green-spaces/${space.id}`)}
-                >
-                  Ver detalles
-                </button>
-              </div>
-            </article>
-          ))
+          <div className="standard-table-wrap">
+            <table className="standard-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Ubicacion</th>
+                  <th>Area</th>
+                  <th>Arboles</th>
+                  <th>Valoracion</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {greenSpaces.map((space) => (
+                  <tr key={space.id}>
+                    <td>{space.name}</td>
+                    <td>{space.location}</td>
+                    <td>{space.totalAreaM2} m2</td>
+                    <td>{space.tallTreeCount}</td>
+                    <td>
+                      <div className="mini-rating-row">
+                        {renderAverageStars(
+                          space.reviewSummary?.averageRating ?? 0,
+                        )}
+                        <span>
+                          {(space.reviewSummary?.averageRating ?? 0).toFixed(1)}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="table-actions">
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => navigate(`/green-spaces/${space.id}`)}
+                        >
+                          Ver detalle
+                        </button>
+                        {user?.role === "admin" && (
+                          <button
+                            type="button"
+                            onClick={() => editGreenSpace(space)}
+                          >
+                            Editar
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </article>
+      {renderGreenSpaceModal()}
     </section>
   );
 
@@ -1734,6 +2451,21 @@ function App() {
     }
 
     const current = reviewDrafts[selectedGreenSpace.id]?.rating ?? 0;
+    const greenSpaceImages = selectedGreenSpace.images || [];
+    const activeImageIndex = activeGreenSpaceImageIndex[selectedGreenSpace.id] ?? 0;
+    const activeImage = greenSpaceImages[activeImageIndex] || greenSpaceImages[0];
+
+    const goToImage = (direction: number) => {
+      if (greenSpaceImages.length <= 1) return;
+      const nextIndex = (
+        (activeImageIndex + direction + greenSpaceImages.length) %
+        greenSpaceImages.length
+      );
+      setActiveGreenSpaceImageIndex((prev) => ({
+        ...prev,
+        [selectedGreenSpace.id]: nextIndex,
+      }));
+    };
 
     return (
       <section className="box green-spaces-box">
@@ -1810,15 +2542,61 @@ function App() {
               </strong>
             </div>
           </div>
-          <div className="green-space-images">
-            {(selectedGreenSpace.images || []).map((image, index) => (
-              <img
-                key={`${selectedGreenSpace.id}-${index}`}
-                src={resolveAssetUrl(image)}
-                alt={`${selectedGreenSpace.name} imagen ${index + 1}`}
-              />
-            ))}
-          </div>
+
+          {activeImage && (
+            <div className="green-space-carousel">
+              <div className="green-space-carousel-main">
+                <img
+                  src={resolveAssetUrl(activeImage)}
+                  alt={`${selectedGreenSpace.name} imagen ${activeImageIndex + 1}`}
+                />
+                {greenSpaceImages.length > 1 && (
+                  <div className="green-space-carousel-controls">
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => goToImage(-1)}
+                    >
+                      ‹
+                    </button>
+                    <span>
+                      {activeImageIndex + 1} / {greenSpaceImages.length}
+                    </span>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => goToImage(1)}
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {greenSpaceImages.length > 1 && (
+                <div className="green-space-carousel-thumbnails">
+                  {greenSpaceImages.map((image, index) => (
+                    <button
+                      key={`${selectedGreenSpace.id}-thumb-${index}`}
+                      type="button"
+                      className={`green-space-carousel-thumb ${index === activeImageIndex ? "selected" : ""}`}
+                      onClick={() =>
+                        setActiveGreenSpaceImageIndex((prev) => ({
+                          ...prev,
+                          [selectedGreenSpace.id]: index,
+                        }))
+                      }
+                    >
+                      <img
+                        src={resolveAssetUrl(image)}
+                        alt={`${selectedGreenSpace.name} thumbnail ${index + 1}`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="green-space-review-box">
             <h4>Califica este espacio (0 a 5 estrellas)</h4>
@@ -1889,6 +2667,123 @@ function App() {
             )}
           </div>
         </article>
+      </section>
+    );
+  };
+
+  const renderAdminUsersSection = () => {
+    const userColumns: StandardTableColumn<AdminUser>[] = [
+      {
+        key: "name",
+        label: "Nombre",
+        sortable: true,
+        sortKey: "name",
+        render: (entry) => entry.name,
+      },
+      {
+        key: "username",
+        label: "Usuario",
+        sortable: true,
+        sortKey: "username",
+        render: (entry) => `@${entry.username}`,
+      },
+      {
+        key: "email",
+        label: "Correo",
+        sortable: true,
+        sortKey: "email",
+        render: (entry) => entry.email,
+      },
+      {
+        key: "roleName",
+        label: "Rol",
+        sortable: true,
+        sortKey: "roleName",
+        render: (entry) => entry.roleName,
+      },
+      {
+        key: "status",
+        label: "Estado",
+        sortable: true,
+        sortKey: "isActive",
+        render: (entry) => (
+          <span className={`pill ${entry.isActive ? "active" : "inactive"}`}>
+            {entry.isActive ? "Activo" : "Inactivo"}
+          </span>
+        ),
+      },
+      {
+        key: "actions",
+        label: "Acciones",
+        render: (entry) => (
+          <div className="table-actions">
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => openUserDetailsModal(entry)}
+            >
+              Ver detalle
+            </button>
+            {entry.username !== "admin" && (
+              <button type="button" onClick={() => openEditUserModal(entry)}>
+                Editar
+              </button>
+            )}
+          </div>
+        ),
+      },
+    ];
+
+    return (
+      <section className="box admin-box">
+        <div className="admin-header">
+          <div>
+            <h2>Administracion de usuarios</h2>
+            <p>Gestiona todas las cuentas de usuario del sistema.</p>
+          </div>
+        </div>
+
+        <article className="principal-panel">
+          <div className="users-panel-header">
+            <h3>Usuarios del sistema</h3>
+            <button type="button" onClick={openCreateUserModal}>
+              Nuevo usuario
+            </button>
+          </div>
+
+          <StandardTable
+            columns={userColumns}
+            rows={pagedAdminUsers}
+            sortKey={usersSortKey}
+            sortDirection={usersSortDirection}
+            onSort={handleUsersSort}
+            emptyMessage="No hay usuarios registrados."
+          />
+
+          {sortedAdminUsers.length > 0 && (
+            <div className="pagination">
+              <button
+                type="button"
+                disabled={safeUsersTablePage <= 1}
+                onClick={() => setUsersTablePage((prev) => prev - 1)}
+              >
+                Anterior
+              </button>
+              <span>
+                Pagina {safeUsersTablePage} de {usersTableTotalPages}
+              </span>
+              <button
+                type="button"
+                disabled={safeUsersTablePage >= usersTableTotalPages}
+                onClick={() => setUsersTablePage((prev) => prev + 1)}
+              >
+                Siguiente
+              </button>
+            </div>
+          )}
+        </article>
+        {renderUserModal()}
+        {renderUserDetailsModal()}
       </section>
     );
   };
@@ -1982,6 +2877,10 @@ function App() {
 
     if (route === "/green-spaces") {
       return renderGreenSpacesSection();
+    }
+
+    if (route === "/admin-users" && user?.role === "admin") {
+      return renderAdminUsersSection();
     }
 
     if (route === "/surveys" && user?.role === "admin") {
@@ -2197,7 +3096,7 @@ function App() {
         <div className="brand">
           <div>
             <h2>Panel del campus</h2>
-            <p>Accede a encuestas, areas verdes y tu perfil.</p>
+            <p>Accede a areas verdes y tu perfil.</p>
           </div>
         </div>
         {user?.role !== "admin" && (
@@ -2220,13 +3119,6 @@ function App() {
           </button>
           <button
             type="button"
-            className={route === "/surveys" ? "active" : ""}
-            onClick={() => navigate("/surveys")}
-          >
-            Encuestas
-          </button>
-          <button
-            type="button"
             className={route === "/profile" ? "active" : ""}
             onClick={() => navigate("/profile")}
           >
@@ -2239,6 +3131,17 @@ function App() {
           >
             Areas verdes
           </button>
+          {user?.role === "admin" && (
+            <>
+              <button
+                type="button"
+                className={route === "/admin-users" ? "active" : ""}
+                onClick={() => navigate("/admin-users")}
+              >
+                Usuarios
+              </button>
+            </>
+          )}
         </nav>
         {user?.role === "admin" && <span className="nav-badge">ADMIN</span>}
         <div className="sidebar-user-panel">
