@@ -1,5 +1,6 @@
-import { FormEvent, ReactNode, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { FormEvent, useEffect, useState } from "react";
+import { AppModal } from "./components/AppModal";
+import { DefaultTable, DefaultTableColumn } from "./components/DefaultTable";
 
 interface SurveySummary {
   totalResponses: number;
@@ -83,83 +84,6 @@ interface AdminUser {
 }
 
 type SortDirection = "asc" | "desc";
-
-interface StandardTableColumn<T> {
-  key: string;
-  label: string;
-  sortable?: boolean;
-  sortKey?: string;
-  render: (row: T) => ReactNode;
-}
-
-interface StandardTableProps<T> {
-  columns: StandardTableColumn<T>[];
-  rows: T[];
-  sortKey: string;
-  sortDirection: SortDirection;
-  onSort: (sortKey: string) => void;
-  emptyMessage: string;
-}
-
-function StandardTable<T>({
-  columns,
-  rows,
-  sortKey,
-  sortDirection,
-  onSort,
-  emptyMessage,
-}: StandardTableProps<T>) {
-  if (rows.length === 0) {
-    return <p>{emptyMessage}</p>;
-  }
-
-  return (
-    <div className="standard-table-wrap">
-      <table className="standard-table">
-        <thead>
-          <tr>
-            {columns.map((column) => {
-              const sortable = Boolean(column.sortable && column.sortKey);
-              const activeSort = sortable && sortKey === column.sortKey;
-
-              return (
-                <th key={column.key}>
-                  {sortable ? (
-                    <button
-                      type="button"
-                      className={`table-sort-button ${activeSort ? "active" : ""}`}
-                      onClick={() => onSort(String(column.sortKey))}
-                    >
-                      {column.label}
-                      <span className="sort-indicator">
-                        {activeSort
-                          ? sortDirection === "asc"
-                            ? "↑"
-                            : "↓"
-                          : "↕"}
-                      </span>
-                    </button>
-                  ) : (
-                    <span>{column.label}</span>
-                  )}
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={index}>
-              {columns.map((column) => (
-                <td key={column.key}>{column.render(row)}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 function App() {
   const resolveAvatarUrl = (avatarUrl?: string | null) => {
@@ -325,6 +249,11 @@ function App() {
   const [spaceImagesInput, setSpaceImagesInput] = useState("");
   const [uploadingSpaceImages, setUploadingSpaceImages] = useState(false);
   const [showGreenSpaceModal, setShowGreenSpaceModal] = useState(false);
+  const [showGreenSpaceDetailsModal, setShowGreenSpaceDetailsModal] =
+    useState(false);
+  const [greenSpaceDetailsId, setGreenSpaceDetailsId] = useState<number | null>(
+    null,
+  );
   const [editingGreenSpace, setEditingGreenSpace] = useState<GreenSpace | null>(
     null,
   );
@@ -361,6 +290,14 @@ function App() {
     Record<number, { start: string; end: string }>
   >({});
   const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [showProposalDetailsModal, setShowProposalDetailsModal] =
+    useState(false);
+  const [proposalDetailsId, setProposalDetailsId] = useState<number | null>(
+    null,
+  );
+  const [showProposalManageModal, setShowProposalManageModal] = useState(false);
+  const [proposalManageId, setProposalManageId] = useState<number | null>(null);
   const [proposalStatusFilter, setProposalStatusFilter] =
     useState<ProposalStatusFilter>("all");
   const [activeGreenSpaceImageIndex, setActiveGreenSpaceImageIndex] = useState<
@@ -895,6 +832,16 @@ function App() {
     setShowGreenSpaceModal(true);
   };
 
+  const openGreenSpaceDetailsModal = (space: GreenSpace) => {
+    setGreenSpaceDetailsId(space.id);
+    setShowGreenSpaceDetailsModal(true);
+  };
+
+  const closeGreenSpaceDetailsModal = () => {
+    setShowGreenSpaceDetailsModal(false);
+    setGreenSpaceDetailsId(null);
+  };
+
   const closeGreenSpaceModal = () => {
     setShowGreenSpaceModal(false);
     resetGreenSpaceForm();
@@ -939,6 +886,36 @@ function App() {
   const closeUserDetailsModal = () => {
     setShowUserDetailsModal(false);
     setDetailsUserId(null);
+  };
+
+  const openCreateProposalModal = () => {
+    setProposalTitleInput("");
+    setProposalDescriptionInput("");
+    setShowProposalModal(true);
+  };
+
+  const closeCreateProposalModal = () => {
+    setShowProposalModal(false);
+  };
+
+  const openProposalDetailsModal = (proposal: Proposal) => {
+    setProposalDetailsId(proposal.id);
+    setShowProposalDetailsModal(true);
+  };
+
+  const closeProposalDetailsModal = () => {
+    setShowProposalDetailsModal(false);
+    setProposalDetailsId(null);
+  };
+
+  const openProposalManageModal = (proposal: Proposal) => {
+    setProposalManageId(proposal.id);
+    setShowProposalManageModal(true);
+  };
+
+  const closeProposalManageModal = () => {
+    setShowProposalManageModal(false);
+    setProposalManageId(null);
   };
 
   const saveAdminUser = async (event: FormEvent<HTMLFormElement>) => {
@@ -1240,6 +1217,7 @@ function App() {
 
       setProposalTitleInput("");
       setProposalDescriptionInput("");
+      setShowProposalModal(false);
       setSuccessMessage(
         "Propuesta enviada. Queda pendiente de validacion administrativa.",
       );
@@ -1411,86 +1389,74 @@ function App() {
   const renderModal = () => {
     if (!showModal) return null;
 
-    return createPortal(
-      <div className="modal-overlay" onClick={closeModal}>
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
-            <div>
-              <h3>{editingSurvey ? "Editar encuesta" : "Nueva encuesta"}</h3>
-              <p>
-                {editingSurvey
-                  ? "Ajusta los datos y guarda los cambios."
-                  : "Crea una nueva encuesta para tu campus."}
-              </p>
-            </div>
-            <button type="button" className="modal-close" onClick={closeModal}>
-              ×
-            </button>
-          </div>
-
-          <form className="admin-form" onSubmit={saveSurvey}>
-            <div className="field-row">
-              <label>
-                Título
-                <input
-                  value={pollTitle}
-                  onChange={(e) => setPollTitle(e.target.value)}
-                  placeholder="Título de la encuesta"
-                  required
-                />
-              </label>
-              {!editingSurvey && (
-                <label>
-                  Tipo de encuesta
-                  <select
-                    value={pollType}
-                    onChange={(e) =>
-                      setPollType(e.target.value as "yesno" | "rating")
-                    }
-                  >
-                    <option value="yesno">Sí / No</option>
-                    <option value="rating">Valoración 1–5</option>
-                  </select>
-                </label>
-              )}
-            </div>
-
+    return (
+      <AppModal
+        isOpen={showModal}
+        onClose={closeModal}
+        title={editingSurvey ? "Editar encuesta" : "Nueva encuesta"}
+        description={
+          editingSurvey
+            ? "Ajusta los datos y guarda los cambios."
+            : "Crea una nueva encuesta para tu campus."
+        }
+      >
+        <form className="admin-form" onSubmit={saveSurvey}>
+          <div className="field-row">
             <label>
-              Descripción
-              <textarea
-                value={pollDescription}
-                onChange={(e) => setPollDescription(e.target.value)}
-                placeholder="Describe el objetivo de la encuesta"
+              Título
+              <input
+                value={pollTitle}
+                onChange={(e) => setPollTitle(e.target.value)}
+                placeholder="Título de la encuesta"
                 required
               />
             </label>
-
-            <div className="field-row modal-actions-row">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={pollActive}
-                  onChange={(e) => setPollActive(e.target.checked)}
-                />
-                Visible
-              </label>
-              <div className="button-row">
-                <button type="submit">
-                  {editingSurvey ? "Actualizar" : "Crear"}
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={closeModal}
+            {!editingSurvey && (
+              <label>
+                Tipo de encuesta
+                <select
+                  value={pollType}
+                  onChange={(e) =>
+                    setPollType(e.target.value as "yesno" | "rating")
+                  }
                 >
-                  Cancelar
-                </button>
-              </div>
+                  <option value="yesno">Sí / No</option>
+                  <option value="rating">Valoración 1–5</option>
+                </select>
+              </label>
+            )}
+          </div>
+
+          <label>
+            Descripción
+            <textarea
+              value={pollDescription}
+              onChange={(e) => setPollDescription(e.target.value)}
+              placeholder="Describe el objetivo de la encuesta"
+              required
+            />
+          </label>
+
+          <div className="field-row modal-actions-row">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={pollActive}
+                onChange={(e) => setPollActive(e.target.checked)}
+              />
+              Visible
+            </label>
+            <div className="button-row">
+              <button type="submit">
+                {editingSurvey ? "Actualizar" : "Crear"}
+              </button>
+              <button type="button" className="secondary" onClick={closeModal}>
+                Cancelar
+              </button>
             </div>
-          </form>
-        </div>
-      </div>,
-      document.body,
+          </div>
+        </form>
+      </AppModal>
     );
   };
 
@@ -1500,123 +1466,111 @@ function App() {
     const editingUser = adminUsers.find((entry) => entry.id === editingUserId);
     const isOriginalAdminUser = editingUser?.username === "admin";
 
-    return createPortal(
-      <div className="modal-overlay" onClick={closeUserModal}>
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
-            <div>
-              <h3>{editingUserId ? "Editar usuario" : "Crear usuario"}</h3>
-              <p>
-                {editingUserId
-                  ? "Actualiza datos del usuario o elimina si no tiene registros relacionados."
-                  : "Completa la informacion para crear un nuevo usuario del sistema."}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="modal-close"
-              onClick={closeUserModal}
-            >
-              ×
-            </button>
+    return (
+      <AppModal
+        isOpen={showUserModal}
+        onClose={closeUserModal}
+        title={editingUserId ? "Editar usuario" : "Crear usuario"}
+        description={
+          editingUserId
+            ? "Actualiza datos del usuario o elimina si no tiene registros relacionados."
+            : "Completa la informacion para crear un nuevo usuario del sistema."
+        }
+      >
+        <form className="admin-form" onSubmit={saveAdminUser}>
+          <div className="field-row">
+            <label>
+              Nombre
+              <input
+                value={userNameInput}
+                onChange={(e) => setUserNameInput(e.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Usuario
+              <input
+                value={userUsernameInput}
+                onChange={(e) => setUserUsernameInput(e.target.value)}
+                required
+              />
+            </label>
           </div>
 
-          <form className="admin-form" onSubmit={saveAdminUser}>
-            <div className="field-row">
-              <label>
-                Nombre
-                <input
-                  value={userNameInput}
-                  onChange={(e) => setUserNameInput(e.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Usuario
-                <input
-                  value={userUsernameInput}
-                  onChange={(e) => setUserUsernameInput(e.target.value)}
-                  required
-                />
-              </label>
-            </div>
+          <div className="field-row">
+            <label>
+              Correo
+              <input
+                type="email"
+                value={userEmailInput}
+                onChange={(e) => setUserEmailInput(e.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Contrasena {editingUserId ? "(opcional)" : ""}
+              <input
+                type="password"
+                value={userPasswordInput}
+                onChange={(e) => setUserPasswordInput(e.target.value)}
+                required={!editingUserId}
+              />
+            </label>
+          </div>
 
-            <div className="field-row">
+          <div className="field-row">
+            {!isOriginalAdminUser && (
               <label>
-                Correo
-                <input
-                  type="email"
-                  value={userEmailInput}
-                  onChange={(e) => setUserEmailInput(e.target.value)}
+                Rol
+                <select
+                  value={String(userRoleIdInput)}
+                  onChange={(e) => setUserRoleIdInput(Number(e.target.value))}
                   required
-                />
-              </label>
-              <label>
-                Contrasena {editingUserId ? "(opcional)" : ""}
-                <input
-                  type="password"
-                  value={userPasswordInput}
-                  onChange={(e) => setUserPasswordInput(e.target.value)}
-                  required={!editingUserId}
-                />
-              </label>
-            </div>
-
-            <div className="field-row">
-              {!isOriginalAdminUser && (
-                <label>
-                  Rol
-                  <select
-                    value={String(userRoleIdInput)}
-                    onChange={(e) => setUserRoleIdInput(Number(e.target.value))}
-                    required
-                  >
-                    <option value="0" disabled>
-                      Selecciona un rol
+                >
+                  <option value="0" disabled>
+                    Selecciona un rol
+                  </option>
+                  {adminRoles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
                     </option>
-                    {adminRoles.map((role) => (
-                      <option key={role.id} value={role.id}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={userIsActiveInput}
-                  onChange={(e) => setUserIsActiveInput(e.target.checked)}
-                />
-                Usuario activo
+                  ))}
+                </select>
               </label>
-            </div>
+            )}
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={userIsActiveInput}
+                onChange={(e) => setUserIsActiveInput(e.target.checked)}
+              />
+              Usuario activo
+            </label>
+          </div>
 
-            <div className="button-row user-modal-actions">
-              <button type="submit">
-                {editingUserId ? "Guardar cambios" : "Crear usuario"}
-              </button>
+          <div className="button-row user-modal-actions">
+            <button type="submit">
+              {editingUserId ? "Guardar cambios" : "Crear usuario"}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={closeUserModal}
+            >
+              Cancelar
+            </button>
+            {editingUserId && !isOriginalAdminUser && (
               <button
                 type="button"
-                className="secondary"
-                onClick={closeUserModal}
+                className="danger"
+                onClick={() => deleteAdminUser(editingUserId)}
               >
-                Cancelar
+                Eliminar usuario
               </button>
-              {editingUserId && !isOriginalAdminUser && (
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={() => deleteAdminUser(editingUserId)}
-                >
-                  Eliminar usuario
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
-      </div>,
-      document.body,
+            )}
+          </div>
+        </form>
+      </AppModal>
     );
   };
 
@@ -1626,70 +1580,58 @@ function App() {
     const targetUser = adminUsers.find((entry) => entry.id === detailsUserId);
     if (!targetUser) return null;
 
-    return createPortal(
-      <div className="modal-overlay" onClick={closeUserDetailsModal}>
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
-            <div>
-              <h3>Detalle de usuario</h3>
-              <p>Informacion completa del registro seleccionado.</p>
-            </div>
+    return (
+      <AppModal
+        isOpen={showUserDetailsModal}
+        onClose={closeUserDetailsModal}
+        title="Detalle de usuario"
+        description="Informacion completa del registro seleccionado."
+      >
+        <div className="admin-form">
+          <div className="field-row">
+            <label>
+              Nombre
+              <input value={targetUser.name} readOnly disabled />
+            </label>
+            <label>
+              Usuario
+              <input value={targetUser.username} readOnly disabled />
+            </label>
+          </div>
+
+          <div className="field-row">
+            <label>
+              Correo
+              <input value={targetUser.email} readOnly disabled />
+            </label>
+            <label>
+              Rol
+              <input value={targetUser.roleName} readOnly disabled />
+            </label>
+          </div>
+
+          <div className="field-row">
+            <label>
+              Estado
+              <input
+                value={targetUser.isActive ? "Activo" : "Inactivo"}
+                readOnly
+                disabled
+              />
+            </label>
+          </div>
+
+          <div className="button-row user-modal-actions">
             <button
               type="button"
-              className="modal-close"
+              className="secondary"
               onClick={closeUserDetailsModal}
             >
-              ×
+              Cerrar
             </button>
           </div>
-
-          <div className="admin-form">
-            <div className="field-row">
-              <label>
-                Nombre
-                <input value={targetUser.name} readOnly disabled />
-              </label>
-              <label>
-                Usuario
-                <input value={targetUser.username} readOnly disabled />
-              </label>
-            </div>
-
-            <div className="field-row">
-              <label>
-                Correo
-                <input value={targetUser.email} readOnly disabled />
-              </label>
-              <label>
-                Rol
-                <input value={targetUser.roleName} readOnly disabled />
-              </label>
-            </div>
-
-            <div className="field-row">
-              <label>
-                Estado
-                <input
-                  value={targetUser.isActive ? "Activo" : "Inactivo"}
-                  readOnly
-                  disabled
-                />
-              </label>
-            </div>
-
-            <div className="button-row user-modal-actions">
-              <button
-                type="button"
-                className="secondary"
-                onClick={closeUserDetailsModal}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
         </div>
-      </div>,
-      document.body,
+      </AppModal>
     );
   };
 
@@ -2134,71 +2076,59 @@ function App() {
   const renderPasswordModal = () => {
     if (!showPasswordModal) return null;
 
-    return createPortal(
-      <div className="modal-overlay" onClick={closePasswordModal}>
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
-            <div>
-              <h3>Cambiar contraseña</h3>
-              <p>Ingresa tu contraseña actual y la nueva contraseña.</p>
-            </div>
+    return (
+      <AppModal
+        isOpen={showPasswordModal}
+        onClose={closePasswordModal}
+        title="Cambiar contraseña"
+        description="Ingresa tu contraseña actual y la nueva contraseña."
+      >
+        <div className="admin-form">
+          <label>
+            Contraseña actual
+            <input
+              type="password"
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+              placeholder="Contraseña actual"
+            />
+          </label>
+          <label>
+            Nueva contraseña
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nueva contraseña"
+            />
+          </label>
+          <label>
+            Confirmar nueva contraseña
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repite la nueva contraseña"
+            />
+          </label>
+          {passwordSuccess && (
+            <p className="modal-success">{passwordSuccess}</p>
+          )}
+          {passwordError && <p className="error">{passwordError}</p>}
+          <div className="button-row">
+            <button type="button" onClick={changePassword}>
+              Guardar contraseña
+            </button>
             <button
               type="button"
-              className="modal-close"
+              className="secondary"
               onClick={closePasswordModal}
             >
-              ×
+              Cancelar
             </button>
           </div>
-
-          <div className="admin-form">
-            <label>
-              Contraseña actual
-              <input
-                type="password"
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
-                placeholder="Contraseña actual"
-              />
-            </label>
-            <label>
-              Nueva contraseña
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nueva contraseña"
-              />
-            </label>
-            <label>
-              Confirmar nueva contraseña
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repite la nueva contraseña"
-              />
-            </label>
-            {passwordSuccess && (
-              <p className="modal-success">{passwordSuccess}</p>
-            )}
-            {passwordError && <p className="error">{passwordError}</p>}
-            <div className="button-row">
-              <button type="button" onClick={changePassword}>
-                Guardar contraseña
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={closePasswordModal}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
         </div>
-      </div>,
-      document.body,
+      </AppModal>
     );
   };
 
@@ -2436,143 +2366,371 @@ function App() {
   const renderGreenSpaceModal = () => {
     if (!showGreenSpaceModal || user?.role !== "admin") return null;
 
-    return createPortal(
-      <div className="modal-overlay" onClick={closeGreenSpaceModal}>
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
-            <div>
-              <h3>
-                {editingGreenSpace
-                  ? "Editar area verde"
-                  : "Registrar area verde"}
-              </h3>
-              <p>
-                {editingGreenSpace
-                  ? "Actualiza la informacion del espacio verde."
-                  : "Completa la informacion para registrar un nuevo espacio verde."}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="modal-close"
-              onClick={closeGreenSpaceModal}
-            >
-              ×
-            </button>
-          </div>
-
-          <form className="admin-form" onSubmit={saveGreenSpace}>
-            <div className="field-row">
-              <label>
-                Nombre
-                <input
-                  value={spaceName}
-                  onChange={(e) => setSpaceName(e.target.value)}
-                  placeholder="Ej: Jardin Central"
-                  required
-                />
-              </label>
-              <label>
-                Ubicacion
-                <input
-                  value={spaceLocation}
-                  onChange={(e) => setSpaceLocation(e.target.value)}
-                  placeholder="Ej: Frente a biblioteca"
-                  required
-                />
-              </label>
-            </div>
-            <div className="field-row">
-              <label>
-                Area total (m2)
-                <input
-                  type="number"
-                  min="0"
-                  value={spaceArea}
-                  onChange={(e) => setSpaceArea(e.target.value)}
-                  placeholder="0"
-                  required
-                />
-              </label>
-              <label>
-                Numero de arboles altos
-                <input
-                  type="number"
-                  min="0"
-                  value={spaceTrees}
-                  onChange={(e) => setSpaceTrees(e.target.value)}
-                  placeholder="0"
-                  required
-                />
-              </label>
-            </div>
-
-            <p className="muted">
-              Las imagenes se agregan solo desde tu equipo con el boton "Elegir
-              archivos".
-            </p>
-            {spaceImagePreviewList.length > 0 && (
-              <div className="green-space-preview-list">
-                {spaceImagePreviewList.map((image, index) => (
-                  <figure
-                    key={`${image}-${index}`}
-                    className="green-space-preview-item"
-                  >
-                    <img
-                      src={resolveAssetUrl(image)}
-                      alt={`Previsualizacion ${index + 1}`}
-                    />
-                    <figcaption>{image}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            )}
-
+    return (
+      <AppModal
+        isOpen={showGreenSpaceModal}
+        onClose={closeGreenSpaceModal}
+        title={editingGreenSpace ? "Editar area verde" : "Registrar area verde"}
+        description={
+          editingGreenSpace
+            ? "Actualiza la informacion del espacio verde."
+            : "Completa la informacion para registrar un nuevo espacio verde."
+        }
+      >
+        <form className="admin-form" onSubmit={saveGreenSpace}>
+          <div className="field-row">
             <label>
-              Imagenes del area verde (solo carga local)
+              Nombre
               <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={uploadGreenSpaceImages}
-                disabled={uploadingSpaceImages}
+                value={spaceName}
+                onChange={(e) => setSpaceName(e.target.value)}
+                placeholder="Ej: Jardin Central"
+                required
               />
             </label>
-            {spaceImagePreviewList.length === 0 && (
-              <p className="muted">Aun no se han subido imagenes.</p>
-            )}
-            {uploadingSpaceImages && (
-              <p className="muted">Subiendo imagenes, por favor espera...</p>
-            )}
+            <label>
+              Ubicacion
+              <input
+                value={spaceLocation}
+                onChange={(e) => setSpaceLocation(e.target.value)}
+                placeholder="Ej: Frente a biblioteca"
+                required
+              />
+            </label>
+          </div>
+          <div className="field-row">
+            <label>
+              Area total (m2)
+              <input
+                type="number"
+                min="0"
+                value={spaceArea}
+                onChange={(e) => setSpaceArea(e.target.value)}
+                placeholder="0"
+                required
+              />
+            </label>
+            <label>
+              Numero de arboles altos
+              <input
+                type="number"
+                min="0"
+                value={spaceTrees}
+                onChange={(e) => setSpaceTrees(e.target.value)}
+                placeholder="0"
+                required
+              />
+            </label>
+          </div>
 
-            <div className="button-row user-modal-actions">
-              <button type="submit">
-                {editingGreenSpace ? "Guardar cambios" : "Registrar"}
-              </button>
+          <p className="muted">
+            Las imagenes se agregan solo desde tu equipo con el boton "Elegir
+            archivos".
+          </p>
+          {spaceImagePreviewList.length > 0 && (
+            <div className="green-space-preview-list">
+              {spaceImagePreviewList.map((image, index) => (
+                <figure
+                  key={`${image}-${index}`}
+                  className="green-space-preview-item"
+                >
+                  <img
+                    src={resolveAssetUrl(image)}
+                    alt={`Previsualizacion ${index + 1}`}
+                  />
+                  <figcaption>{image}</figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
+
+          <label>
+            Imagenes del area verde (solo carga local)
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={uploadGreenSpaceImages}
+              disabled={uploadingSpaceImages}
+            />
+          </label>
+          {spaceImagePreviewList.length === 0 && (
+            <p className="muted">Aun no se han subido imagenes.</p>
+          )}
+          {uploadingSpaceImages && (
+            <p className="muted">Subiendo imagenes, por favor espera...</p>
+          )}
+
+          <div className="button-row user-modal-actions">
+            <button type="submit">
+              {editingGreenSpace ? "Guardar cambios" : "Registrar"}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={closeGreenSpaceModal}
+            >
+              Cancelar
+            </button>
+            {editingGreenSpace && (
               <button
                 type="button"
-                className="secondary"
-                onClick={closeGreenSpaceModal}
+                className="danger"
+                onClick={() => {
+                  deleteGreenSpace(editingGreenSpace.id);
+                  closeGreenSpaceModal();
+                }}
               >
-                Cancelar
+                Eliminar
               </button>
-              {editingGreenSpace && (
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={() => {
-                    deleteGreenSpace(editingGreenSpace.id);
-                    closeGreenSpaceModal();
-                  }}
-                >
-                  Eliminar
-                </button>
-              )}
-            </div>
-          </form>
+            )}
+          </div>
+        </form>
+      </AppModal>
+    );
+  };
+
+  const renderGreenSpaceDetailsModal = () => {
+    if (!showGreenSpaceDetailsModal) return null;
+
+    const space = greenSpaces.find((entry) => entry.id === greenSpaceDetailsId);
+    if (!space) return null;
+
+    return (
+      <AppModal
+        isOpen={showGreenSpaceDetailsModal}
+        onClose={closeGreenSpaceDetailsModal}
+        title="Detalle de area verde"
+        description={space.name}
+      >
+        <div className="admin-form">
+          <div className="field-row">
+            <label>
+              Nombre
+              <input value={space.name} readOnly disabled />
+            </label>
+            <label>
+              Ubicacion
+              <input value={space.location} readOnly disabled />
+            </label>
+          </div>
+          <div className="field-row">
+            <label>
+              Area total
+              <input value={`${space.totalAreaM2} m2`} readOnly disabled />
+            </label>
+            <label>
+              Arboles altos
+              <input value={String(space.tallTreeCount)} readOnly disabled />
+            </label>
+          </div>
+          <div className="button-row">
+            <button
+              type="button"
+              className="secondary"
+              onClick={closeGreenSpaceDetailsModal}
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
-      </div>,
-      document.body,
+      </AppModal>
+    );
+  };
+
+  const renderProposalCreateModal = () => {
+    if (!showProposalModal) return null;
+
+    return (
+      <AppModal
+        isOpen={showProposalModal}
+        onClose={closeCreateProposalModal}
+        title="Nueva propuesta"
+        description="Registra una propuesta de mejora para un area verde."
+      >
+        <form className="admin-form" onSubmit={submitProposal}>
+          <div className="field-row">
+            <label>
+              Titulo
+              <input
+                value={proposalTitleInput}
+                onChange={(e) => setProposalTitleInput(e.target.value)}
+                placeholder="Ej: Reforestacion del sendero norte"
+                required
+              />
+            </label>
+            <label>
+              Area verde
+              <select
+                value={String(proposalSpaceIdInput)}
+                onChange={(e) =>
+                  setProposalSpaceIdInput(Number(e.target.value))
+                }
+                required
+              >
+                {greenSpaces.map((space) => (
+                  <option key={space.id} value={space.id}>
+                    {space.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            Descripcion
+            <textarea
+              value={proposalDescriptionInput}
+              onChange={(e) => setProposalDescriptionInput(e.target.value)}
+              placeholder="Describe el problema y la mejora propuesta"
+              required
+            />
+          </label>
+          <div className="button-row">
+            <button
+              type="submit"
+              disabled={isSubmittingProposal || greenSpaces.length === 0}
+            >
+              {isSubmittingProposal ? "Enviando..." : "Guardar propuesta"}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={closeCreateProposalModal}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </AppModal>
+    );
+  };
+
+  const renderProposalDetailsModal = () => {
+    if (!showProposalDetailsModal) return null;
+
+    const proposal = proposals.find((entry) => entry.id === proposalDetailsId);
+    if (!proposal) return null;
+
+    return (
+      <AppModal
+        isOpen={showProposalDetailsModal}
+        onClose={closeProposalDetailsModal}
+        title="Detalle de propuesta"
+        description={proposal.title}
+      >
+        <div className="admin-form">
+          <label>
+            Descripcion
+            <textarea value={proposal.description} readOnly disabled />
+          </label>
+          <div className="field-row">
+            <label>
+              Estado
+              <input value={proposal.status} readOnly disabled />
+            </label>
+            <label>
+              Votos
+              <input value={String(proposal.totalVotes)} readOnly disabled />
+            </label>
+          </div>
+          <div className="button-row">
+            <button
+              type="button"
+              className="secondary"
+              onClick={closeProposalDetailsModal}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </AppModal>
+    );
+  };
+
+  const renderProposalManageModal = () => {
+    if (!showProposalManageModal) return null;
+
+    const proposal = proposals.find((entry) => entry.id === proposalManageId);
+    if (!proposal) return null;
+
+    return (
+      <AppModal
+        isOpen={showProposalManageModal}
+        onClose={closeProposalManageModal}
+        title="Editar propuesta"
+        description={proposal.title}
+      >
+        <div className="admin-form">
+          <label>
+            Descripcion
+            <textarea value={proposal.description} readOnly disabled />
+          </label>
+
+          <div className="field-row">
+            <label>
+              Inicio de votacion
+              <input
+                type="datetime-local"
+                value={proposalWindows[proposal.id]?.start || ""}
+                onChange={(e) =>
+                  setProposalWindows((prev) => ({
+                    ...prev,
+                    [proposal.id]: {
+                      start: e.target.value,
+                      end: prev[proposal.id]?.end || "",
+                    },
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Fin de votacion
+              <input
+                type="datetime-local"
+                value={proposalWindows[proposal.id]?.end || ""}
+                onChange={(e) =>
+                  setProposalWindows((prev) => ({
+                    ...prev,
+                    [proposal.id]: {
+                      start: prev[proposal.id]?.start || "",
+                      end: e.target.value,
+                    },
+                  }))
+                }
+              />
+            </label>
+          </div>
+
+          <div className="button-row">
+            <button
+              type="button"
+              onClick={async () => {
+                await decideProposal(proposal.id, "accepted");
+                closeProposalManageModal();
+              }}
+            >
+              Guardar y abrir votacion
+            </button>
+            <button
+              type="button"
+              className="danger"
+              onClick={async () => {
+                await decideProposal(proposal.id, "rejected");
+                closeProposalManageModal();
+              }}
+            >
+              Rechazar propuesta
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={closeProposalManageModal}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </AppModal>
     );
   };
 
@@ -2586,74 +2744,86 @@ function App() {
       </div>
 
       <article className="principal-panel">
-        <div className="users-panel-header">
-          <h3>Areas verdes del campus</h3>
-          {user?.role === "admin" && (
-            <button type="button" onClick={openCreateGreenSpaceModal}>
-              Nueva area verde
-            </button>
-          )}
-        </div>
-
-        {greenSpaces.length === 0 ? (
-          <p>No hay areas verdes registradas.</p>
-        ) : (
-          <div className="standard-table-wrap">
-            <table className="standard-table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Ubicacion</th>
-                  <th>Area</th>
-                  <th>Arboles</th>
-                  <th>Valoracion</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {greenSpaces.map((space) => (
-                  <tr key={space.id}>
-                    <td>{space.name}</td>
-                    <td>{space.location}</td>
-                    <td>{space.totalAreaM2} m2</td>
-                    <td>{space.tallTreeCount}</td>
-                    <td>
-                      <div className="mini-rating-row">
-                        {renderAverageStars(
-                          space.reviewSummary?.averageRating ?? 0,
-                        )}
-                        <span>
-                          {(space.reviewSummary?.averageRating ?? 0).toFixed(1)}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="table-actions">
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => navigate(`/green-spaces/${space.id}`)}
-                        >
-                          Ver detalle
-                        </button>
-                        {user?.role === "admin" && (
-                          <button
-                            type="button"
-                            onClick={() => editGreenSpace(space)}
-                          >
-                            Editar
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <h3>Areas verdes del campus</h3>
+        <DefaultTable
+          rows={greenSpaces}
+          columns={[
+            {
+              key: "name",
+              label: "Nombre",
+              sortable: true,
+              sortValue: (space: GreenSpace) => space.name,
+              render: (space: GreenSpace) => space.name,
+            },
+            {
+              key: "location",
+              label: "Ubicacion",
+              sortable: true,
+              sortValue: (space: GreenSpace) => space.location,
+              render: (space: GreenSpace) => space.location,
+            },
+            {
+              key: "area",
+              label: "Area",
+              sortable: true,
+              sortValue: (space: GreenSpace) => space.totalAreaM2,
+              render: (space: GreenSpace) => `${space.totalAreaM2} m2`,
+            },
+            {
+              key: "trees",
+              label: "Arboles",
+              sortable: true,
+              sortValue: (space: GreenSpace) => space.tallTreeCount,
+              render: (space: GreenSpace) => space.tallTreeCount,
+            },
+            {
+              key: "rating",
+              label: "Valoracion",
+              sortable: true,
+              sortValue: (space: GreenSpace) =>
+                Number(space.reviewSummary?.averageRating ?? 0),
+              render: (space: GreenSpace) => (
+                <div className="mini-rating-row">
+                  {renderAverageStars(space.reviewSummary?.averageRating ?? 0)}
+                  <span>
+                    {(space.reviewSummary?.averageRating ?? 0).toFixed(1)}
+                  </span>
+                </div>
+              ),
+            },
+            {
+              key: "actions",
+              label: "Acciones",
+              render: (space: GreenSpace) => (
+                <div className="table-actions">
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => openGreenSpaceDetailsModal(space)}
+                  >
+                    Ver detalle
+                  </button>
+                  {user?.role === "admin" && (
+                    <button type="button" onClick={() => editGreenSpace(space)}>
+                      Editar
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+          getRowId={(space) => space.id}
+          getSearchText={(space) =>
+            `${space.name} ${space.location} ${space.totalAreaM2} ${space.tallTreeCount}`
+          }
+          emptyMessage="No hay areas verdes registradas."
+          searchPlaceholder="Buscar por nombre o ubicacion"
+          onAdd={user?.role === "admin" ? openCreateGreenSpaceModal : undefined}
+          addButtonLabel="Nueva area verde"
+        />
       </article>
       {renderGreenSpaceModal()}
+      {renderGreenSpaceDetailsModal()}
     </section>
   );
 
@@ -2892,40 +3062,40 @@ function App() {
   };
 
   const renderAdminUsersSection = () => {
-    const userColumns: StandardTableColumn<AdminUser>[] = [
+    const userColumns: DefaultTableColumn<AdminUser>[] = [
       {
         key: "name",
         label: "Nombre",
         sortable: true,
-        sortKey: "name",
+        sortValue: (entry) => entry.name,
         render: (entry) => entry.name,
       },
       {
         key: "username",
         label: "Usuario",
         sortable: true,
-        sortKey: "username",
+        sortValue: (entry) => entry.username,
         render: (entry) => `@${entry.username}`,
       },
       {
         key: "email",
         label: "Correo",
         sortable: true,
-        sortKey: "email",
+        sortValue: (entry) => entry.email,
         render: (entry) => entry.email,
       },
       {
         key: "roleName",
         label: "Rol",
         sortable: true,
-        sortKey: "roleName",
+        sortValue: (entry) => entry.roleName,
         render: (entry) => entry.roleName,
       },
       {
         key: "status",
         label: "Estado",
         sortable: true,
-        sortKey: "isActive",
+        sortValue: (entry) => (entry.isActive ? 1 : 0),
         render: (entry) => (
           <span className={`pill ${entry.isActive ? "active" : "inactive"}`}>
             {entry.isActive ? "Activo" : "Inactivo"}
@@ -2964,43 +3134,19 @@ function App() {
         </div>
 
         <article className="principal-panel">
-          <div className="users-panel-header">
-            <h3>Usuarios del sistema</h3>
-            <button type="button" onClick={openCreateUserModal}>
-              Nuevo usuario
-            </button>
-          </div>
-
-          <StandardTable
+          <h3>Usuarios del sistema</h3>
+          <DefaultTable
             columns={userColumns}
-            rows={pagedAdminUsers}
-            sortKey={usersSortKey}
-            sortDirection={usersSortDirection}
-            onSort={handleUsersSort}
+            rows={adminUsers}
+            getRowId={(entry) => entry.id}
+            getSearchText={(entry) =>
+              `${entry.name} ${entry.username} ${entry.email} ${entry.roleName}`
+            }
             emptyMessage="No hay usuarios registrados."
+            searchPlaceholder="Buscar por nombre, usuario o correo"
+            onAdd={openCreateUserModal}
+            addButtonLabel="Nuevo usuario"
           />
-
-          {sortedAdminUsers.length > 0 && (
-            <div className="pagination">
-              <button
-                type="button"
-                disabled={safeUsersTablePage <= 1}
-                onClick={() => setUsersTablePage((prev) => prev - 1)}
-              >
-                Anterior
-              </button>
-              <span>
-                Pagina {safeUsersTablePage} de {usersTableTotalPages}
-              </span>
-              <button
-                type="button"
-                disabled={safeUsersTablePage >= usersTableTotalPages}
-                onClick={() => setUsersTablePage((prev) => prev + 1)}
-              >
-                Siguiente
-              </button>
-            </div>
-          )}
         </article>
         {renderUserModal()}
         {renderUserDetailsModal()}
@@ -3027,6 +3173,99 @@ function App() {
       return proposal.status === proposalStatusFilter;
     });
 
+    const proposalColumns: DefaultTableColumn<Proposal>[] = [
+      {
+        key: "title",
+        label: "Titulo",
+        sortable: true,
+        sortValue: (proposal) => proposal.title,
+        render: (proposal) => proposal.title,
+      },
+      {
+        key: "space",
+        label: "Area",
+        sortable: true,
+        sortValue: (proposal) => getSpaceName(proposal.spaceId),
+        render: (proposal) => getSpaceName(proposal.spaceId),
+      },
+      {
+        key: "status",
+        label: "Estado",
+        sortable: true,
+        sortValue: (proposal) => proposal.status,
+        render: (proposal) => (
+          <span className={`pill proposal-status ${proposal.status}`}>
+            {statusLabel[proposal.status]}
+          </span>
+        ),
+      },
+      {
+        key: "votes",
+        label: "Votos",
+        sortable: true,
+        sortValue: (proposal) => proposal.totalVotes,
+        render: (proposal) => proposal.totalVotes,
+      },
+      {
+        key: "updatedAt",
+        label: "Actualizada",
+        sortable: true,
+        sortValue: (proposal) => proposal.updatedAt || "",
+        render: (proposal) => formatUpdatedAt(proposal.updatedAt || undefined),
+      },
+      {
+        key: "actions",
+        label: "Acciones",
+        render: (proposal) => {
+          const canVote =
+            user?.role === "regular" && proposal.status === "open";
+          const canManageDraft =
+            user?.role === "admin" && proposal.status === "draft";
+          const canFinalize =
+            user?.role === "admin" && proposal.status === "open";
+
+          return (
+            <div className="table-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => openProposalDetailsModal(proposal)}
+              >
+                Ver detalle
+              </button>
+              {canManageDraft && (
+                <button
+                  type="button"
+                  onClick={() => openProposalManageModal(proposal)}
+                >
+                  Editar
+                </button>
+              )}
+              {canVote && (
+                <button
+                  type="button"
+                  onClick={() => voteProposal(proposal.id)}
+                  disabled={proposalActionLoadingId === proposal.id}
+                >
+                  Votar
+                </button>
+              )}
+              {canFinalize && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => finalizeProposal(proposal.id)}
+                  disabled={proposalActionLoadingId === proposal.id}
+                >
+                  Finalizar
+                </button>
+              )}
+            </div>
+          );
+        },
+      },
+    ];
+
     return (
       <section className="box admin-box">
         <div className="admin-header">
@@ -3038,64 +3277,6 @@ function App() {
             </p>
           </div>
         </div>
-
-        <article className="principal-panel proposal-create-panel">
-          <h3>Crear propuesta</h3>
-          <form className="admin-form" onSubmit={submitProposal}>
-            <div className="field-row">
-              <label>
-                Titulo
-                <input
-                  value={proposalTitleInput}
-                  onChange={(e) => setProposalTitleInput(e.target.value)}
-                  placeholder="Ej: Reforestacion del sendero norte"
-                  required
-                />
-              </label>
-              <label>
-                Area verde
-                <select
-                  value={String(proposalSpaceIdInput)}
-                  onChange={(e) =>
-                    setProposalSpaceIdInput(Number(e.target.value))
-                  }
-                  required
-                >
-                  {greenSpaces.map((space) => (
-                    <option key={space.id} value={space.id}>
-                      {space.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <label>
-              Descripcion
-              <textarea
-                value={proposalDescriptionInput}
-                onChange={(e) => setProposalDescriptionInput(e.target.value)}
-                placeholder="Describe el problema y la mejora propuesta"
-                required
-              />
-            </label>
-
-            <div className="button-row">
-              <button
-                type="submit"
-                disabled={isSubmittingProposal || greenSpaces.length === 0}
-              >
-                {isSubmittingProposal ? "Enviando..." : "Enviar propuesta"}
-              </button>
-            </div>
-
-            {greenSpaces.length === 0 && (
-              <p className="muted">
-                No hay areas verdes disponibles para asociar la propuesta.
-              </p>
-            )}
-          </form>
-        </article>
 
         <article className="principal-panel">
           <h3>Listado de propuestas</h3>
@@ -3137,136 +3318,22 @@ function App() {
               Aprobadas
             </button>
           </div>
-
-          {filteredProposals.length === 0 ? (
-            <p>No hay propuestas visibles por el momento.</p>
-          ) : (
-            <div className="proposal-list">
-              {filteredProposals.map((proposal) => {
-                const votingStartText = proposal.votingStarts
-                  ? formatUpdatedAt(proposal.votingStarts)
-                  : "Sin definir";
-                const votingEndText = proposal.votingEnds
-                  ? formatUpdatedAt(proposal.votingEnds)
-                  : "Sin definir";
-                const canVote =
-                  user?.role === "regular" && proposal.status === "open";
-                const isDraft = proposal.status === "draft";
-
-                return (
-                  <article key={proposal.id} className="proposal-card">
-                    <div className="proposal-card-header">
-                      <div>
-                        <h4>{proposal.title}</h4>
-                        <p>{proposal.description}</p>
-                      </div>
-                      <span
-                        className={`pill proposal-status ${proposal.status}`}
-                      >
-                        {statusLabel[proposal.status]}
-                      </span>
-                    </div>
-
-                    <div className="proposal-metadata">
-                      <span>Area: {getSpaceName(proposal.spaceId)}</span>
-                      <span>Votos: {proposal.totalVotes}</span>
-                      <span>Inicio votacion: {votingStartText}</span>
-                      <span>Fin votacion: {votingEndText}</span>
-                    </div>
-
-                    {canVote && (
-                      <div className="proposal-actions">
-                        <button
-                          type="button"
-                          onClick={() => voteProposal(proposal.id)}
-                          disabled={proposalActionLoadingId === proposal.id}
-                        >
-                          {proposalActionLoadingId === proposal.id
-                            ? "Procesando..."
-                            : "Votar a favor"}
-                        </button>
-                      </div>
-                    )}
-
-                    {user?.role === "admin" && isDraft && (
-                      <div className="proposal-admin-block">
-                        <div className="field-row">
-                          <label>
-                            Inicio de votacion
-                            <input
-                              type="datetime-local"
-                              value={proposalWindows[proposal.id]?.start || ""}
-                              onChange={(e) =>
-                                setProposalWindows((prev) => ({
-                                  ...prev,
-                                  [proposal.id]: {
-                                    start: e.target.value,
-                                    end: prev[proposal.id]?.end || "",
-                                  },
-                                }))
-                              }
-                            />
-                          </label>
-                          <label>
-                            Fin de votacion
-                            <input
-                              type="datetime-local"
-                              value={proposalWindows[proposal.id]?.end || ""}
-                              onChange={(e) =>
-                                setProposalWindows((prev) => ({
-                                  ...prev,
-                                  [proposal.id]: {
-                                    start: prev[proposal.id]?.start || "",
-                                    end: e.target.value,
-                                  },
-                                }))
-                              }
-                            />
-                          </label>
-                        </div>
-
-                        <div className="proposal-actions">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              decideProposal(proposal.id, "accepted")
-                            }
-                            disabled={proposalActionLoadingId === proposal.id}
-                          >
-                            Validar y abrir votacion
-                          </button>
-                          <button
-                            type="button"
-                            className="danger"
-                            onClick={() =>
-                              decideProposal(proposal.id, "rejected")
-                            }
-                            disabled={proposalActionLoadingId === proposal.id}
-                          >
-                            Rechazar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {user?.role === "admin" && proposal.status === "open" && (
-                      <div className="proposal-actions">
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => finalizeProposal(proposal.id)}
-                          disabled={proposalActionLoadingId === proposal.id}
-                        >
-                          Finalizar votacion
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          )}
+          <DefaultTable
+            rows={filteredProposals}
+            columns={proposalColumns}
+            getRowId={(proposal) => proposal.id}
+            getSearchText={(proposal) =>
+              `${proposal.title} ${proposal.description} ${proposal.status} ${getSpaceName(proposal.spaceId)}`
+            }
+            emptyMessage="No hay propuestas visibles por el momento."
+            searchPlaceholder="Buscar por titulo, descripcion o estado"
+            onAdd={openCreateProposalModal}
+            addButtonLabel="Nueva propuesta"
+          />
         </article>
+        {renderProposalCreateModal()}
+        {renderProposalDetailsModal()}
+        {renderProposalManageModal()}
       </section>
     );
   };

@@ -210,6 +210,14 @@ describe("App UI", () => {
       expect(screen.getByText("Recuperar zona sombreada")).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Editar propuesta" }),
+      ).toBeInTheDocument();
+    });
+
     fireEvent.change(screen.getByLabelText("Inicio de votacion"), {
       target: { value: "2026-09-01T10:00" },
     });
@@ -218,7 +226,7 @@ describe("App UI", () => {
     });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Validar y abrir votacion" }),
+      screen.getByRole("button", { name: "Guardar y abrir votacion" }),
     );
 
     await waitFor(() => {
@@ -226,7 +234,7 @@ describe("App UI", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: "Finalizar votacion" }),
+      screen.getByRole("button", { name: "Finalizar" }),
     ).toBeInTheDocument();
   });
 });
