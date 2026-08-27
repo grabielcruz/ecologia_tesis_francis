@@ -1,5 +1,14 @@
 erDiagram
-    %% Capa de Usuarios y Roles
+    %% Exact schema from server/models.ts (Sequelize models)
+
+    Role {
+        int role_id PK
+        string role_name
+        string description
+        datetime created_at
+        datetime updated_at
+    }
+
     User {
         int user_id PK
         string name
@@ -13,19 +22,10 @@ erDiagram
         datetime updated_at
     }
 
-    Role {
-        int role_id PK
-        string role_name
-        string description
-        datetime created_at
-        datetime updated_at
-    }
-
-    %% Capa de Áreas Verdes (GIS/Inventario)
     GreenSpace {
         int space_id PK
         string name
-        string location 
+        string location
         int total_area_m2
         int trees_count
         text images
@@ -62,7 +62,6 @@ erDiagram
         datetime updated_at
     }
 
-    %% Capa de Participación Ciudadana
     ReportOfGreenArea {
         int report_of_green_area_id PK
         string title
@@ -107,18 +106,23 @@ erDiagram
         datetime created_at
     }
 
-    %% Relaciones principales (físicas)
-    Role ||--o{ User : asigna
-    User ||--o{ ReportOfGreenArea : crea
-    GreenSpace ||--o{ ReportOfGreenArea : contiene
-    User ||--o{ ProposalOfGreenArea : propone
-    GreenSpace ||--o{ ProposalOfGreenArea : contiene
-    User ||--o{ VoteOfProposal : realiza
-    User ||--o{ GreenSpaceReview : realiza
-    ProposalOfGreenArea ||--o{ VoteOfProposal : recibe
-    ProposalOfGreenArea ||--o{ ProjectOfProposal : genera
+    %% Relationships defined in Sequelize associations
+    Role ||--o{ User : assigns
 
-    TreeType ||--o{ TreeInventory : clasifica
-    GreenSpace ||--o{ TreeInventory : contiene
-    GreenSpace ||--o{ GreenSpaceReview : contiene
-    GreenSpace ||--o{ ProjectOfProposal : contiene
+    User ||--o{ ReportOfGreenArea : creates
+    GreenSpace ||--o{ ReportOfGreenArea : has
+
+    User ||--o{ GreenSpaceReview : writes
+    GreenSpace ||--o{ GreenSpaceReview : has
+
+    User ||--o{ ProposalOfGreenArea : proposes
+    GreenSpace ||--o{ ProposalOfGreenArea : has
+
+    ProposalOfGreenArea ||--o{ VoteOfProposal : receives
+    User ||--o{ VoteOfProposal : casts
+
+    ProposalOfGreenArea ||--o{ ProjectOfProposal : generates
+    GreenSpace ||--o{ ProjectOfProposal : has
+
+    GreenSpace ||--o{ TreeInventory : contains
+    TreeType ||--o{ TreeInventory : classifies

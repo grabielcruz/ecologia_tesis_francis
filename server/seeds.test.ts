@@ -14,7 +14,7 @@ describe("seedDatabase", () => {
 
     vi.spyOn(User, "create").mockResolvedValue({} as never);
     vi.spyOn(GreenSpace, "create").mockResolvedValue({} as never);
-    vi.spyOn(bcrypt, "hash").mockResolvedValue("hashed-password");
+    vi.spyOn(bcrypt, "hash").mockImplementation(async () => "hashed-password");
   });
 
   it("creates roles, users and green spaces from seed data", async () => {

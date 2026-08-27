@@ -396,6 +396,14 @@ ProposalOfGreenArea.init(
       allowNull: false,
       defaultValue: 0,
     },
+    voting_starts: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    voting_ends: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -412,11 +420,78 @@ ProposalOfGreenArea.init(
         key: "space_id",
       },
     },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
   },
   {
     sequelize,
     modelName: "ProposalOfGreenArea",
     tableName: "ProposalOfGreenArea",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
+export class ProjectOfProposal extends Model {}
+ProjectOfProposal.init(
+  {
+    project_of_proposal_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    completed_status: {
+      type: DataTypes.ENUM("planned", "in_progress", "completed"),
+      allowNull: false,
+      defaultValue: "planned",
+    },
+    proposal_of_green_area_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "ProposalOfGreenArea",
+        key: "proposal_of_green_area_id",
+      },
+    },
+    space_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "GreenSpace",
+        key: "space_id",
+      },
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "ProjectOfProposal",
+    tableName: "ProjectOfProposal",
     freezeTableName: true,
     timestamps: false,
   },
@@ -489,14 +564,30 @@ VoteOfProposal.belongsTo(ProposalOfGreenArea, {
   foreignKey: "proposal_of_green_area_id",
 });
 
+ProposalOfGreenArea.hasMany(ProjectOfProposal, {
+  foreignKey: "proposal_of_green_area_id",
+});
+ProjectOfProposal.belongsTo(ProposalOfGreenArea, {
+  foreignKey: "proposal_of_green_area_id",
+});
+
 User.hasMany(VoteOfProposal, { foreignKey: "user_id" });
 VoteOfProposal.belongsTo(User, { foreignKey: "user_id" });
+
+GreenSpace.hasMany(ProjectOfProposal, { foreignKey: "space_id" });
+ProjectOfProposal.belongsTo(GreenSpace, { foreignKey: "space_id" });
 
 GreenSpace.hasMany(TreeInventory, { foreignKey: "space_id" });
 TreeInventory.belongsTo(GreenSpace, { foreignKey: "space_id" });
 
 TreeType.hasMany(TreeInventory, { foreignKey: "type_id" });
 TreeInventory.belongsTo(TreeType, { foreignKey: "type_id" });
+
+const alignProposalSchema = async () => {
+  // Keep existing SQLite files compatible with newer proposal/project fields.
+  await ProposalOfGreenArea.sync({ alter: true });
+  await ProjectOfProposal.sync({ alter: true });
+};
 
 const enforceFixedRoles = async () => {
   const fixedRoles = [
@@ -516,7 +607,9 @@ const enforceFixedRoles = async () => {
       },
     });
 
-    if (String(role.getDataValue("description") || "") !== fixedRole.description) {
+    if (
+      String(role.getDataValue("description") || "") !== fixedRole.description
+    ) {
       await role.update({
         description: fixedRole.description,
         updated_at: new Date(),
@@ -554,6 +647,7 @@ const enforceFixedRoles = async () => {
 export const initializeDatabase = async () => {
   try {
     await sequelize.sync();
+    await alignProposalSchema();
     await enforceFixedRoles();
   } catch (err) {
     console.error("Database sync failed:", err);

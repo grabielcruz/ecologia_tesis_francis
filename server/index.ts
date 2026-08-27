@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 import greenSpaceRoutes from "./routes/greenSpaces";
 import suggestionRoutes from "./routes/suggestions";
+import proposalRoutes from "./routes/proposals";
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
@@ -24,6 +25,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/green-spaces", greenSpaceRoutes);
 app.use("/api/suggestions", suggestionRoutes);
+app.use("/api/proposals", proposalRoutes);
 
 initializeDatabase()
   .then(() => {

@@ -44,6 +44,28 @@ interface GreenSpaceReviewDraft {
   comment: string;
 }
 
+interface Proposal {
+  id: number;
+  title: string;
+  description: string;
+  status: "draft" | "open" | "closed" | "approved" | "rejected";
+  totalVotes: number;
+  votingStarts: string | null;
+  votingEnds: string | null;
+  userId: number;
+  spaceId: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+type ProposalStatusFilter =
+  | "all"
+  | "draft"
+  | "open"
+  | "approved"
+  | "closed"
+  | "rejected";
+
 interface AdminRole {
   id: number;
   name: string;
@@ -328,6 +350,19 @@ function App() {
   const [reviewDrafts, setReviewDrafts] = useState<
     Record<number, GreenSpaceReviewDraft>
   >({});
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [proposalTitleInput, setProposalTitleInput] = useState("");
+  const [proposalDescriptionInput, setProposalDescriptionInput] = useState("");
+  const [proposalSpaceIdInput, setProposalSpaceIdInput] = useState(0);
+  const [proposalActionLoadingId, setProposalActionLoadingId] = useState<
+    number | null
+  >(null);
+  const [proposalWindows, setProposalWindows] = useState<
+    Record<number, { start: string; end: string }>
+  >({});
+  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
+  const [proposalStatusFilter, setProposalStatusFilter] =
+    useState<ProposalStatusFilter>("all");
   const [activeGreenSpaceImageIndex, setActiveGreenSpaceImageIndex] = useState<
     Record<number, number>
   >({});
@@ -345,6 +380,11 @@ function App() {
       }
     }
     setRoute(path);
+  };
+
+  const openProposalsWithFilter = (filter: ProposalStatusFilter) => {
+    setProposalStatusFilter(filter);
+    navigate("/proposals");
   };
 
   useEffect(() => {
@@ -390,12 +430,19 @@ function App() {
     }
 
     fetchGreenSpaces();
+    fetchProposals();
 
     if (user?.role === "admin" && route === "/admin-users") {
       fetchAdminRoles();
       fetchAdminUsers();
     }
   }, [token, route, user]);
+
+  useEffect(() => {
+    if (greenSpaces.length > 0 && proposalSpaceIdInput === 0) {
+      setProposalSpaceIdInput(greenSpaces[0].id);
+    }
+  }, [greenSpaces, proposalSpaceIdInput]);
 
   useEffect(() => {
     const maxPage = Math.max(
@@ -420,6 +467,27 @@ function App() {
     } catch {
       setGreenSpaces([]);
       setError("No se pudieron cargar las areas verdes");
+    }
+  };
+
+  const fetchProposals = async () => {
+    if (!token) return;
+
+    try {
+      const res = await fetch("/api/proposals", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        setProposals([]);
+        setError("No se pudieron cargar las propuestas");
+        return;
+      }
+
+      const data = await res.json();
+      setProposals(Array.isArray(data) ? data : []);
+    } catch {
+      setProposals([]);
+      setError("No se pudieron cargar las propuestas");
     }
   };
 
@@ -610,6 +678,7 @@ function App() {
     setSurveys([]);
     setAdminSurveyOverview([]);
     setGreenSpaces([]);
+    setProposals([]);
     setUsername("");
     setPassword("");
     setError(null);
@@ -715,25 +784,29 @@ function App() {
       ? "Principal"
       : route === "/profile"
         ? "Mi perfil"
-        : route === "/admin-users"
-          ? "Usuarios"
-          : route.startsWith("/green-spaces/")
-            ? "Detalle de area verde"
-            : route === "/green-spaces"
-              ? "Areas verdes del campus"
-              : "Principal";
+        : route === "/proposals"
+          ? "Propuestas"
+          : route === "/admin-users"
+            ? "Usuarios"
+            : route.startsWith("/green-spaces/")
+              ? "Detalle de area verde"
+              : route === "/green-spaces"
+                ? "Areas verdes del campus"
+                : "Principal";
   const pageSubtitle =
     route === "/"
       ? "Resumen general de encuestas y areas verdes"
       : route === "/profile"
         ? "Actualiza tus datos personales"
-        : route === "/admin-users"
-          ? "Gestion integral de usuarios del sistema"
-          : route.startsWith("/green-spaces/")
-            ? "Informacion completa, resenas y sugerencias del espacio"
-            : route === "/green-spaces"
-              ? "Registro y consulta de espacios verdes universitarios"
-              : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
+        : route === "/proposals"
+          ? "Consulta, valida y vota propuestas de mejora para areas verdes"
+          : route === "/admin-users"
+            ? "Gestion integral de usuarios del sistema"
+            : route.startsWith("/green-spaces/")
+              ? "Informacion completa, resenas y sugerencias del espacio"
+              : route === "/green-spaces"
+                ? "Registro y consulta de espacios verdes universitarios"
+                : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
 
   const resetAdminForm = () => {
     setEditingSurvey(null);
@@ -1127,6 +1200,148 @@ function App() {
         ...patch,
       },
     }));
+  };
+
+  const submitProposal = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token) return;
+
+    if (!proposalTitleInput.trim() || !proposalDescriptionInput.trim()) {
+      setError("Completa titulo y descripcion de la propuesta");
+      return;
+    }
+
+    if (!Number.isFinite(proposalSpaceIdInput) || proposalSpaceIdInput <= 0) {
+      setError("Selecciona un area verde valida para la propuesta");
+      return;
+    }
+
+    setIsSubmittingProposal(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/proposals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: proposalTitleInput.trim(),
+          description: proposalDescriptionInput.trim(),
+          spaceId: proposalSpaceIdInput,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "No se pudo registrar la propuesta");
+        return;
+      }
+
+      setProposalTitleInput("");
+      setProposalDescriptionInput("");
+      setSuccessMessage(
+        "Propuesta enviada. Queda pendiente de validacion administrativa.",
+      );
+      await fetchProposals();
+    } catch {
+      setError("No se pudo registrar la propuesta");
+    } finally {
+      setIsSubmittingProposal(false);
+    }
+  };
+
+  const voteProposal = async (proposalId: number) => {
+    if (!token) return;
+    setProposalActionLoadingId(proposalId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}/votes`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "No se pudo votar la propuesta");
+        return;
+      }
+
+      setSuccessMessage("Voto registrado correctamente.");
+      await fetchProposals();
+    } catch {
+      setError("No se pudo votar la propuesta");
+    } finally {
+      setProposalActionLoadingId(null);
+    }
+  };
+
+  const decideProposal = async (
+    proposalId: number,
+    decision: "accepted" | "rejected",
+  ) => {
+    if (!token) return;
+    setProposalActionLoadingId(proposalId);
+    setError(null);
+    const windowInput = proposalWindows[proposalId] || { start: "", end: "" };
+    const payload: Record<string, unknown> = { decision };
+    if (decision === "accepted") {
+      payload.votingStarts = windowInput.start;
+      payload.votingEnds = windowInput.end;
+    }
+
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}/decision`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "No se pudo actualizar la propuesta");
+        return;
+      }
+
+      setSuccessMessage(
+        decision === "accepted"
+          ? "Propuesta validada y habilitada para votacion."
+          : "Propuesta rechazada.",
+      );
+      await fetchProposals();
+    } catch {
+      setError("No se pudo actualizar la propuesta");
+    } finally {
+      setProposalActionLoadingId(null);
+    }
+  };
+
+  const finalizeProposal = async (proposalId: number) => {
+    if (!token) return;
+    setProposalActionLoadingId(proposalId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}/finalize`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "No se pudo finalizar la propuesta");
+        return;
+      }
+
+      setSuccessMessage("Proceso de votacion finalizado para la propuesta.");
+      await fetchProposals();
+    } catch {
+      setError("No se pudo finalizar la propuesta");
+    } finally {
+      setProposalActionLoadingId(null);
+    }
   };
 
   const submitGreenSpaceReview = async (greenSpaceId: number) => {
@@ -1904,7 +2119,11 @@ function App() {
             Cambiar contraseña
           </button>
         )}
-        <button type="button" className="secondary" onClick={() => navigate("/")}>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => navigate("/")}
+        >
           Volver
         </button>
       </div>
@@ -2452,15 +2671,16 @@ function App() {
 
     const current = reviewDrafts[selectedGreenSpace.id]?.rating ?? 0;
     const greenSpaceImages = selectedGreenSpace.images || [];
-    const activeImageIndex = activeGreenSpaceImageIndex[selectedGreenSpace.id] ?? 0;
-    const activeImage = greenSpaceImages[activeImageIndex] || greenSpaceImages[0];
+    const activeImageIndex =
+      activeGreenSpaceImageIndex[selectedGreenSpace.id] ?? 0;
+    const activeImage =
+      greenSpaceImages[activeImageIndex] || greenSpaceImages[0];
 
     const goToImage = (direction: number) => {
       if (greenSpaceImages.length <= 1) return;
-      const nextIndex = (
+      const nextIndex =
         (activeImageIndex + direction + greenSpaceImages.length) %
-        greenSpaceImages.length
-      );
+        greenSpaceImages.length;
       setActiveGreenSpaceImageIndex((prev) => ({
         ...prev,
         [selectedGreenSpace.id]: nextIndex,
@@ -2788,6 +3008,269 @@ function App() {
     );
   };
 
+  const renderProposalsSection = () => {
+    const statusLabel: Record<Proposal["status"], string> = {
+      draft: "Pendiente de validacion",
+      open: "Votacion abierta",
+      closed: "Cerrada sin aprobacion",
+      approved: "Aprobada por votacion",
+      rejected: "Rechazada por administracion",
+    };
+
+    const getSpaceName = (spaceId: number) => {
+      const target = greenSpaces.find((space) => space.id === spaceId);
+      return target?.name || `Area #${spaceId}`;
+    };
+
+    const filteredProposals = proposals.filter((proposal) => {
+      if (proposalStatusFilter === "all") return true;
+      return proposal.status === proposalStatusFilter;
+    });
+
+    return (
+      <section className="box admin-box">
+        <div className="admin-header">
+          <div>
+            <h2>Propuestas de mejora</h2>
+            <p>
+              Los usuarios registran propuestas para areas verdes y se aprueban
+              mediante votacion.
+            </p>
+          </div>
+        </div>
+
+        <article className="principal-panel proposal-create-panel">
+          <h3>Crear propuesta</h3>
+          <form className="admin-form" onSubmit={submitProposal}>
+            <div className="field-row">
+              <label>
+                Titulo
+                <input
+                  value={proposalTitleInput}
+                  onChange={(e) => setProposalTitleInput(e.target.value)}
+                  placeholder="Ej: Reforestacion del sendero norte"
+                  required
+                />
+              </label>
+              <label>
+                Area verde
+                <select
+                  value={String(proposalSpaceIdInput)}
+                  onChange={(e) =>
+                    setProposalSpaceIdInput(Number(e.target.value))
+                  }
+                  required
+                >
+                  {greenSpaces.map((space) => (
+                    <option key={space.id} value={space.id}>
+                      {space.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label>
+              Descripcion
+              <textarea
+                value={proposalDescriptionInput}
+                onChange={(e) => setProposalDescriptionInput(e.target.value)}
+                placeholder="Describe el problema y la mejora propuesta"
+                required
+              />
+            </label>
+
+            <div className="button-row">
+              <button
+                type="submit"
+                disabled={isSubmittingProposal || greenSpaces.length === 0}
+              >
+                {isSubmittingProposal ? "Enviando..." : "Enviar propuesta"}
+              </button>
+            </div>
+
+            {greenSpaces.length === 0 && (
+              <p className="muted">
+                No hay areas verdes disponibles para asociar la propuesta.
+              </p>
+            )}
+          </form>
+        </article>
+
+        <article className="principal-panel">
+          <h3>Listado de propuestas</h3>
+          <div className="proposal-filter-row">
+            <button
+              type="button"
+              className={
+                proposalStatusFilter === "all" ? "secondary" : undefined
+              }
+              onClick={() => setProposalStatusFilter("all")}
+            >
+              Todas
+            </button>
+            <button
+              type="button"
+              className={
+                proposalStatusFilter === "open" ? "secondary" : undefined
+              }
+              onClick={() => setProposalStatusFilter("open")}
+            >
+              Votacion abierta
+            </button>
+            <button
+              type="button"
+              className={
+                proposalStatusFilter === "draft" ? "secondary" : undefined
+              }
+              onClick={() => setProposalStatusFilter("draft")}
+            >
+              Pendientes
+            </button>
+            <button
+              type="button"
+              className={
+                proposalStatusFilter === "approved" ? "secondary" : undefined
+              }
+              onClick={() => setProposalStatusFilter("approved")}
+            >
+              Aprobadas
+            </button>
+          </div>
+
+          {filteredProposals.length === 0 ? (
+            <p>No hay propuestas visibles por el momento.</p>
+          ) : (
+            <div className="proposal-list">
+              {filteredProposals.map((proposal) => {
+                const votingStartText = proposal.votingStarts
+                  ? formatUpdatedAt(proposal.votingStarts)
+                  : "Sin definir";
+                const votingEndText = proposal.votingEnds
+                  ? formatUpdatedAt(proposal.votingEnds)
+                  : "Sin definir";
+                const canVote =
+                  user?.role === "regular" && proposal.status === "open";
+                const isDraft = proposal.status === "draft";
+
+                return (
+                  <article key={proposal.id} className="proposal-card">
+                    <div className="proposal-card-header">
+                      <div>
+                        <h4>{proposal.title}</h4>
+                        <p>{proposal.description}</p>
+                      </div>
+                      <span
+                        className={`pill proposal-status ${proposal.status}`}
+                      >
+                        {statusLabel[proposal.status]}
+                      </span>
+                    </div>
+
+                    <div className="proposal-metadata">
+                      <span>Area: {getSpaceName(proposal.spaceId)}</span>
+                      <span>Votos: {proposal.totalVotes}</span>
+                      <span>Inicio votacion: {votingStartText}</span>
+                      <span>Fin votacion: {votingEndText}</span>
+                    </div>
+
+                    {canVote && (
+                      <div className="proposal-actions">
+                        <button
+                          type="button"
+                          onClick={() => voteProposal(proposal.id)}
+                          disabled={proposalActionLoadingId === proposal.id}
+                        >
+                          {proposalActionLoadingId === proposal.id
+                            ? "Procesando..."
+                            : "Votar a favor"}
+                        </button>
+                      </div>
+                    )}
+
+                    {user?.role === "admin" && isDraft && (
+                      <div className="proposal-admin-block">
+                        <div className="field-row">
+                          <label>
+                            Inicio de votacion
+                            <input
+                              type="datetime-local"
+                              value={proposalWindows[proposal.id]?.start || ""}
+                              onChange={(e) =>
+                                setProposalWindows((prev) => ({
+                                  ...prev,
+                                  [proposal.id]: {
+                                    start: e.target.value,
+                                    end: prev[proposal.id]?.end || "",
+                                  },
+                                }))
+                              }
+                            />
+                          </label>
+                          <label>
+                            Fin de votacion
+                            <input
+                              type="datetime-local"
+                              value={proposalWindows[proposal.id]?.end || ""}
+                              onChange={(e) =>
+                                setProposalWindows((prev) => ({
+                                  ...prev,
+                                  [proposal.id]: {
+                                    start: prev[proposal.id]?.start || "",
+                                    end: e.target.value,
+                                  },
+                                }))
+                              }
+                            />
+                          </label>
+                        </div>
+
+                        <div className="proposal-actions">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              decideProposal(proposal.id, "accepted")
+                            }
+                            disabled={proposalActionLoadingId === proposal.id}
+                          >
+                            Validar y abrir votacion
+                          </button>
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={() =>
+                              decideProposal(proposal.id, "rejected")
+                            }
+                            disabled={proposalActionLoadingId === proposal.id}
+                          >
+                            Rechazar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {user?.role === "admin" && proposal.status === "open" && (
+                      <div className="proposal-actions">
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => finalizeProposal(proposal.id)}
+                          disabled={proposalActionLoadingId === proposal.id}
+                        >
+                          Finalizar votacion
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </article>
+      </section>
+    );
+  };
+
   const renderPrincipalSection = () => {
     const surveySource = user?.role === "admin" ? adminSurveyOverview : surveys;
     const totalPolls = surveySource.length;
@@ -2804,6 +3287,15 @@ function App() {
       (acc, space) => acc + (space.tallTreeCount || 0),
       0,
     );
+    const openProposals = proposals.filter(
+      (proposal) => proposal.status === "open",
+    ).length;
+    const approvedProposals = proposals.filter(
+      (proposal) => proposal.status === "approved",
+    ).length;
+    const pendingProposals = proposals.filter(
+      (proposal) => proposal.status === "draft",
+    ).length;
 
     return (
       <section className="box principal-box">
@@ -2832,6 +3324,10 @@ function App() {
             <span>Arboles altos</span>
             <strong>{totalTallTrees}</strong>
           </article>
+          <article className="summary-item">
+            <span>Propuestas visibles</span>
+            <strong>{proposals.length}</strong>
+          </article>
         </div>
 
         <div className="principal-highlights">
@@ -2857,6 +3353,33 @@ function App() {
               <p>No hay areas verdes registradas.</p>
             )}
           </article>
+          <article className="principal-panel">
+            <h3>Estado de propuestas</h3>
+            <button
+              type="button"
+              className="summary-link-button"
+              onClick={() => openProposalsWithFilter("open")}
+            >
+              <strong>{openProposals}</strong> en votacion abierta
+            </button>
+            <button
+              type="button"
+              className="summary-link-button"
+              onClick={() => openProposalsWithFilter("approved")}
+            >
+              <strong>{approvedProposals}</strong> aprobadas por votacion
+            </button>
+            {user?.role === "admin" && (
+              <button
+                type="button"
+                className="summary-link-button"
+                onClick={() => openProposalsWithFilter("draft")}
+              >
+                <strong>{pendingProposals}</strong> pendientes de validacion
+              </button>
+            )}
+            {proposals.length === 0 && <p>No hay propuestas disponibles.</p>}
+          </article>
         </div>
       </section>
     );
@@ -2877,6 +3400,10 @@ function App() {
 
     if (route === "/green-spaces") {
       return renderGreenSpacesSection();
+    }
+
+    if (route === "/proposals") {
+      return renderProposalsSection();
     }
 
     if (route === "/admin-users" && user?.role === "admin") {
@@ -3130,6 +3657,13 @@ function App() {
             onClick={() => navigate("/green-spaces")}
           >
             Areas verdes
+          </button>
+          <button
+            type="button"
+            className={route === "/proposals" ? "active" : ""}
+            onClick={() => openProposalsWithFilter("all")}
+          >
+            Propuestas
           </button>
           {user?.role === "admin" && (
             <>
