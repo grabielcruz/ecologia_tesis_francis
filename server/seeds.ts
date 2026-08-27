@@ -2,6 +2,15 @@ import bcrypt from "bcryptjs";
 import { GreenSpace, Role, User, sequelize } from "./models";
 import { greenSpaceSeeds, roleSeeds, userSeeds } from "./seedData";
 
+declare const require: { main: unknown };
+declare const module: unknown;
+declare const process: { exit(code?: number): never };
+
+const isDirectExecution =
+  typeof require !== "undefined" &&
+  typeof module !== "undefined" &&
+  require.main === module;
+
 export async function seedDatabase() {
   await sequelize.sync({ force: true });
 
@@ -48,7 +57,7 @@ export async function seedDatabase() {
   );
 }
 
-if (require.main === module) {
+if (isDirectExecution) {
   seedDatabase()
     .then(async () => {
       await sequelize.close();

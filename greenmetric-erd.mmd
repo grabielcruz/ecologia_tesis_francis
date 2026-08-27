@@ -79,10 +79,25 @@ erDiagram
         int proposal_of_green_area_id PK
         string title
         string description
-        enum status 
+        enum accepted_status
         int total_votes
+        voting_starts datetime
+        voting_ends datetime
         int user_id FK
         int space_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
+    ProjectOfProposal {
+        int project_of_proposal_id PK
+        string title
+        string description
+        enum completed_status
+        int proposal_of_green_area_id FK
+        int space_id FK
+        datetime created_at
+        datetime updated_at
     }
 
     VoteOfProposal {
@@ -99,10 +114,12 @@ erDiagram
     User ||--o{ VoteOfProposal : realiza
     User ||--o{ GreenSpaceReview : realiza
     ProposalOfGreenArea ||--o{ VoteOfProposal : recibe
+    ProposalOfGreenArea ||--o{ ProjectOfProposal : genera
 
     TreeType ||--o{ TreeInventory : clasifica
     GreenSpace ||--o{ TreeInventory : contiene
     GreenSpace ||--o{ GreenSpaceReview : contiene
+    GreenSpace ||--o{ ProjectOfProposal : contiene
 
     %% Relaciones conceptuales (sin FK explícita en el esquema)
     GreenSpace o|..o{ ReportOfGreenArea : puede_afectar_a
