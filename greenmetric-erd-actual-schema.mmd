@@ -99,6 +99,17 @@ erDiagram
         datetime updated_at
     }
 
+    ProjectUpdateOfProposal {
+        int project_update_of_proposal_id PK
+        string title
+        text description
+        text activity_images
+        int project_of_proposal_id FK
+        int user_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
     VoteOfProposal {
         int vote_of_proposal_id PK
         int proposal_of_green_area_id FK
@@ -123,6 +134,8 @@ erDiagram
 
     ProposalOfGreenArea ||--o{ ProjectOfProposal : generates
     GreenSpace ||--o{ ProjectOfProposal : has
+    ProjectOfProposal ||--o{ ProjectUpdateOfProposal : logs
+    User ||--o{ ProjectUpdateOfProposal : records
 
     GreenSpace ||--o{ TreeInventory : contains
     TreeType ||--o{ TreeInventory : classifies

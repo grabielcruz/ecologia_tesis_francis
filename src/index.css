@@ -329,6 +329,43 @@ button.danger:hover {
   box-shadow: 0 10px 20px rgba(11, 79, 83, 0.22);
 }
 
+.nav-label-with-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-item-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  padding: 0 0.42rem;
+  border-radius: 999px;
+  border: 1px solid rgba(21, 90, 95, 0.25);
+  background: rgba(232, 246, 244, 0.9);
+  color: #155a5f;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nav-bar button.active .nav-item-count {
+  border-color: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.project-latest-update {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.project-latest-update p {
+  margin: 0;
+}
+
 .nav-badge,
 .activity-badge {
   display: inline-flex;
@@ -512,6 +549,37 @@ button.danger:hover {
 
 .standard-table tbody tr:hover {
   background: #fbfefc;
+}
+
+.standard-table tbody tr.table-clickable-row {
+  cursor: pointer;
+}
+
+.standard-table tbody tr.table-clickable-row:hover {
+  background: #f1faf7;
+}
+
+.standard-table tbody tr.table-clickable-row:focus-visible {
+  outline: 2px solid rgba(15, 118, 110, 0.45);
+  outline-offset: -2px;
+}
+
+.green-space-table-thumbnail {
+  width: 52px;
+  height: 38px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(35, 68, 73, 0.18);
+  display: block;
+}
+
+.green-space-table-thumbnail.placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: #48686c;
+  background: #eaf4f3;
 }
 
 .table-sort-button {
@@ -1459,6 +1527,79 @@ button.danger:hover {
   color: #932020;
   background: #ffe2e2;
   border-color: #f3b4b4;
+}
+
+.proposal-project-status.not_created {
+  color: #5f6368;
+  background: #eceff1;
+  border-color: #d8dde1;
+}
+
+.proposal-project-status.planned {
+  color: #8d5d16;
+  background: #fff3d8;
+  border-color: #f6d190;
+}
+
+.proposal-project-status.in_progress {
+  color: #0d5e58;
+  background: #d6f0ee;
+  border-color: #b3dfda;
+}
+
+.proposal-project-status.completed {
+  color: #2356a1;
+  background: #e8f0ff;
+  border-color: #c6d8ff;
+}
+
+.proposal-updates-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.55rem;
+}
+
+.proposal-update-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #fffefa;
+}
+
+.proposal-update-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.proposal-update-header strong {
+  color: #1a373a;
+}
+
+.proposal-update-card p {
+  margin: 0.35rem 0;
+}
+
+.proposal-update-images {
+  margin-top: 0.45rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.proposal-update-images a {
+  display: block;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+}
+
+.proposal-update-images img {
+  display: block;
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
 }
 
 .success-message,

@@ -6,7 +6,9 @@ import proposalRoutes from "./proposals";
 import {
   GreenSpace,
   ProjectOfProposal,
+  ProjectUpdateOfProposal,
   ProposalOfGreenArea,
+  User,
   VoteOfProposal,
 } from "../models";
 
@@ -32,8 +34,15 @@ vi.mock("../models", () => ({
   },
   ProjectOfProposal: {
     findOne: vi.fn(),
+    findByPk: vi.fn(),
     create: vi.fn(),
   },
+  ProjectUpdateOfProposal: {
+    findAll: vi.fn(),
+    findByPk: vi.fn(),
+    create: vi.fn(),
+  },
+  User: {},
 }));
 
 const app = express();
@@ -81,7 +90,43 @@ const makeProjectRow = () => {
   };
 
   return {
-    getDataValue: (key: string) => values[key],
+    getDataValue: vi.fn((key: string) => values[key]),
+    update: vi.fn(async (payload: Record<string, unknown>) => {
+      Object.assign(values, payload);
+      return null;
+    }),
+  };
+};
+
+const makeProjectUpdateRow = () => {
+  const values: Record<string, unknown> = {
+    project_update_of_proposal_id: 20,
+    title: "Jornada de limpieza",
+    description: "Se realizo limpieza y poda inicial",
+    activity_images: JSON.stringify(["/uploads/project-updates/demo.jpg"]),
+    project_of_proposal_id: 9,
+    user_id: 1,
+    created_at: new Date("2026-01-03T00:00:00.000Z"),
+    updated_at: new Date("2026-01-03T00:00:00.000Z"),
+  };
+
+  return {
+    getDataValue: vi.fn((key: string) => values[key]),
+    get: vi.fn((key: string) => {
+      if (key !== "User") return undefined;
+      return {
+        getDataValue: (nestedKey: string) => {
+          if (nestedKey === "user_id") return 1;
+          if (nestedKey === "username") return "admin";
+          if (nestedKey === "name") return "Administrador";
+          return undefined;
+        },
+      } as User;
+    }),
+    update: vi.fn(async (payload: Record<string, unknown>) => {
+      Object.assign(values, payload);
+      return null;
+    }),
   };
 };
 
@@ -311,5 +356,98 @@ describe("proposal routes", () => {
     expect(response.body.proposal.status).toBe("closed");
     expect(response.body.project).toBeNull();
     expect(ProjectOfProposal.create).not.toHaveBeenCalled();
+  });
+
+  it("returns project timeline details for a proposal", async () => {
+    const proposal = makeProposalRow("approved");
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+    vi.mocked(ProjectOfProposal.findOne).mockResolvedValue(
+      makeProjectRow() as never,
+    );
+    vi.mocked(ProjectUpdateOfProposal.findAll).mockResolvedValue(
+      [makeProjectUpdateRow()] as never,
+    );
+
+    const response = await request(app)
+      .get("/api/proposals/3/project")
+      .set("Authorization", "Bearer any-token");
+
+    expect(response.status).toBe(200);
+    expect(response.body.project).toMatchObject({
+      id: 9,
+      proposalId: 3,
+    });
+    expect(response.body.updates).toHaveLength(1);
+    expect(response.body.updates[0]).toMatchObject({
+      id: 20,
+      description: "Se realizo limpieza y poda inicial",
+    });
+  });
+
+  it("allows admin to add a project activity update", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    vi.mocked(ProjectOfProposal.findByPk).mockResolvedValue(
+      makeProjectRow() as never,
+    );
+
+    const created = makeProjectUpdateRow();
+    vi.mocked(ProjectUpdateOfProposal.create).mockResolvedValue(
+      created as never,
+    );
+    vi.mocked(ProjectUpdateOfProposal.findByPk).mockResolvedValue(
+      created as never,
+    );
+
+    const response = await request(app)
+      .post("/api/proposals/projects/9/updates")
+      .set("Authorization", "Bearer any-token")
+      .send({
+        title: "Primera jornada",
+        description: "Se sembro cesped y se instalara riego",
+        images: ["/uploads/project-updates/demo.jpg"],
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({
+      projectId: 9,
+      userId: 1,
+      title: "Jornada de limpieza",
+    });
+    expect(ProjectUpdateOfProposal.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        project_of_proposal_id: 9,
+        user_id: 1,
+      }),
+    );
+  });
+
+  it("allows admin to update project execution status", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const project = makeProjectRow();
+    vi.mocked(ProjectOfProposal.findByPk).mockResolvedValue(project as never);
+
+    const response = await request(app)
+      .patch("/api/proposals/projects/9/status")
+      .set("Authorization", "Bearer any-token")
+      .send({ completedStatus: "in_progress" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      id: 9,
+      completedStatus: "in_progress",
+    });
+    expect(project.update).toHaveBeenCalledWith(
+      expect.objectContaining({ completed_status: "in_progress" }),
+    );
   });
 });

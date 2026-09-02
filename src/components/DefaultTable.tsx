@@ -15,6 +15,7 @@ interface DefaultTableProps<T> {
   columns: DefaultTableColumn<T>[];
   getRowId: (row: T) => string | number;
   getSearchText: (row: T) => string;
+  onRowClick?: (row: T) => void;
   emptyMessage: string;
   pageSize?: number;
   searchPlaceholder?: string;
@@ -27,6 +28,7 @@ export function DefaultTable<T>({
   columns,
   getRowId,
   getSearchText,
+  onRowClick,
   emptyMessage,
   pageSize = 6,
   searchPlaceholder = "Buscar...",
@@ -173,13 +175,32 @@ export function DefaultTable<T>({
                 </tr>
               </thead>
               <tbody>
-                {pagedRows.map((row) => (
-                  <tr key={getRowId(row)}>
-                    {columns.map((column) => (
-                      <td key={column.key}>{column.render(row)}</td>
-                    ))}
-                  </tr>
-                ))}
+                {pagedRows.map((row) => {
+                  const isClickable = Boolean(onRowClick);
+
+                  return (
+                    <tr
+                      key={getRowId(row)}
+                      className={isClickable ? "table-clickable-row" : undefined}
+                      onClick={isClickable ? () => onRowClick?.(row) : undefined}
+                      onKeyDown={
+                        isClickable
+                          ? (event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                onRowClick?.(row);
+                              }
+                            }
+                          : undefined
+                      }
+                      tabIndex={isClickable ? 0 : undefined}
+                    >
+                      {columns.map((column) => (
+                        <td key={column.key}>{column.render(row)}</td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -497,6 +497,65 @@ ProjectOfProposal.init(
   },
 );
 
+export class ProjectUpdateOfProposal extends Model {}
+ProjectUpdateOfProposal.init(
+  {
+    project_update_of_proposal_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "",
+    },
+    activity_images: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    },
+    project_of_proposal_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "ProjectOfProposal",
+        key: "project_of_proposal_id",
+      },
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "ProjectUpdateOfProposal",
+    tableName: "ProjectUpdateOfProposal",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
 export class VoteOfProposal extends Model {}
 VoteOfProposal.init(
   {
@@ -577,6 +636,16 @@ VoteOfProposal.belongsTo(User, { foreignKey: "user_id" });
 GreenSpace.hasMany(ProjectOfProposal, { foreignKey: "space_id" });
 ProjectOfProposal.belongsTo(GreenSpace, { foreignKey: "space_id" });
 
+ProjectOfProposal.hasMany(ProjectUpdateOfProposal, {
+  foreignKey: "project_of_proposal_id",
+});
+ProjectUpdateOfProposal.belongsTo(ProjectOfProposal, {
+  foreignKey: "project_of_proposal_id",
+});
+
+User.hasMany(ProjectUpdateOfProposal, { foreignKey: "user_id" });
+ProjectUpdateOfProposal.belongsTo(User, { foreignKey: "user_id" });
+
 GreenSpace.hasMany(TreeInventory, { foreignKey: "space_id" });
 TreeInventory.belongsTo(GreenSpace, { foreignKey: "space_id" });
 
@@ -587,6 +656,7 @@ const alignProposalSchema = async () => {
   // Keep existing SQLite files compatible with newer proposal/project fields.
   await ProposalOfGreenArea.sync({ alter: true });
   await ProjectOfProposal.sync({ alter: true });
+  await ProjectUpdateOfProposal.sync({ alter: true });
 };
 
 const enforceFixedRoles = async () => {

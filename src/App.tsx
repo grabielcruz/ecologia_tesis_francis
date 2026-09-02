@@ -59,6 +59,63 @@ interface Proposal {
   updatedAt: string | null;
 }
 
+type ProjectExecutionStatus =
+  | "planned"
+  | "in_progress"
+  | "completed"
+  | "not_created";
+
+interface ProposalProject {
+  id: number;
+  title: string;
+  description: string;
+  completedStatus: "planned" | "in_progress" | "completed";
+  proposalId: number;
+  spaceId: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+interface ProposalProjectUpdate {
+  id: number;
+  title: string;
+  description: string;
+  images: string[];
+  projectId: number;
+  userId: number;
+  createdBy: {
+    id: number;
+    username: string;
+    name: string;
+  } | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+interface ProposalProjectDetails {
+  proposal: Proposal;
+  project: ProposalProject | null;
+  updates: ProposalProjectUpdate[];
+}
+
+interface ProjectLatestUpdateSummary {
+  id: number;
+  title: string;
+  description: string;
+  createdBy: {
+    id: number;
+    username: string;
+    name: string;
+  } | null;
+  createdAt: string | null;
+}
+
+interface ProjectListEntry {
+  proposal: Proposal;
+  project: ProposalProject;
+  latestUpdate: ProjectLatestUpdateSummary | null;
+}
+
 type ProposalStatusFilter =
   | "all"
   | "draft"
@@ -280,6 +337,7 @@ function App() {
     Record<number, GreenSpaceReviewDraft>
   >({});
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [projectEntries, setProjectEntries] = useState<ProjectListEntry[]>([]);
   const [proposalTitleInput, setProposalTitleInput] = useState("");
   const [proposalDescriptionInput, setProposalDescriptionInput] = useState("");
   const [proposalSpaceIdInput, setProposalSpaceIdInput] = useState(0);
@@ -296,10 +354,30 @@ function App() {
   const [proposalDetailsId, setProposalDetailsId] = useState<number | null>(
     null,
   );
+  const [proposalProjectDetails, setProposalProjectDetails] = useState<
+    Record<number, ProposalProjectDetails>
+  >({});
+  const [proposalProjectLoadingId, setProposalProjectLoadingId] = useState<
+    number | null
+  >(null);
+  const [projectUpdateTitleInput, setProjectUpdateTitleInput] = useState("");
+  const [projectUpdateDescriptionInput, setProjectUpdateDescriptionInput] =
+    useState("");
+  const [projectUpdateImagesInput, setProjectUpdateImagesInput] = useState("");
+  const [projectStatusDrafts, setProjectStatusDrafts] = useState<
+    Record<number, "planned" | "in_progress" | "completed">
+  >({});
+  const [uploadingProjectUpdateImages, setUploadingProjectUpdateImages] =
+    useState(false);
+  const [isSubmittingProjectUpdate, setIsSubmittingProjectUpdate] =
+    useState(false);
+  const [isUpdatingProjectStatus, setIsUpdatingProjectStatus] = useState(false);
   const [showProposalManageModal, setShowProposalManageModal] = useState(false);
   const [proposalManageId, setProposalManageId] = useState<number | null>(null);
   const [proposalStatusFilter, setProposalStatusFilter] =
     useState<ProposalStatusFilter>("all");
+  const [proposalProjectStatusByProposalId, setProposalProjectStatusByProposalId] =
+    useState<Record<number, ProjectExecutionStatus>>({});
   const [activeGreenSpaceImageIndex, setActiveGreenSpaceImageIndex] = useState<
     Record<number, number>
   >({});
@@ -322,6 +400,10 @@ function App() {
   const openProposalsWithFilter = (filter: ProposalStatusFilter) => {
     setProposalStatusFilter(filter);
     navigate("/proposals");
+  };
+
+  const openProjects = () => {
+    navigate("/projects");
   };
 
   useEffect(() => {
@@ -368,6 +450,7 @@ function App() {
 
     fetchGreenSpaces();
     fetchProposals();
+    fetchProjects();
 
     if (user?.role === "admin" && route === "/admin-users") {
       fetchAdminRoles();
@@ -421,10 +504,260 @@ function App() {
       }
 
       const data = await res.json();
-      setProposals(Array.isArray(data) ? data : []);
+      const proposalRows = Array.isArray(data) ? data : [];
+      setProposals(proposalRows);
+      await fetchProjectStatusesForProposals(proposalRows);
     } catch {
       setProposals([]);
       setError("No se pudieron cargar las propuestas");
+    }
+  };
+
+  const fetchProjects = async () => {
+    if (!token) return;
+
+    try {
+      const res = await fetch("/api/projects", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        setProjectEntries([]);
+        setError("No se pudieron cargar los proyectos");
+        return;
+      }
+
+      const data = (await res.json()) as ProjectListEntry[];
+      const rows = Array.isArray(data) ? data : [];
+
+      const prefetchedDetails = rows.reduce<Record<number, ProposalProjectDetails>>(
+        (acc, entry) => {
+          if (!entry?.proposal || !entry?.project) {
+            return acc;
+          }
+
+          acc[entry.proposal.id] = {
+            proposal: entry.proposal,
+            project: entry.project,
+            updates: [],
+          };
+
+          return acc;
+        },
+        {},
+      );
+
+      setProjectEntries(rows);
+      setProposalProjectDetails((prev) => ({
+        ...prev,
+        ...prefetchedDetails,
+      }));
+    } catch {
+      setProjectEntries([]);
+      setError("No se pudieron cargar los proyectos");
+    }
+  };
+
+  const fetchProjectStatusesForProposals = async (proposalRows: Proposal[]) => {
+    if (!token || proposalRows.length === 0) {
+      setProposalProjectStatusByProposalId({});
+      return;
+    }
+
+    const nextStatuses: Record<number, ProjectExecutionStatus> = {};
+
+    await Promise.all(
+      proposalRows.map(async (proposal) => {
+        try {
+          const response = await fetch(`/api/proposals/${proposal.id}/project`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!response.ok) {
+            return;
+          }
+
+          const details = (await response.json()) as ProposalProjectDetails;
+          setProposalProjectDetails((prev) => ({
+            ...prev,
+            [proposal.id]: details,
+          }));
+
+          nextStatuses[proposal.id] = details.project
+            ? details.project.completedStatus
+            : "not_created";
+        } catch {
+          // Ignore per-row failures so remaining statuses can still load.
+        }
+      }),
+    );
+
+    setProposalProjectStatusByProposalId(nextStatuses);
+  };
+
+  const fetchProposalProjectDetails = async (proposalId: number) => {
+    if (!token) return;
+
+    setProposalProjectLoadingId(proposalId);
+    try {
+      const response = await fetch(`/api/proposals/${proposalId}/project`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        setError("No se pudo cargar el detalle del proyecto");
+        return;
+      }
+
+      const data = (await response.json()) as ProposalProjectDetails;
+      setProposalProjectDetails((prev) => ({
+        ...prev,
+        [proposalId]: data,
+      }));
+    } catch {
+      setError("No se pudo cargar el detalle del proyecto");
+    } finally {
+      setProposalProjectLoadingId(null);
+    }
+  };
+
+  const uploadProjectActivityImages = async (
+    projectId: number,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    if (!token) return;
+
+    setUploadingProjectUpdateImages(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach((file) => formData.append("images", file));
+
+      const response = await fetch(
+        `/api/proposals/projects/${projectId}/updates/images`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        },
+      );
+
+      if (!response.ok) {
+        setError("No se pudieron subir las imagenes de actividad");
+        return;
+      }
+
+      const data = await response.json();
+      const uploadedPaths = Array.isArray(data.images)
+        ? data.images.map((img: string) => img.trim()).filter(Boolean)
+        : [];
+
+      if (uploadedPaths.length > 0) {
+        setProjectUpdateImagesInput((prev) => {
+          const current = prev
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+          const merged = [...new Set([...current, ...uploadedPaths])];
+          return merged.join("\n");
+        });
+      }
+      event.target.value = "";
+    } catch {
+      setError("No se pudieron subir las imagenes de actividad");
+    } finally {
+      setUploadingProjectUpdateImages(false);
+    }
+  };
+
+  const submitProjectActivityUpdate = async (
+    event: FormEvent<HTMLFormElement>,
+    proposalId: number,
+    projectId: number,
+  ) => {
+    event.preventDefault();
+    if (!token) return;
+
+    const images = projectUpdateImagesInput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (!projectUpdateDescriptionInput.trim()) {
+      setError("Debes describir la actividad realizada");
+      return;
+    }
+
+    setIsSubmittingProjectUpdate(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/proposals/projects/${projectId}/updates`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: projectUpdateTitleInput.trim(),
+          description: projectUpdateDescriptionInput.trim(),
+          images,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || "No se pudo guardar la actividad");
+        return;
+      }
+
+      setProjectUpdateTitleInput("");
+      setProjectUpdateDescriptionInput("");
+      setProjectUpdateImagesInput("");
+      setSuccessMessage("Actividad del proyecto registrada correctamente.");
+      await fetchProposalProjectDetails(proposalId);
+      await fetchProposals();
+    } catch {
+      setError("No se pudo guardar la actividad");
+    } finally {
+      setIsSubmittingProjectUpdate(false);
+    }
+  };
+
+  const updateProjectCompletedStatus = async (
+    proposalId: number,
+    projectId: number,
+    completedStatus: "planned" | "in_progress" | "completed",
+  ) => {
+    if (!token) return;
+
+    setIsUpdatingProjectStatus(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/proposals/projects/${projectId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ completedStatus }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || "No se pudo actualizar el estado del proyecto");
+        return;
+      }
+
+      setSuccessMessage("Estado del proyecto actualizado correctamente.");
+      await fetchProposalProjectDetails(proposalId);
+      await fetchProposals();
+    } catch {
+      setError("No se pudo actualizar el estado del proyecto");
+    } finally {
+      setIsUpdatingProjectStatus(false);
     }
   };
 
@@ -616,6 +949,8 @@ function App() {
     setAdminSurveyOverview([]);
     setGreenSpaces([]);
     setProposals([]);
+    setProjectEntries([]);
+    setProposalProjectStatusByProposalId({});
     setUsername("");
     setPassword("");
     setError(null);
@@ -723,6 +1058,8 @@ function App() {
         ? "Mi perfil"
         : route === "/proposals"
           ? "Propuestas"
+          : route === "/projects"
+            ? "Proyectos"
           : route === "/admin-users"
             ? "Usuarios"
             : route.startsWith("/green-spaces/")
@@ -737,6 +1074,8 @@ function App() {
         ? "Actualiza tus datos personales"
         : route === "/proposals"
           ? "Consulta, valida y vota propuestas de mejora para areas verdes"
+          : route === "/projects"
+            ? "Consulta los proyectos generados a partir de propuestas aprobadas"
           : route === "/admin-users"
             ? "Gestion integral de usuarios del sistema"
             : route.startsWith("/green-spaces/")
@@ -898,14 +1237,21 @@ function App() {
     setShowProposalModal(false);
   };
 
-  const openProposalDetailsModal = (proposal: Proposal) => {
+  const openProposalDetailsModal = async (proposal: Proposal) => {
     setProposalDetailsId(proposal.id);
     setShowProposalDetailsModal(true);
+    setProjectUpdateTitleInput("");
+    setProjectUpdateDescriptionInput("");
+    setProjectUpdateImagesInput("");
+    await fetchProposalProjectDetails(proposal.id);
   };
 
   const closeProposalDetailsModal = () => {
     setShowProposalDetailsModal(false);
     setProposalDetailsId(null);
+    setProjectUpdateTitleInput("");
+    setProjectUpdateDescriptionInput("");
+    setProjectUpdateImagesInput("");
   };
 
   const openProposalManageModal = (proposal: Proposal) => {
@@ -2608,8 +2954,19 @@ function App() {
   const renderProposalDetailsModal = () => {
     if (!showProposalDetailsModal) return null;
 
-    const proposal = proposals.find((entry) => entry.id === proposalDetailsId);
+    const proposal =
+      projectEntries.find((entry) => entry.proposal.id === proposalDetailsId)
+        ?.proposal ||
+      proposals.find((entry) => entry.id === proposalDetailsId);
     if (!proposal) return null;
+
+    const projectDetails = proposalProjectDetails[proposal.id];
+    const project = projectDetails?.project || null;
+    const updates = projectDetails?.updates || [];
+    const isProjectLoading = proposalProjectLoadingId === proposal.id;
+    const selectedProjectStatus = project
+      ? projectStatusDrafts[project.id] || project.completedStatus
+      : "planned";
 
     return (
       <AppModal
@@ -2633,6 +2990,176 @@ function App() {
               <input value={String(proposal.totalVotes)} readOnly disabled />
             </label>
           </div>
+
+          <h4>Seguimiento del proyecto</h4>
+          {isProjectLoading && <p className="muted">Cargando detalles del proyecto...</p>}
+          {!isProjectLoading && !project && (
+            <p className="muted">
+              Esta propuesta aun no tiene proyecto generado. Debe quedar aprobada
+              por votacion y finalizarse para crear el proyecto.
+            </p>
+          )}
+
+          {!isProjectLoading && project && (
+            <>
+              <div className="field-row">
+                <label>
+                  Proyecto
+                  <input value={project.title} readOnly disabled />
+                </label>
+                <label>
+                  Estado de ejecucion
+                  <input value={project.completedStatus} readOnly disabled />
+                </label>
+              </div>
+
+              {user?.role === "admin" && (
+                <div className="field-row">
+                  <label>
+                    Actualizar estado del proyecto
+                    <select
+                      value={selectedProjectStatus}
+                      onChange={(e) =>
+                        setProjectStatusDrafts((prev) => ({
+                          ...prev,
+                          [project.id]: e.target.value as
+                            | "planned"
+                            | "in_progress"
+                            | "completed",
+                        }))
+                      }
+                    >
+                      <option value="planned">Planned</option>
+                      <option value="in_progress">In progress</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </label>
+                  <div className="button-row compact">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateProjectCompletedStatus(
+                          proposal.id,
+                          project.id,
+                          selectedProjectStatus,
+                        )
+                      }
+                      disabled={
+                        isUpdatingProjectStatus ||
+                        selectedProjectStatus === project.completedStatus
+                      }
+                    >
+                      {isUpdatingProjectStatus
+                        ? "Actualizando..."
+                        : "Guardar estado"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {updates.length === 0 ? (
+                <p className="muted">No hay actividades registradas todavia.</p>
+              ) : (
+                <div className="proposal-updates-list">
+                  {updates.map((update) => (
+                    <article key={update.id} className="proposal-update-card">
+                      <div className="proposal-update-header">
+                        <strong>{update.title || "Actividad"}</strong>
+                        <span className="muted">
+                          {formatUpdatedAt(update.createdAt || undefined)}
+                        </span>
+                      </div>
+                      <p>{update.description}</p>
+                      {update.createdBy && (
+                        <p className="small muted">
+                          Registrado por: {update.createdBy.name || update.createdBy.username}
+                        </p>
+                      )}
+                      {update.images.length > 0 && (
+                        <div className="proposal-update-images">
+                          {update.images.map((imageUrl, imageIndex) => (
+                            <a
+                              key={`${update.id}-${imageIndex}`}
+                              href={resolveAssetUrl(imageUrl)}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <img
+                                src={resolveAssetUrl(imageUrl)}
+                                alt={`Actividad ${update.id} imagen ${imageIndex + 1}`}
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {user?.role === "admin" && (
+                <form
+                  className="admin-form"
+                  onSubmit={(event) =>
+                    submitProjectActivityUpdate(event, proposal.id, project.id)
+                  }
+                >
+                  <h4>Registrar actividad</h4>
+                  <label>
+                    Titulo de actividad
+                    <input
+                      value={projectUpdateTitleInput}
+                      onChange={(e) => setProjectUpdateTitleInput(e.target.value)}
+                      placeholder="Ejemplo: Jornada de limpieza"
+                    />
+                  </label>
+                  <label>
+                    Descripcion de actividad
+                    <textarea
+                      value={projectUpdateDescriptionInput}
+                      onChange={(e) => setProjectUpdateDescriptionInput(e.target.value)}
+                      placeholder="Describe lo realizado en esta etapa"
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Imagenes de actividad
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(event) => uploadProjectActivityImages(project.id, event)}
+                      disabled={uploadingProjectUpdateImages}
+                    />
+                    <span className="muted">
+                      {uploadingProjectUpdateImages
+                        ? "Subiendo imagenes..."
+                        : "Puedes subir una o varias imagenes"}
+                    </span>
+                  </label>
+
+                  <label>
+                    Rutas cargadas
+                    <textarea
+                      value={projectUpdateImagesInput}
+                      onChange={(e) => setProjectUpdateImagesInput(e.target.value)}
+                      placeholder="Se completa automaticamente al subir imagenes"
+                    />
+                  </label>
+
+                  <div className="button-row">
+                    <button type="submit" disabled={isSubmittingProjectUpdate}>
+                      {isSubmittingProjectUpdate
+                        ? "Guardando actividad..."
+                        : "Guardar actividad"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </>
+          )}
+
           <div className="button-row">
             <button
               type="button"
@@ -2749,6 +3276,29 @@ function App() {
           rows={greenSpaces}
           columns={[
             {
+              key: "thumbnail",
+              label: "Imagen",
+              render: (space: GreenSpace) => {
+                const thumbnail = space.images?.[0];
+
+                if (!thumbnail) {
+                  return (
+                    <span className="green-space-table-thumbnail placeholder">
+                      Sin imagen
+                    </span>
+                  );
+                }
+
+                return (
+                  <img
+                    className="green-space-table-thumbnail"
+                    src={resolveAssetUrl(thumbnail)}
+                    alt={`${space.name} miniatura`}
+                  />
+                );
+              },
+            },
+            {
               key: "name",
               label: "Nombre",
               sortable: true,
@@ -2799,12 +3349,21 @@ function App() {
                   <button
                     type="button"
                     className="secondary"
-                    onClick={() => openGreenSpaceDetailsModal(space)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(`/green-spaces/${space.id}`);
+                    }}
                   >
                     Ver detalle
                   </button>
                   {user?.role === "admin" && (
-                    <button type="button" onClick={() => editGreenSpace(space)}>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        editGreenSpace(space);
+                      }}
+                    >
                       Editar
                     </button>
                   )}
@@ -2812,6 +3371,7 @@ function App() {
               ),
             },
           ]}
+          onRowClick={(space) => navigate(`/green-spaces/${space.id}`)}
           getRowId={(space) => space.id}
           getSearchText={(space) =>
             `${space.name} ${space.location} ${space.totalAreaM2} ${space.tallTreeCount}`
@@ -3155,6 +3715,7 @@ function App() {
   };
 
   const renderProposalsSection = () => {
+    const isProjectsRoute = route === "/projects";
     const statusLabel: Record<Proposal["status"], string> = {
       draft: "Pendiente de validacion",
       open: "Votacion abierta",
@@ -3163,10 +3724,149 @@ function App() {
       rejected: "Rechazada por administracion",
     };
 
+    const projectStatusLabel: Record<ProjectExecutionStatus, string> = {
+      not_created: "Sin proyecto",
+      planned: "Planned",
+      in_progress: "In progress",
+      completed: "Completed",
+    };
+
     const getSpaceName = (spaceId: number) => {
       const target = greenSpaces.find((space) => space.id === spaceId);
       return target?.name || `Area #${spaceId}`;
     };
+
+    if (isProjectsRoute) {
+      const summarizeText = (value: string, maxLength = 92) => {
+        const normalized = value.trim();
+        if (!normalized) return "Sin descripcion";
+        if (normalized.length <= maxLength) return normalized;
+        return `${normalized.slice(0, maxLength - 1)}...`;
+      };
+
+      const getLastActivityAt = (entry: ProjectListEntry) => {
+        const details = proposalProjectDetails[entry.proposal.id];
+        const latestUpdate = details?.updates?.[0];
+
+        return (
+          entry.latestUpdate?.createdAt ||
+          latestUpdate?.createdAt ||
+          entry.project.updatedAt ||
+          entry.proposal.updatedAt
+        );
+      };
+
+      const projectColumns: DefaultTableColumn<ProjectListEntry>[] = [
+        {
+          key: "projectTitle",
+          label: "Proyecto",
+          sortable: true,
+          sortValue: (entry) => entry.project.title,
+          render: (entry) => entry.project.title,
+        },
+        {
+          key: "space",
+          label: "Area",
+          sortable: true,
+          sortValue: (entry) => getSpaceName(entry.project.spaceId),
+          render: (entry) => getSpaceName(entry.project.spaceId),
+        },
+        {
+          key: "execution",
+          label: "Estado de ejecucion",
+          sortable: true,
+          sortValue: (entry) => entry.project.completedStatus,
+          render: (entry) => (
+            <span
+              className={`pill proposal-project-status ${entry.project.completedStatus}`}
+            >
+              {projectStatusLabel[entry.project.completedStatus]}
+            </span>
+          ),
+        },
+        {
+          key: "proposal",
+          label: "Propuesta origen",
+          sortable: true,
+          sortValue: (entry) => entry.proposal.title,
+          render: (entry) => entry.proposal.title,
+        },
+        {
+          key: "latestUpdate",
+          label: "Ultimo avance",
+          sortable: true,
+          sortValue: (entry) => getLastActivityAt(entry) || "",
+          render: (entry) => {
+            if (!entry.latestUpdate) {
+              return <span className="small muted">Sin actividades registradas</span>;
+            }
+
+            const authorName =
+              entry.latestUpdate.createdBy?.name ||
+              entry.latestUpdate.createdBy?.username ||
+              "Administrador";
+
+            return (
+              <div className="project-latest-update">
+                <strong>{entry.latestUpdate.title || "Actividad"}</strong>
+                <p className="small muted">{summarizeText(entry.latestUpdate.description)}</p>
+                <p className="small muted">
+                  {authorName} · {formatUpdatedAt(entry.latestUpdate.createdAt || undefined)}
+                </p>
+              </div>
+            );
+          },
+        },
+        {
+          key: "lastActivity",
+          label: "Ultima actividad",
+          sortable: true,
+          sortValue: (entry) => getLastActivityAt(entry) || "",
+          render: (entry) => formatUpdatedAt(getLastActivityAt(entry) || undefined),
+        },
+        {
+          key: "actions",
+          label: "Acciones",
+          render: (entry) => (
+            <div className="table-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => openProposalDetailsModal(entry.proposal)}
+              >
+                Ver detalle
+              </button>
+            </div>
+          ),
+        },
+      ];
+
+      return (
+        <section className="box admin-box">
+          <div className="admin-header">
+            <div>
+              <h2>Proyectos</h2>
+              <p>Proyectos creados desde propuestas aprobadas por votacion.</p>
+            </div>
+          </div>
+
+          <article className="principal-panel">
+            <h3>Listado de proyectos</h3>
+            <DefaultTable
+              rows={projectEntries}
+              columns={projectColumns}
+              getRowId={(entry) => entry.project.id}
+              getSearchText={(entry) =>
+                `${entry.project.title} ${entry.project.description} ${entry.project.completedStatus} ${entry.proposal.title} ${entry.proposal.description} ${entry.latestUpdate?.title || ""} ${entry.latestUpdate?.description || ""} ${getSpaceName(entry.project.spaceId)}`
+              }
+              emptyMessage="No hay proyectos visibles por el momento."
+              searchPlaceholder="Buscar por proyecto, propuesta, area o estado"
+            />
+          </article>
+          {renderProposalDetailsModal()}
+        </section>
+      );
+    }
 
     const filteredProposals = proposals.filter((proposal) => {
       if (proposalStatusFilter === "all") return true;
@@ -3205,6 +3905,22 @@ function App() {
         sortable: true,
         sortValue: (proposal) => proposal.totalVotes,
         render: (proposal) => proposal.totalVotes,
+      },
+      {
+        key: "projectStatus",
+        label: "Estado del proyecto",
+        sortable: true,
+        sortValue: (proposal) =>
+          proposalProjectStatusByProposalId[proposal.id] || "not_created",
+        render: (proposal) => {
+          const projectStatus =
+            proposalProjectStatusByProposalId[proposal.id] || "not_created";
+          return (
+            <span className={`pill proposal-project-status ${projectStatus}`}>
+              {projectStatusLabel[projectStatus]}
+            </span>
+          );
+        },
       },
       {
         key: "updatedAt",
@@ -3473,6 +4189,10 @@ function App() {
       return renderProposalsSection();
     }
 
+    if (route === "/projects") {
+      return renderProposalsSection();
+    }
+
     if (route === "/admin-users" && user?.role === "admin") {
       return renderAdminUsersSection();
     }
@@ -3728,9 +4448,16 @@ function App() {
           <button
             type="button"
             className={route === "/proposals" ? "active" : ""}
-            onClick={() => openProposalsWithFilter("all")}
+            onClick={() => navigate("/proposals")}
           >
             Propuestas
+          </button>
+          <button
+            type="button"
+            className={route === "/projects" ? "active" : ""}
+            onClick={openProjects}
+          >
+            Proyectos
           </button>
           {user?.role === "admin" && (
             <>

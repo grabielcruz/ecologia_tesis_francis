@@ -100,6 +100,17 @@ erDiagram
         datetime updated_at
     }
 
+    ProjectUpdateOfProposal {
+        int project_update_of_proposal_id PK
+        string title
+        text description
+        text activity_images
+        int project_of_proposal_id FK
+        int user_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
     VoteOfProposal {
         int vote_of_proposal_id PK
         int proposal_of_green_area_id FK
@@ -117,6 +128,8 @@ erDiagram
     User ||--o{ GreenSpaceReview : realiza
     ProposalOfGreenArea ||--o{ VoteOfProposal : recibe
     ProposalOfGreenArea ||--o{ ProjectOfProposal : genera
+    ProjectOfProposal ||--o{ ProjectUpdateOfProposal : registra
+    User ||--o{ ProjectUpdateOfProposal : documenta
 
     TreeType ||--o{ TreeInventory : clasifica
     GreenSpace ||--o{ TreeInventory : contiene
