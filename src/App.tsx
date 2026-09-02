@@ -376,8 +376,10 @@ function App() {
   const [proposalManageId, setProposalManageId] = useState<number | null>(null);
   const [proposalStatusFilter, setProposalStatusFilter] =
     useState<ProposalStatusFilter>("all");
-  const [proposalProjectStatusByProposalId, setProposalProjectStatusByProposalId] =
-    useState<Record<number, ProjectExecutionStatus>>({});
+  const [
+    proposalProjectStatusByProposalId,
+    setProposalProjectStatusByProposalId,
+  ] = useState<Record<number, ProjectExecutionStatus>>({});
   const [activeGreenSpaceImageIndex, setActiveGreenSpaceImageIndex] = useState<
     Record<number, number>
   >({});
@@ -530,22 +532,21 @@ function App() {
       const data = (await res.json()) as ProjectListEntry[];
       const rows = Array.isArray(data) ? data : [];
 
-      const prefetchedDetails = rows.reduce<Record<number, ProposalProjectDetails>>(
-        (acc, entry) => {
-          if (!entry?.proposal || !entry?.project) {
-            return acc;
-          }
-
-          acc[entry.proposal.id] = {
-            proposal: entry.proposal,
-            project: entry.project,
-            updates: [],
-          };
-
+      const prefetchedDetails = rows.reduce<
+        Record<number, ProposalProjectDetails>
+      >((acc, entry) => {
+        if (!entry?.proposal || !entry?.project) {
           return acc;
-        },
-        {},
-      );
+        }
+
+        acc[entry.proposal.id] = {
+          proposal: entry.proposal,
+          project: entry.project,
+          updates: [],
+        };
+
+        return acc;
+      }, {});
 
       setProjectEntries(rows);
       setProposalProjectDetails((prev) => ({
@@ -569,9 +570,12 @@ function App() {
     await Promise.all(
       proposalRows.map(async (proposal) => {
         try {
-          const response = await fetch(`/api/proposals/${proposal.id}/project`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const response = await fetch(
+            `/api/proposals/${proposal.id}/project`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
 
           if (!response.ok) {
             return;
@@ -694,18 +698,21 @@ function App() {
     setIsSubmittingProjectUpdate(true);
     setError(null);
     try {
-      const response = await fetch(`/api/proposals/projects/${projectId}/updates`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `/api/proposals/projects/${projectId}/updates`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: projectUpdateTitleInput.trim(),
+            description: projectUpdateDescriptionInput.trim(),
+            images,
+          }),
         },
-        body: JSON.stringify({
-          title: projectUpdateTitleInput.trim(),
-          description: projectUpdateDescriptionInput.trim(),
-          images,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -736,14 +743,17 @@ function App() {
     setIsUpdatingProjectStatus(true);
     setError(null);
     try {
-      const response = await fetch(`/api/proposals/projects/${projectId}/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `/api/proposals/projects/${projectId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ completedStatus }),
         },
-        body: JSON.stringify({ completedStatus }),
-      });
+      );
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -1060,13 +1070,13 @@ function App() {
           ? "Propuestas"
           : route === "/projects"
             ? "Proyectos"
-          : route === "/admin-users"
-            ? "Usuarios"
-            : route.startsWith("/green-spaces/")
-              ? "Detalle de area verde"
-              : route === "/green-spaces"
-                ? "Areas verdes del campus"
-                : "Principal";
+            : route === "/admin-users"
+              ? "Usuarios"
+              : route.startsWith("/green-spaces/")
+                ? "Detalle de area verde"
+                : route === "/green-spaces"
+                  ? "Areas verdes del campus"
+                  : "Principal";
   const pageSubtitle =
     route === "/"
       ? "Resumen general de encuestas y areas verdes"
@@ -1076,13 +1086,13 @@ function App() {
           ? "Consulta, valida y vota propuestas de mejora para areas verdes"
           : route === "/projects"
             ? "Consulta los proyectos generados a partir de propuestas aprobadas"
-          : route === "/admin-users"
-            ? "Gestion integral de usuarios del sistema"
-            : route.startsWith("/green-spaces/")
-              ? "Informacion completa, resenas y sugerencias del espacio"
-              : route === "/green-spaces"
-                ? "Registro y consulta de espacios verdes universitarios"
-                : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
+            : route === "/admin-users"
+              ? "Gestion integral de usuarios del sistema"
+              : route.startsWith("/green-spaces/")
+                ? "Informacion completa, reseñas y sugerencias del espacio"
+                : route === "/green-spaces"
+                  ? "Registro y consulta de espacios verdes universitarios"
+                  : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
 
   const resetAdminForm = () => {
     setEditingSurvey(null);
@@ -1670,7 +1680,7 @@ function App() {
 
   const submitGreenSpaceReview = async (greenSpaceId: number) => {
     if (!token) {
-      setError("Debes iniciar sesion para enviar una resena");
+      setError("Debes iniciar sesion para enviar una reseña");
       return;
     }
 
@@ -1699,11 +1709,11 @@ function App() {
       });
 
       if (!res.ok) {
-        setError("No se pudo guardar tu resena");
+        setError("No se pudo guardar tu reseña");
         return;
       }
 
-      setSuccessMessage("Resena guardada correctamente.");
+      setSuccessMessage("Reseña guardada correctamente.");
       setError(null);
       setReviewDrafts((prev) => ({
         ...prev,
@@ -1711,7 +1721,7 @@ function App() {
       }));
       fetchGreenSpaces();
     } catch {
-      setError("No se pudo guardar tu resena");
+      setError("No se pudo guardar tu reseña");
     }
   };
 
@@ -2172,7 +2182,7 @@ function App() {
   if (route === "/login") {
     return (
       <div className="container">
-        <h1>Encuestas de sostenibilidad</h1>
+        <h1>Univerde</h1>
         <section className="box login-box">
           <h2>Iniciar sesión</h2>
           <div className="input-group">
@@ -2956,8 +2966,7 @@ function App() {
 
     const proposal =
       projectEntries.find((entry) => entry.proposal.id === proposalDetailsId)
-        ?.proposal ||
-      proposals.find((entry) => entry.id === proposalDetailsId);
+        ?.proposal || proposals.find((entry) => entry.id === proposalDetailsId);
     if (!proposal) return null;
 
     const projectDetails = proposalProjectDetails[proposal.id];
@@ -2992,11 +3001,13 @@ function App() {
           </div>
 
           <h4>Seguimiento del proyecto</h4>
-          {isProjectLoading && <p className="muted">Cargando detalles del proyecto...</p>}
+          {isProjectLoading && (
+            <p className="muted">Cargando detalles del proyecto...</p>
+          )}
           {!isProjectLoading && !project && (
             <p className="muted">
-              Esta propuesta aun no tiene proyecto generado. Debe quedar aprobada
-              por votacion y finalizarse para crear el proyecto.
+              Esta propuesta aun no tiene proyecto generado. Debe quedar
+              aprobada por votacion y finalizarse para crear el proyecto.
             </p>
           )}
 
@@ -3072,7 +3083,8 @@ function App() {
                       <p>{update.description}</p>
                       {update.createdBy && (
                         <p className="small muted">
-                          Registrado por: {update.createdBy.name || update.createdBy.username}
+                          Registrado por:{" "}
+                          {update.createdBy.name || update.createdBy.username}
                         </p>
                       )}
                       {update.images.length > 0 && (
@@ -3109,7 +3121,9 @@ function App() {
                     Titulo de actividad
                     <input
                       value={projectUpdateTitleInput}
-                      onChange={(e) => setProjectUpdateTitleInput(e.target.value)}
+                      onChange={(e) =>
+                        setProjectUpdateTitleInput(e.target.value)
+                      }
                       placeholder="Ejemplo: Jornada de limpieza"
                     />
                   </label>
@@ -3117,7 +3131,9 @@ function App() {
                     Descripcion de actividad
                     <textarea
                       value={projectUpdateDescriptionInput}
-                      onChange={(e) => setProjectUpdateDescriptionInput(e.target.value)}
+                      onChange={(e) =>
+                        setProjectUpdateDescriptionInput(e.target.value)
+                      }
                       placeholder="Describe lo realizado en esta etapa"
                       required
                     />
@@ -3129,7 +3145,9 @@ function App() {
                       type="file"
                       accept="image/*"
                       multiple
-                      onChange={(event) => uploadProjectActivityImages(project.id, event)}
+                      onChange={(event) =>
+                        uploadProjectActivityImages(project.id, event)
+                      }
                       disabled={uploadingProjectUpdateImages}
                     />
                     <span className="muted">
@@ -3143,7 +3161,9 @@ function App() {
                     Rutas cargadas
                     <textarea
                       value={projectUpdateImagesInput}
-                      onChange={(e) => setProjectUpdateImagesInput(e.target.value)}
+                      onChange={(e) =>
+                        setProjectUpdateImagesInput(e.target.value)
+                      }
                       placeholder="Se completa automaticamente al subir imagenes"
                     />
                   </label>
@@ -3486,7 +3506,7 @@ function App() {
               </div>
             </div>
             <div className="summary-item">
-              <span>Total de resenas</span>
+              <span>Total de reseñas</span>
               <strong>
                 {selectedGreenSpace.reviewSummary?.totalReviews ?? 0}
               </strong>
@@ -3594,7 +3614,7 @@ function App() {
                 type="button"
                 onClick={() => submitGreenSpaceReview(selectedGreenSpace.id)}
               >
-                Guardar resena
+                Guardar reseña
               </button>
             </div>
             {(selectedGreenSpace.recentReviews || []).length > 0 && (
@@ -3798,7 +3818,9 @@ function App() {
           sortValue: (entry) => getLastActivityAt(entry) || "",
           render: (entry) => {
             if (!entry.latestUpdate) {
-              return <span className="small muted">Sin actividades registradas</span>;
+              return (
+                <span className="small muted">Sin actividades registradas</span>
+              );
             }
 
             const authorName =
@@ -3809,9 +3831,12 @@ function App() {
             return (
               <div className="project-latest-update">
                 <strong>{entry.latestUpdate.title || "Actividad"}</strong>
-                <p className="small muted">{summarizeText(entry.latestUpdate.description)}</p>
                 <p className="small muted">
-                  {authorName} · {formatUpdatedAt(entry.latestUpdate.createdAt || undefined)}
+                  {summarizeText(entry.latestUpdate.description)}
+                </p>
+                <p className="small muted">
+                  {authorName} ·{" "}
+                  {formatUpdatedAt(entry.latestUpdate.createdAt || undefined)}
                 </p>
               </div>
             );
@@ -3822,7 +3847,8 @@ function App() {
           label: "Ultima actividad",
           sortable: true,
           sortValue: (entry) => getLastActivityAt(entry) || "",
-          render: (entry) => formatUpdatedAt(getLastActivityAt(entry) || undefined),
+          render: (entry) =>
+            formatUpdatedAt(getLastActivityAt(entry) || undefined),
         },
         {
           key: "actions",
