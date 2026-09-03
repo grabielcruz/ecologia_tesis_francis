@@ -165,17 +165,11 @@ const serializeProjectUpdate = (update: ProjectUpdateOfProposal) => {
   };
 };
 
-const finalizeProposalIfReady = async (proposal: ProposalOfGreenArea) => {
+const finalizeOpenProposal = async (proposal: ProposalOfGreenArea) => {
   const proposalId = Number(proposal.getDataValue("proposal_of_green_area_id"));
   const status = String(proposal.getDataValue("status") || "");
-  const votingEndsRaw = proposal.getDataValue("voting_ends");
 
-  if (status !== "open" || !votingEndsRaw) {
-    return null;
-  }
-
-  const votingEnds = new Date(String(votingEndsRaw));
-  if (Number.isNaN(votingEnds.getTime()) || new Date() < votingEnds) {
+  if (status !== "open") {
     return null;
   }
 
@@ -228,19 +222,7 @@ const finalizeProposalIfReady = async (proposal: ProposalOfGreenArea) => {
   };
 };
 
-const autoFinalizeClosedVotingProposals = async () => {
-  const openProposals = await ProposalOfGreenArea.findAll({
-    where: { status: "open" },
-  });
-
-  for (const proposal of openProposals) {
-    await finalizeProposalIfReady(proposal as ProposalOfGreenArea);
-  }
-};
-
 router.get("/", authenticate, async (_req, res) => {
-  await autoFinalizeClosedVotingProposals();
-
   const authReq = _req as AuthRequest;
   const whereClause = authReq.user?.role === "admin" ? {} : { status: "open" };
 
@@ -304,8 +286,6 @@ router.post(
   authenticate,
   requireRegular,
   async (req: AuthRequest, res: Response) => {
-    await autoFinalizeClosedVotingProposals();
-
     if (!req.user) {
       return res.status(401).json({ error: "No autorizado" });
     }
@@ -341,7 +321,16 @@ router.post(
     const votingStarts = new Date(String(votingStartsRaw));
     const votingEnds = new Date(String(votingEndsRaw));
 
-    if (now < votingStarts || now > votingEnds) {
+    if (
+      Number.isNaN(votingStarts.getTime()) ||
+      Number.isNaN(votingEnds.getTime())
+    ) {
+      return res
+        .status(409)
+        .json({ error: "La ventana de votacion esta cerrada" });
+    }
+
+    if (now < votingStarts) {
       return res
         .status(409)
         .json({ error: "La ventana de votacion esta cerrada" });
@@ -388,8 +377,6 @@ router.patch(
   authenticate,
   requireAdmin,
   async (req: AuthRequest, res: Response) => {
-    await autoFinalizeClosedVotingProposals();
-
     const proposalId = Number(req.params.id);
     if (!Number.isFinite(proposalId)) {
       return res
@@ -490,9 +477,18 @@ router.post(
         .status(409)
         .json({ error: "La propuesta fue rechazada por administracion" });
     }
-    const finalizedResult = await finalizeProposalIfReady(proposal);
+
+    if (status !== "open") {
+      return res
+        .status(409)
+        .json({ error: "La propuesta no esta habilitada para finalizar" });
+    }
+
+    const finalizedResult = await finalizeOpenProposal(proposal);
     if (!finalizedResult) {
-      return res.status(409).json({ error: "La votacion aun no termina" });
+      return res
+        .status(409)
+        .json({ error: "No se pudo finalizar la propuesta" });
     }
 
     return res.json({
@@ -504,51 +500,53 @@ router.post(
   },
 );
 
-router.get("/:id/project", authenticate, async (req: AuthRequest, res: Response) => {
-  await autoFinalizeClosedVotingProposals();
+router.get(
+  "/:id/project",
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    const proposalId = Number(req.params.id);
+    if (!Number.isFinite(proposalId)) {
+      return res
+        .status(400)
+        .json({ error: "Identificador de propuesta invalido" });
+    }
 
-  const proposalId = Number(req.params.id);
-  if (!Number.isFinite(proposalId)) {
-    return res
-      .status(400)
-      .json({ error: "Identificador de propuesta invalido" });
-  }
+    const proposal = await ProposalOfGreenArea.findByPk(proposalId);
+    if (!proposal) {
+      return res.status(404).json({ error: "Propuesta no encontrada" });
+    }
 
-  const proposal = await ProposalOfGreenArea.findByPk(proposalId);
-  if (!proposal) {
-    return res.status(404).json({ error: "Propuesta no encontrada" });
-  }
+    const project = await ProjectOfProposal.findOne({
+      where: { proposal_of_green_area_id: proposalId },
+    });
 
-  const project = await ProjectOfProposal.findOne({
-    where: { proposal_of_green_area_id: proposalId },
-  });
+    if (!project) {
+      return res.json({
+        proposal: serializeProposal(proposal),
+        project: null,
+        updates: [],
+      });
+    }
 
-  if (!project) {
+    const projectId = Number(project.getDataValue("project_of_proposal_id"));
+    const updates = await ProjectUpdateOfProposal.findAll({
+      where: { project_of_proposal_id: projectId },
+      include: [{ model: User, attributes: ["user_id", "username", "name"] }],
+      order: [
+        ["created_at", "DESC"],
+        ["project_update_of_proposal_id", "DESC"],
+      ],
+    });
+
     return res.json({
       proposal: serializeProposal(proposal),
-      project: null,
-      updates: [],
+      project: serializeProject(project),
+      updates: updates.map((entry) =>
+        serializeProjectUpdate(entry as ProjectUpdateOfProposal),
+      ),
     });
-  }
-
-  const projectId = Number(project.getDataValue("project_of_proposal_id"));
-  const updates = await ProjectUpdateOfProposal.findAll({
-    where: { project_of_proposal_id: projectId },
-    include: [{ model: User, attributes: ["user_id", "username", "name"] }],
-    order: [
-      ["created_at", "DESC"],
-      ["project_update_of_proposal_id", "DESC"],
-    ],
-  });
-
-  return res.json({
-    proposal: serializeProposal(proposal),
-    project: serializeProject(project),
-    updates: updates.map((entry) =>
-      serializeProjectUpdate(entry as ProjectUpdateOfProposal),
-    ),
-  });
-});
+  },
+);
 
 router.post(
   "/projects/:projectId/updates/images",
@@ -635,7 +633,11 @@ router.post(
 
     return res
       .status(201)
-      .json(serializeProjectUpdate((withUser || created) as ProjectUpdateOfProposal));
+      .json(
+        serializeProjectUpdate(
+          (withUser || created) as ProjectUpdateOfProposal,
+        ),
+      );
   },
 );
 
@@ -648,14 +650,14 @@ router.put(
     const updateId = Number(req.params.updateId);
 
     if (!Number.isFinite(projectId) || !Number.isFinite(updateId)) {
-      return res
-        .status(400)
-        .json({ error: "Identificadores invalidos" });
+      return res.status(400).json({ error: "Identificadores invalidos" });
     }
 
     const projectUpdate = await ProjectUpdateOfProposal.findByPk(updateId);
     if (!projectUpdate) {
-      return res.status(404).json({ error: "Registro de actividad no encontrado" });
+      return res
+        .status(404)
+        .json({ error: "Registro de actividad no encontrado" });
     }
 
     if (
@@ -685,7 +687,9 @@ router.put(
     }
 
     if (typeof req.body?.images !== "undefined") {
-      payload.activity_images = JSON.stringify(parseStringArray(req.body.images));
+      payload.activity_images = JSON.stringify(
+        parseStringArray(req.body.images),
+      );
     }
 
     await projectUpdate.update(payload);
@@ -695,7 +699,9 @@ router.put(
     });
 
     return res.json(
-      serializeProjectUpdate((withUser || projectUpdate) as ProjectUpdateOfProposal),
+      serializeProjectUpdate(
+        (withUser || projectUpdate) as ProjectUpdateOfProposal,
+      ),
     );
   },
 );

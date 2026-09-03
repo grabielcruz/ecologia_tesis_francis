@@ -1,6 +1,16 @@
 import { FormEvent, useEffect, useState } from "react";
 import { AppModal } from "./components/AppModal";
 import { DefaultTable, DefaultTableColumn } from "./components/DefaultTable";
+import { ProjectDetailSection } from "./components/projects/ProjectDetailSection";
+import { ProjectsListSection } from "./components/projects/ProjectsListSection";
+import { ProposalsListSection } from "./components/proposals/ProposalsListSection";
+import { useProposalActions } from "./hooks/useProposalActions";
+import {
+  ProjectExecutionStatus,
+  ProjectListEntry,
+  Proposal,
+  ProposalProjectDetails,
+} from "./features/proposals/types";
 
 interface SurveySummary {
   totalResponses: number;
@@ -45,77 +55,6 @@ interface GreenSpaceReviewDraft {
   comment: string;
 }
 
-interface Proposal {
-  id: number;
-  title: string;
-  description: string;
-  status: "draft" | "open" | "closed" | "approved" | "rejected";
-  totalVotes: number;
-  votingStarts: string | null;
-  votingEnds: string | null;
-  userId: number;
-  spaceId: number;
-  createdAt: string | null;
-  updatedAt: string | null;
-}
-
-type ProjectExecutionStatus =
-  | "planned"
-  | "in_progress"
-  | "completed"
-  | "not_created";
-
-interface ProposalProject {
-  id: number;
-  title: string;
-  description: string;
-  completedStatus: "planned" | "in_progress" | "completed";
-  proposalId: number;
-  spaceId: number;
-  createdAt: string | null;
-  updatedAt: string | null;
-}
-
-interface ProposalProjectUpdate {
-  id: number;
-  title: string;
-  description: string;
-  images: string[];
-  projectId: number;
-  userId: number;
-  createdBy: {
-    id: number;
-    username: string;
-    name: string;
-  } | null;
-  createdAt: string | null;
-  updatedAt: string | null;
-}
-
-interface ProposalProjectDetails {
-  proposal: Proposal;
-  project: ProposalProject | null;
-  updates: ProposalProjectUpdate[];
-}
-
-interface ProjectLatestUpdateSummary {
-  id: number;
-  title: string;
-  description: string;
-  createdBy: {
-    id: number;
-    username: string;
-    name: string;
-  } | null;
-  createdAt: string | null;
-}
-
-interface ProjectListEntry {
-  proposal: Proposal;
-  project: ProposalProject;
-  latestUpdate: ProjectLatestUpdateSummary | null;
-}
-
 type ProposalStatusFilter =
   | "all"
   | "draft"
@@ -143,6 +82,9 @@ interface AdminUser {
 type SortDirection = "asc" | "desc";
 
 function App() {
+  const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error && error.message ? error.message : fallback;
+
   const resolveAvatarUrl = (avatarUrl?: string | null) => {
     if (!avatarUrl) return "/default-avatar.svg";
     if (
@@ -383,6 +325,7 @@ function App() {
   const [activeGreenSpaceImageIndex, setActiveGreenSpaceImageIndex] = useState<
     Record<number, number>
   >({});
+  const proposalActions = useProposalActions(token);
   const spaceImagePreviewList = spaceImagesInput
     .split("\n")
     .map((line) => line.trim())
@@ -496,22 +439,12 @@ function App() {
     if (!token) return;
 
     try {
-      const res = await fetch("/api/proposals", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        setProposals([]);
-        setError("No se pudieron cargar las propuestas");
-        return;
-      }
-
-      const data = await res.json();
-      const proposalRows = Array.isArray(data) ? data : [];
+      const proposalRows = await proposalActions.fetchProposals();
       setProposals(proposalRows);
       await fetchProjectStatusesForProposals(proposalRows);
-    } catch {
+    } catch (error) {
       setProposals([]);
-      setError("No se pudieron cargar las propuestas");
+      setError(getErrorMessage(error, "No se pudieron cargar las propuestas"));
     }
   };
 
@@ -519,18 +452,7 @@ function App() {
     if (!token) return;
 
     try {
-      const res = await fetch("/api/projects", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        setProjectEntries([]);
-        setError("No se pudieron cargar los proyectos");
-        return;
-      }
-
-      const data = (await res.json()) as ProjectListEntry[];
-      const rows = Array.isArray(data) ? data : [];
+      const rows = await proposalActions.fetchProjects();
 
       const prefetchedDetails = rows.reduce<
         Record<number, ProposalProjectDetails>
@@ -553,9 +475,9 @@ function App() {
         ...prev,
         ...prefetchedDetails,
       }));
-    } catch {
+    } catch (error) {
       setProjectEntries([]);
-      setError("No se pudieron cargar los proyectos");
+      setError(getErrorMessage(error, "No se pudieron cargar los proyectos"));
     }
   };
 
@@ -570,18 +492,9 @@ function App() {
     await Promise.all(
       proposalRows.map(async (proposal) => {
         try {
-          const response = await fetch(
-            `/api/proposals/${proposal.id}/project`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
+          const details = await proposalActions.fetchProposalProjectDetails(
+            proposal.id,
           );
-
-          if (!response.ok) {
-            return;
-          }
-
-          const details = (await response.json()) as ProposalProjectDetails;
           setProposalProjectDetails((prev) => ({
             ...prev,
             [proposal.id]: details,
@@ -604,22 +517,16 @@ function App() {
 
     setProposalProjectLoadingId(proposalId);
     try {
-      const response = await fetch(`/api/proposals/${proposalId}/project`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) {
-        setError("No se pudo cargar el detalle del proyecto");
-        return;
-      }
-
-      const data = (await response.json()) as ProposalProjectDetails;
+      const data =
+        await proposalActions.fetchProposalProjectDetails(proposalId);
       setProposalProjectDetails((prev) => ({
         ...prev,
         [proposalId]: data,
       }));
-    } catch {
-      setError("No se pudo cargar el detalle del proyecto");
+    } catch (error) {
+      setError(
+        getErrorMessage(error, "No se pudo cargar el detalle del proyecto"),
+      );
     } finally {
       setProposalProjectLoadingId(null);
     }
@@ -637,27 +544,10 @@ function App() {
     setError(null);
 
     try {
-      const formData = new FormData();
-      Array.from(files).forEach((file) => formData.append("images", file));
-
-      const response = await fetch(
-        `/api/proposals/projects/${projectId}/updates/images`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        },
+      const uploadedPaths = await proposalActions.uploadProjectActivityImages(
+        projectId,
+        files,
       );
-
-      if (!response.ok) {
-        setError("No se pudieron subir las imagenes de actividad");
-        return;
-      }
-
-      const data = await response.json();
-      const uploadedPaths = Array.isArray(data.images)
-        ? data.images.map((img: string) => img.trim()).filter(Boolean)
-        : [];
 
       if (uploadedPaths.length > 0) {
         setProjectUpdateImagesInput((prev) => {
@@ -670,8 +560,13 @@ function App() {
         });
       }
       event.target.value = "";
-    } catch {
-      setError("No se pudieron subir las imagenes de actividad");
+    } catch (error) {
+      setError(
+        getErrorMessage(
+          error,
+          "No se pudieron subir las imagenes de actividad",
+        ),
+      );
     } finally {
       setUploadingProjectUpdateImages(false);
     }
@@ -698,27 +593,11 @@ function App() {
     setIsSubmittingProjectUpdate(true);
     setError(null);
     try {
-      const response = await fetch(
-        `/api/proposals/projects/${projectId}/updates`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            title: projectUpdateTitleInput.trim(),
-            description: projectUpdateDescriptionInput.trim(),
-            images,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudo guardar la actividad");
-        return;
-      }
+      await proposalActions.createProjectActivityUpdate(projectId, {
+        title: projectUpdateTitleInput.trim(),
+        description: projectUpdateDescriptionInput.trim(),
+        images,
+      });
 
       setProjectUpdateTitleInput("");
       setProjectUpdateDescriptionInput("");
@@ -726,8 +605,8 @@ function App() {
       setSuccessMessage("Actividad del proyecto registrada correctamente.");
       await fetchProposalProjectDetails(proposalId);
       await fetchProposals();
-    } catch {
-      setError("No se pudo guardar la actividad");
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudo guardar la actividad"));
     } finally {
       setIsSubmittingProjectUpdate(false);
     }
@@ -743,29 +622,18 @@ function App() {
     setIsUpdatingProjectStatus(true);
     setError(null);
     try {
-      const response = await fetch(
-        `/api/proposals/projects/${projectId}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ completedStatus }),
-        },
+      await proposalActions.updateProjectCompletedStatus(
+        projectId,
+        completedStatus,
       );
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudo actualizar el estado del proyecto");
-        return;
-      }
 
       setSuccessMessage("Estado del proyecto actualizado correctamente.");
       await fetchProposalProjectDetails(proposalId);
       await fetchProposals();
-    } catch {
-      setError("No se pudo actualizar el estado del proyecto");
+    } catch (error) {
+      setError(
+        getErrorMessage(error, "No se pudo actualizar el estado del proyecto"),
+      );
     } finally {
       setIsUpdatingProjectStatus(false);
     }
@@ -1053,6 +921,8 @@ function App() {
   };
   const isGreenSpacesRoute =
     route === "/green-spaces" || route.startsWith("/green-spaces/");
+  const isProjectsRoute =
+    route === "/projects" || route.startsWith("/projects/");
   const selectedGreenSpaceId = (() => {
     if (!route.startsWith("/green-spaces/")) return null;
     const id = Number(route.split("/")[2]);
@@ -1061,38 +931,65 @@ function App() {
   const selectedGreenSpace = selectedGreenSpaceId
     ? greenSpaces.find((space) => space.id === selectedGreenSpaceId) || null
     : null;
+  const selectedProjectId = (() => {
+    if (!route.startsWith("/projects/")) return null;
+    const id = Number(route.split("/")[2]);
+    return Number.isFinite(id) ? id : null;
+  })();
+  const selectedProjectEntry = selectedProjectId
+    ? projectEntries.find((entry) => entry.project.id === selectedProjectId) ||
+      null
+    : null;
   const pageTitle =
     route === "/"
       ? "Principal"
       : route === "/profile"
         ? "Mi perfil"
-        : route === "/proposals"
-          ? "Propuestas"
-          : route === "/projects"
-            ? "Proyectos"
-            : route === "/admin-users"
-              ? "Usuarios"
-              : route.startsWith("/green-spaces/")
-                ? "Detalle de area verde"
-                : route === "/green-spaces"
-                  ? "Areas verdes del campus"
-                  : "Principal";
+        : route.startsWith("/projects/")
+          ? "Detalle de proyecto"
+          : route === "/proposals"
+            ? "Propuestas"
+            : route === "/projects"
+              ? "Proyectos"
+              : route === "/admin-users"
+                ? "Usuarios"
+                : route.startsWith("/green-spaces/")
+                  ? "Detalle de area verde"
+                  : route === "/green-spaces"
+                    ? "Areas verdes del campus"
+                    : "Principal";
   const pageSubtitle =
     route === "/"
       ? "Resumen general de encuestas y areas verdes"
       : route === "/profile"
         ? "Actualiza tus datos personales"
-        : route === "/proposals"
-          ? "Consulta, valida y vota propuestas de mejora para areas verdes"
-          : route === "/projects"
-            ? "Consulta los proyectos generados a partir de propuestas aprobadas"
-            : route === "/admin-users"
-              ? "Gestion integral de usuarios del sistema"
-              : route.startsWith("/green-spaces/")
-                ? "Informacion completa, reseñas y sugerencias del espacio"
-                : route === "/green-spaces"
-                  ? "Registro y consulta de espacios verdes universitarios"
-                  : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
+        : route.startsWith("/projects/")
+          ? "Visualiza datos del proyecto y su historial de actividades"
+          : route === "/proposals"
+            ? "Consulta, valida y vota propuestas de mejora para areas verdes"
+            : route === "/projects"
+              ? "Consulta los proyectos generados a partir de propuestas aprobadas"
+              : route === "/admin-users"
+                ? "Gestion integral de usuarios del sistema"
+                : route.startsWith("/green-spaces/")
+                  ? "Informacion completa, reseñas y sugerencias del espacio"
+                  : route === "/green-spaces"
+                    ? "Registro y consulta de espacios verdes universitarios"
+                    : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
+
+  useEffect(() => {
+    if (!token || !route.startsWith("/projects/") || !selectedProjectEntry) {
+      return;
+    }
+
+    const proposalId = selectedProjectEntry.proposal.id;
+    const cachedDetails = proposalProjectDetails[proposalId];
+    if (cachedDetails?.project?.id === selectedProjectEntry.project.id) {
+      return;
+    }
+
+    fetchProposalProjectDetails(proposalId);
+  }, [route, token, selectedProjectEntry, proposalProjectDetails]);
 
   const resetAdminForm = () => {
     setEditingSurvey(null);
@@ -1245,6 +1142,14 @@ function App() {
 
   const closeCreateProposalModal = () => {
     setShowProposalModal(false);
+  };
+
+  const openProjectDetailPage = async (entry: ProjectListEntry) => {
+    setProjectUpdateTitleInput("");
+    setProjectUpdateDescriptionInput("");
+    setProjectUpdateImagesInput("");
+    navigate(`/projects/${entry.project.id}`);
+    await fetchProposalProjectDetails(entry.proposal.id);
   };
 
   const openProposalDetailsModal = async (proposal: Proposal) => {
@@ -1552,24 +1457,11 @@ function App() {
     setIsSubmittingProposal(true);
     setError(null);
     try {
-      const res = await fetch("/api/proposals", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: proposalTitleInput.trim(),
-          description: proposalDescriptionInput.trim(),
-          spaceId: proposalSpaceIdInput,
-        }),
+      await proposalActions.createProposal({
+        title: proposalTitleInput.trim(),
+        description: proposalDescriptionInput.trim(),
+        spaceId: proposalSpaceIdInput,
       });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "No se pudo registrar la propuesta");
-        return;
-      }
 
       setProposalTitleInput("");
       setProposalDescriptionInput("");
@@ -1578,8 +1470,8 @@ function App() {
         "Propuesta enviada. Queda pendiente de validacion administrativa.",
       );
       await fetchProposals();
-    } catch {
-      setError("No se pudo registrar la propuesta");
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudo registrar la propuesta"));
     } finally {
       setIsSubmittingProposal(false);
     }
@@ -1590,21 +1482,12 @@ function App() {
     setProposalActionLoadingId(proposalId);
     setError(null);
     try {
-      const res = await fetch(`/api/proposals/${proposalId}/votes`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "No se pudo votar la propuesta");
-        return;
-      }
+      await proposalActions.voteProposal(proposalId);
 
       setSuccessMessage("Voto registrado correctamente.");
       await fetchProposals();
-    } catch {
-      setError("No se pudo votar la propuesta");
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudo votar la propuesta"));
     } finally {
       setProposalActionLoadingId(null);
     }
@@ -1625,20 +1508,7 @@ function App() {
     }
 
     try {
-      const res = await fetch(`/api/proposals/${proposalId}/decision`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "No se pudo actualizar la propuesta");
-        return;
-      }
+      await proposalActions.decideProposal(proposalId, payload);
 
       setSuccessMessage(
         decision === "accepted"
@@ -1646,8 +1516,8 @@ function App() {
           : "Propuesta rechazada.",
       );
       await fetchProposals();
-    } catch {
-      setError("No se pudo actualizar la propuesta");
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudo actualizar la propuesta"));
     } finally {
       setProposalActionLoadingId(null);
     }
@@ -1658,21 +1528,12 @@ function App() {
     setProposalActionLoadingId(proposalId);
     setError(null);
     try {
-      const res = await fetch(`/api/proposals/${proposalId}/finalize`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "No se pudo finalizar la propuesta");
-        return;
-      }
+      await proposalActions.finalizeProposal(proposalId);
 
       setSuccessMessage("Proceso de votacion finalizado para la propuesta.");
       await fetchProposals();
-    } catch {
-      setError("No se pudo finalizar la propuesta");
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudo finalizar la propuesta"));
     } finally {
       setProposalActionLoadingId(null);
     }
@@ -3641,6 +3502,38 @@ function App() {
     );
   };
 
+  const renderProjectDetailSection = () => {
+    return (
+      <ProjectDetailSection
+        selectedProjectEntry={selectedProjectEntry}
+        selectedProjectId={selectedProjectId}
+        projectEntriesCount={projectEntries.length}
+        proposalProjectDetails={proposalProjectDetails}
+        proposalProjectLoadingId={proposalProjectLoadingId}
+        projectStatusDrafts={projectStatusDrafts}
+        setProjectStatusDrafts={setProjectStatusDrafts}
+        isUpdatingProjectStatus={isUpdatingProjectStatus}
+        isSubmittingProjectUpdate={isSubmittingProjectUpdate}
+        uploadingProjectUpdateImages={uploadingProjectUpdateImages}
+        projectUpdateTitleInput={projectUpdateTitleInput}
+        projectUpdateDescriptionInput={projectUpdateDescriptionInput}
+        projectUpdateImagesInput={projectUpdateImagesInput}
+        setProjectUpdateTitleInput={setProjectUpdateTitleInput}
+        setProjectUpdateDescriptionInput={setProjectUpdateDescriptionInput}
+        setProjectUpdateImagesInput={setProjectUpdateImagesInput}
+        onBack={() => navigate("/projects")}
+        onUpdateProjectCompletedStatus={updateProjectCompletedStatus}
+        onSubmitProjectActivityUpdate={submitProjectActivityUpdate}
+        onUploadProjectActivityImages={uploadProjectActivityImages}
+        getSpaceName={getSpaceName}
+        summarizeText={summarizeText}
+        formatUpdatedAt={formatUpdatedAt}
+        resolveAssetUrl={resolveAssetUrl}
+        userRole={user?.role}
+      />
+    );
+  };
+
   const renderAdminUsersSection = () => {
     const userColumns: DefaultTableColumn<AdminUser>[] = [
       {
@@ -3736,20 +3629,6 @@ function App() {
 
   const renderProposalsSection = () => {
     const isProjectsRoute = route === "/projects";
-    const statusLabel: Record<Proposal["status"], string> = {
-      draft: "Pendiente de validacion",
-      open: "Votacion abierta",
-      closed: "Cerrada sin aprobacion",
-      approved: "Aprobada por votacion",
-      rejected: "Rechazada por administracion",
-    };
-
-    const projectStatusLabel: Record<ProjectExecutionStatus, string> = {
-      not_created: "Sin proyecto",
-      planned: "Planned",
-      in_progress: "In progress",
-      completed: "Completed",
-    };
 
     const getSpaceName = (spaceId: number) => {
       const target = greenSpaces.find((space) => space.id === spaceId);
@@ -3757,326 +3636,38 @@ function App() {
     };
 
     if (isProjectsRoute) {
-      const summarizeText = (value: string, maxLength = 92) => {
-        const normalized = value.trim();
-        if (!normalized) return "Sin descripcion";
-        if (normalized.length <= maxLength) return normalized;
-        return `${normalized.slice(0, maxLength - 1)}...`;
-      };
-
-      const getLastActivityAt = (entry: ProjectListEntry) => {
-        const details = proposalProjectDetails[entry.proposal.id];
-        const latestUpdate = details?.updates?.[0];
-
-        return (
-          entry.latestUpdate?.createdAt ||
-          latestUpdate?.createdAt ||
-          entry.project.updatedAt ||
-          entry.proposal.updatedAt
-        );
-      };
-
-      const projectColumns: DefaultTableColumn<ProjectListEntry>[] = [
-        {
-          key: "projectTitle",
-          label: "Proyecto",
-          sortable: true,
-          sortValue: (entry) => entry.project.title,
-          render: (entry) => entry.project.title,
-        },
-        {
-          key: "space",
-          label: "Area",
-          sortable: true,
-          sortValue: (entry) => getSpaceName(entry.project.spaceId),
-          render: (entry) => getSpaceName(entry.project.spaceId),
-        },
-        {
-          key: "execution",
-          label: "Estado de ejecucion",
-          sortable: true,
-          sortValue: (entry) => entry.project.completedStatus,
-          render: (entry) => (
-            <span
-              className={`pill proposal-project-status ${entry.project.completedStatus}`}
-            >
-              {projectStatusLabel[entry.project.completedStatus]}
-            </span>
-          ),
-        },
-        {
-          key: "proposal",
-          label: "Propuesta origen",
-          sortable: true,
-          sortValue: (entry) => entry.proposal.title,
-          render: (entry) => entry.proposal.title,
-        },
-        {
-          key: "latestUpdate",
-          label: "Ultimo avance",
-          sortable: true,
-          sortValue: (entry) => getLastActivityAt(entry) || "",
-          render: (entry) => {
-            if (!entry.latestUpdate) {
-              return (
-                <span className="small muted">Sin actividades registradas</span>
-              );
-            }
-
-            const authorName =
-              entry.latestUpdate.createdBy?.name ||
-              entry.latestUpdate.createdBy?.username ||
-              "Administrador";
-
-            return (
-              <div className="project-latest-update">
-                <strong>{entry.latestUpdate.title || "Actividad"}</strong>
-                <p className="small muted">
-                  {summarizeText(entry.latestUpdate.description)}
-                </p>
-                <p className="small muted">
-                  {authorName} ·{" "}
-                  {formatUpdatedAt(entry.latestUpdate.createdAt || undefined)}
-                </p>
-              </div>
-            );
-          },
-        },
-        {
-          key: "lastActivity",
-          label: "Ultima actividad",
-          sortable: true,
-          sortValue: (entry) => getLastActivityAt(entry) || "",
-          render: (entry) =>
-            formatUpdatedAt(getLastActivityAt(entry) || undefined),
-        },
-        {
-          key: "actions",
-          label: "Acciones",
-          render: (entry) => (
-            <div className="table-actions">
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => openProposalDetailsModal(entry.proposal)}
-              >
-                Ver detalle
-              </button>
-            </div>
-          ),
-        },
-      ];
-
       return (
-        <section className="box admin-box">
-          <div className="admin-header">
-            <div>
-              <h2>Proyectos</h2>
-              <p>Proyectos creados desde propuestas aprobadas por votacion.</p>
-            </div>
-          </div>
-
-          <article className="principal-panel">
-            <h3>Listado de proyectos</h3>
-            <DefaultTable
-              rows={projectEntries}
-              columns={projectColumns}
-              getRowId={(entry) => entry.project.id}
-              getSearchText={(entry) =>
-                `${entry.project.title} ${entry.project.description} ${entry.project.completedStatus} ${entry.proposal.title} ${entry.proposal.description} ${entry.latestUpdate?.title || ""} ${entry.latestUpdate?.description || ""} ${getSpaceName(entry.project.spaceId)}`
-              }
-              emptyMessage="No hay proyectos visibles por el momento."
-              searchPlaceholder="Buscar por proyecto, propuesta, area o estado"
-            />
-          </article>
-          {renderProposalDetailsModal()}
-        </section>
+        <ProjectsListSection
+          projectEntries={projectEntries}
+          proposalProjectDetails={proposalProjectDetails}
+          onOpenProjectPage={openProjectDetailPage}
+          getSpaceName={getSpaceName}
+          formatUpdatedAt={formatUpdatedAt}
+        />
       );
     }
 
-    const filteredProposals = proposals.filter((proposal) => {
-      if (proposalStatusFilter === "all") return true;
-      return proposal.status === proposalStatusFilter;
-    });
-
-    const proposalColumns: DefaultTableColumn<Proposal>[] = [
-      {
-        key: "title",
-        label: "Titulo",
-        sortable: true,
-        sortValue: (proposal) => proposal.title,
-        render: (proposal) => proposal.title,
-      },
-      {
-        key: "space",
-        label: "Area",
-        sortable: true,
-        sortValue: (proposal) => getSpaceName(proposal.spaceId),
-        render: (proposal) => getSpaceName(proposal.spaceId),
-      },
-      {
-        key: "status",
-        label: "Estado",
-        sortable: true,
-        sortValue: (proposal) => proposal.status,
-        render: (proposal) => (
-          <span className={`pill proposal-status ${proposal.status}`}>
-            {statusLabel[proposal.status]}
-          </span>
-        ),
-      },
-      {
-        key: "votes",
-        label: "Votos",
-        sortable: true,
-        sortValue: (proposal) => proposal.totalVotes,
-        render: (proposal) => proposal.totalVotes,
-      },
-      {
-        key: "projectStatus",
-        label: "Estado del proyecto",
-        sortable: true,
-        sortValue: (proposal) =>
-          proposalProjectStatusByProposalId[proposal.id] || "not_created",
-        render: (proposal) => {
-          const projectStatus =
-            proposalProjectStatusByProposalId[proposal.id] || "not_created";
-          return (
-            <span className={`pill proposal-project-status ${projectStatus}`}>
-              {projectStatusLabel[projectStatus]}
-            </span>
-          );
-        },
-      },
-      {
-        key: "updatedAt",
-        label: "Actualizada",
-        sortable: true,
-        sortValue: (proposal) => proposal.updatedAt || "",
-        render: (proposal) => formatUpdatedAt(proposal.updatedAt || undefined),
-      },
-      {
-        key: "actions",
-        label: "Acciones",
-        render: (proposal) => {
-          const canVote =
-            user?.role === "regular" && proposal.status === "open";
-          const canManageDraft =
-            user?.role === "admin" && proposal.status === "draft";
-          const canFinalize =
-            user?.role === "admin" && proposal.status === "open";
-
-          return (
-            <div className="table-actions">
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => openProposalDetailsModal(proposal)}
-              >
-                Ver detalle
-              </button>
-              {canManageDraft && (
-                <button
-                  type="button"
-                  onClick={() => openProposalManageModal(proposal)}
-                >
-                  Editar
-                </button>
-              )}
-              {canVote && (
-                <button
-                  type="button"
-                  onClick={() => voteProposal(proposal.id)}
-                  disabled={proposalActionLoadingId === proposal.id}
-                >
-                  Votar
-                </button>
-              )}
-              {canFinalize && (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => finalizeProposal(proposal.id)}
-                  disabled={proposalActionLoadingId === proposal.id}
-                >
-                  Finalizar
-                </button>
-              )}
-            </div>
-          );
-        },
-      },
-    ];
-
     return (
-      <section className="box admin-box">
-        <div className="admin-header">
-          <div>
-            <h2>Propuestas de mejora</h2>
-            <p>
-              Los usuarios registran propuestas para areas verdes y se aprueban
-              mediante votacion.
-            </p>
-          </div>
-        </div>
-
-        <article className="principal-panel">
-          <h3>Listado de propuestas</h3>
-          <div className="proposal-filter-row">
-            <button
-              type="button"
-              className={
-                proposalStatusFilter === "all" ? "secondary" : undefined
-              }
-              onClick={() => setProposalStatusFilter("all")}
-            >
-              Todas
-            </button>
-            <button
-              type="button"
-              className={
-                proposalStatusFilter === "open" ? "secondary" : undefined
-              }
-              onClick={() => setProposalStatusFilter("open")}
-            >
-              Votacion abierta
-            </button>
-            <button
-              type="button"
-              className={
-                proposalStatusFilter === "draft" ? "secondary" : undefined
-              }
-              onClick={() => setProposalStatusFilter("draft")}
-            >
-              Pendientes
-            </button>
-            <button
-              type="button"
-              className={
-                proposalStatusFilter === "approved" ? "secondary" : undefined
-              }
-              onClick={() => setProposalStatusFilter("approved")}
-            >
-              Aprobadas
-            </button>
-          </div>
-          <DefaultTable
-            rows={filteredProposals}
-            columns={proposalColumns}
-            getRowId={(proposal) => proposal.id}
-            getSearchText={(proposal) =>
-              `${proposal.title} ${proposal.description} ${proposal.status} ${getSpaceName(proposal.spaceId)}`
-            }
-            emptyMessage="No hay propuestas visibles por el momento."
-            searchPlaceholder="Buscar por titulo, descripcion o estado"
-            onAdd={openCreateProposalModal}
-            addButtonLabel="Nueva propuesta"
-          />
-        </article>
+      <>
+        <ProposalsListSection
+          proposals={proposals}
+          proposalStatusFilter={proposalStatusFilter}
+          setProposalStatusFilter={setProposalStatusFilter}
+          proposalProjectStatusByProposalId={proposalProjectStatusByProposalId}
+          proposalActionLoadingId={proposalActionLoadingId}
+          userRole={user?.role}
+          getSpaceName={getSpaceName}
+          formatUpdatedAt={formatUpdatedAt}
+          onOpenCreateProposalModal={openCreateProposalModal}
+          onOpenProposalDetailsModal={openProposalDetailsModal}
+          onOpenProposalManageModal={openProposalManageModal}
+          onVoteProposal={voteProposal}
+          onFinalizeProposal={finalizeProposal}
+        />
         {renderProposalCreateModal()}
         {renderProposalDetailsModal()}
         {renderProposalManageModal()}
-      </section>
+      </>
     );
   };
 
@@ -4205,6 +3796,10 @@ function App() {
 
     if (route.startsWith("/green-spaces/")) {
       return renderGreenSpaceDetailSection();
+    }
+
+    if (route.startsWith("/projects/")) {
+      return renderProjectDetailSection();
     }
 
     if (route === "/green-spaces") {
@@ -4480,7 +4075,7 @@ function App() {
           </button>
           <button
             type="button"
-            className={route === "/projects" ? "active" : ""}
+            className={isProjectsRoute ? "active" : ""}
             onClick={openProjects}
           >
             Proyectos

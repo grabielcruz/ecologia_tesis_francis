@@ -21,6 +21,30 @@ export interface GreenSpaceSeed {
   images: string[];
 }
 
+export interface ProposalSeed {
+  title: string;
+  description: string;
+  status: "draft" | "open" | "closed" | "approved" | "rejected";
+  voting_starts: string | null;
+  voting_ends: string | null;
+  username: string;
+  green_space_name: string;
+}
+
+export interface VoteOfProposalSeed {
+  proposal_title: string;
+  username: string;
+  created_at: string;
+}
+
+export interface ProjectOfProposalSeed {
+  title: string;
+  description: string;
+  completed_status: "planned" | "in_progress" | "completed";
+  proposal_title: string;
+  green_space_name: string;
+}
+
 export const roleSeeds: RoleSeed[] = [
   {
     role_name: "admin",
@@ -46,6 +70,33 @@ export const userSeeds: UserSeed[] = [
     name: "Regular User",
     email: "user@greenmetric.local",
     username: "regular.user",
+    password: "user123",
+    avatar_url: "",
+    is_active: true,
+    role_name: "regular",
+  },
+  {
+    name: "Daniela Torres",
+    email: "daniela@greenmetric.local",
+    username: "daniela.t",
+    password: "user123",
+    avatar_url: "",
+    is_active: true,
+    role_name: "regular",
+  },
+  {
+    name: "Mateo Rios",
+    email: "mateo@greenmetric.local",
+    username: "mateo.rios",
+    password: "user123",
+    avatar_url: "",
+    is_active: true,
+    role_name: "regular",
+  },
+  {
+    name: "Laura Campos",
+    email: "laura@greenmetric.local",
+    username: "laura.campos",
     password: "user123",
     avatar_url: "",
     is_active: true,
@@ -125,5 +176,138 @@ export const greenSpaceSeeds: GreenSpaceSeed[] = [
       "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1502085671122-2d218cd434e6?auto=format&fit=crop&w=1200&q=80",
     ],
+  },
+];
+
+export const proposalSeeds: ProposalSeed[] = [
+  {
+    title: "Huerto comunitario estudiantil",
+    description:
+      "Implementar un huerto comunitario para actividades de aprendizaje y alimentacion sostenible.",
+    status: "open",
+    voting_starts: "2026-09-01T09:00:00.000Z",
+    voting_ends: "2026-09-20T18:00:00.000Z",
+    username: "regular.user",
+    green_space_name: "Jardín Central",
+  },
+  {
+    title: "Reforestacion de sendero norte",
+    description:
+      "Plantar especies nativas para recuperar zonas erosionadas del sendero peatonal.",
+    status: "open",
+    voting_starts: "2026-09-02T10:00:00.000Z",
+    voting_ends: "2026-09-25T20:00:00.000Z",
+    username: "daniela.t",
+    green_space_name: "Sendero Verde",
+  },
+  {
+    title: "Sistema de riego por goteo",
+    description:
+      "Instalar riego por goteo en el area central para mejorar uso eficiente de agua.",
+    status: "approved",
+    voting_starts: "2026-08-01T08:00:00.000Z",
+    voting_ends: "2026-08-10T18:00:00.000Z",
+    username: "mateo.rios",
+    green_space_name: "Parque de la Facultad",
+  },
+  {
+    title: "Mobiliario con sombra natural",
+    description:
+      "Agregar bancas de madera y arboles de copa amplia en zonas de descanso estudiantil.",
+    status: "approved",
+    voting_starts: "2026-08-03T08:00:00.000Z",
+    voting_ends: "2026-08-18T18:00:00.000Z",
+    username: "laura.campos",
+    green_space_name: "Área de descanso Estudiantil",
+  },
+  {
+    title: "Jornadas de limpieza mensual",
+    description:
+      "Organizar jornadas mensuales para retiro de residuos y clasificacion de reciclables.",
+    status: "rejected",
+    voting_starts: null,
+    voting_ends: null,
+    username: "regular.user",
+    green_space_name: "Bosque Universitario",
+  },
+];
+
+export const voteOfProposalSeeds: VoteOfProposalSeed[] = [
+  {
+    proposal_title: "Huerto comunitario estudiantil",
+    username: "daniela.t",
+    created_at: "2026-09-03T12:10:00.000Z",
+  },
+  {
+    proposal_title: "Huerto comunitario estudiantil",
+    username: "mateo.rios",
+    created_at: "2026-09-03T12:22:00.000Z",
+  },
+  {
+    proposal_title: "Huerto comunitario estudiantil",
+    username: "laura.campos",
+    created_at: "2026-09-03T12:35:00.000Z",
+  },
+  {
+    proposal_title: "Reforestacion de sendero norte",
+    username: "regular.user",
+    created_at: "2026-09-04T09:10:00.000Z",
+  },
+  {
+    proposal_title: "Reforestacion de sendero norte",
+    username: "mateo.rios",
+    created_at: "2026-09-04T09:25:00.000Z",
+  },
+  {
+    proposal_title: "Sistema de riego por goteo",
+    username: "regular.user",
+    created_at: "2026-08-05T11:00:00.000Z",
+  },
+  {
+    proposal_title: "Sistema de riego por goteo",
+    username: "daniela.t",
+    created_at: "2026-08-05T11:12:00.000Z",
+  },
+  {
+    proposal_title: "Sistema de riego por goteo",
+    username: "laura.campos",
+    created_at: "2026-08-05T11:26:00.000Z",
+  },
+  {
+    proposal_title: "Mobiliario con sombra natural",
+    username: "regular.user",
+    created_at: "2026-08-08T15:00:00.000Z",
+  },
+  {
+    proposal_title: "Mobiliario con sombra natural",
+    username: "mateo.rios",
+    created_at: "2026-08-08T15:20:00.000Z",
+  },
+];
+
+export const projectOfProposalSeeds: ProjectOfProposalSeed[] = [
+  {
+    title: "Implementacion inicial de riego",
+    description:
+      "Inicio de obra con instalacion de lineas principales y valvulas en zonas prioritarias.",
+    completed_status: "in_progress",
+    proposal_title: "Sistema de riego por goteo",
+    green_space_name: "Parque de la Facultad",
+  },
+  {
+    title: "Zona de descanso bajo sombra",
+    description:
+      "Construccion de bancas, sendero de acceso y plantacion complementaria de arboles.",
+    completed_status: "planned",
+    proposal_title: "Mobiliario con sombra natural",
+    green_space_name: "Área de descanso Estudiantil",
+  },
+  {
+    title: "Piloto de huerto comunitario",
+    description:
+      "Proyecto piloto con camas de cultivo, compostera y señaletica educativa.",
+    completed_status: "planned",
+    proposal_title: "Huerto comunitario estudiantil",
+    green_space_name: "Jardín Central",
   },
 ];

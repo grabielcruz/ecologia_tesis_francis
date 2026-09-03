@@ -199,6 +199,31 @@ describe("proposal routes", () => {
     expect(VoteOfProposal.create).toHaveBeenCalled();
   });
 
+  it("allows a regular user to vote after voting end until admin finalizes", async () => {
+    const proposal = makeProposalRow(
+      "open",
+      new Date(Date.now() - 1000 * 60 * 60),
+      new Date(Date.now() - 1000 * 60),
+    );
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+    vi.mocked(VoteOfProposal.findOne).mockResolvedValue(null as never);
+    vi.mocked(VoteOfProposal.count).mockResolvedValue(2 as never);
+
+    const response = await request(app)
+      .post("/api/proposals/3/votes")
+      .set("Authorization", "Bearer any-token")
+      .send({});
+
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({
+      ok: true,
+      proposalId: 3,
+      totalVotes: 2,
+    });
+  });
+
   it("rejects voting when proposal is not open", async () => {
     const proposal = makeProposalRow();
     vi.mocked(proposal.getDataValue).mockImplementation((key: string) => {
@@ -330,6 +355,39 @@ describe("proposal routes", () => {
     );
   });
 
+  it("allows admin to finalize voting before voting end date", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const proposal = makeProposalRow(
+      "open",
+      new Date(Date.now() - 1000 * 60),
+      new Date(Date.now() + 1000 * 60 * 60),
+    );
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+    vi.mocked(ProjectOfProposal.findOne).mockResolvedValue(null as never);
+    vi.mocked(VoteOfProposal.count).mockResolvedValue(3 as never);
+    vi.mocked(ProjectOfProposal.create).mockResolvedValue(
+      makeProjectRow() as never,
+    );
+
+    const response = await request(app)
+      .post("/api/proposals/3/finalize")
+      .set("Authorization", "Bearer any-token")
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body.proposal.status).toBe("approved");
+    expect(response.body.project).toMatchObject({
+      id: 9,
+      proposalId: 3,
+    });
+  });
+
   it("does not create project on finalize when there are no approval votes", async () => {
     vi.mocked(jwt.verify).mockReturnValue({
       user_id: 1,
@@ -366,9 +424,9 @@ describe("proposal routes", () => {
     vi.mocked(ProjectOfProposal.findOne).mockResolvedValue(
       makeProjectRow() as never,
     );
-    vi.mocked(ProjectUpdateOfProposal.findAll).mockResolvedValue(
-      [makeProjectUpdateRow()] as never,
-    );
+    vi.mocked(ProjectUpdateOfProposal.findAll).mockResolvedValue([
+      makeProjectUpdateRow(),
+    ] as never);
 
     const response = await request(app)
       .get("/api/proposals/3/project")

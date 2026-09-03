@@ -652,13 +652,6 @@ TreeInventory.belongsTo(GreenSpace, { foreignKey: "space_id" });
 TreeType.hasMany(TreeInventory, { foreignKey: "type_id" });
 TreeInventory.belongsTo(TreeType, { foreignKey: "type_id" });
 
-const alignProposalSchema = async () => {
-  // Keep existing SQLite files compatible with newer proposal/project fields.
-  await ProposalOfGreenArea.sync({ alter: true });
-  await ProjectOfProposal.sync({ alter: true });
-  await ProjectUpdateOfProposal.sync({ alter: true });
-};
-
 const enforceFixedRoles = async () => {
   const fixedRoles = [
     { role_name: "admin", description: "System administrator" },
@@ -717,7 +710,6 @@ const enforceFixedRoles = async () => {
 export const initializeDatabase = async () => {
   try {
     await sequelize.sync();
-    await alignProposalSchema();
     await enforceFixedRoles();
   } catch (err) {
     console.error("Database sync failed:", err);
