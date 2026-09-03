@@ -140,6 +140,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [registerName, setRegisterName] = useState("");
   const [token, setToken] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [route, setRoute] = useState(window.location.pathname);
   const [user, setUser] = useState<{
     id: number;
@@ -407,12 +408,16 @@ function App() {
       }
     }
 
+    setAuthReady(true);
+
     const handlePopState = () => setRoute(window.location.pathname);
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
+
     if (route === "/login" || route === "/register") {
       if (token) {
         navigate("/", true);
@@ -423,7 +428,7 @@ function App() {
     if (!token) {
       navigate("/login", true);
     }
-  }, [route, token]);
+  }, [authReady, route, token]);
 
   useEffect(() => {
     if (!token) return;
@@ -1943,13 +1948,13 @@ function App() {
   const cancelProfileEditing = () => {
     loadProfileForm();
     setError(null);
-    setShowProfileEditModal(false);
+    setIsProfileEditing(false);
   };
 
   const openProfileEditModal = () => {
     loadProfileForm();
     setError(null);
-    setShowProfileEditModal(true);
+    setIsProfileEditing(true);
   };
 
   const updateProfile = async () => {
@@ -1985,7 +1990,7 @@ function App() {
       localStorage.setItem("user", JSON.stringify(updated));
       setError(null);
       setSuccessMessage("Perfil actualizado correctamente.");
-      setShowProfileEditModal(false);
+      setIsProfileEditing(false);
     } catch {
       setError("No se pudo actualizar el perfil");
     }
@@ -2224,7 +2229,7 @@ function App() {
   const renderProfileEditModal = () => {
     return (
       <ProfileForm
-        isOpen={showProfileEditModal}
+        isOpen={isProfileEditing}
         profileName={profileName}
         profileUsername={profileUsername}
         profileEmail={profileEmail}
