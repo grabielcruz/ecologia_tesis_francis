@@ -176,33 +176,27 @@ export function ProjectDetailSection({
 
       <article className="principal-panel">
         <h3>Datos del proyecto</h3>
-        <div className="field-row">
-          <label>
-            Proyecto
-            <input value={project.title} readOnly disabled />
-          </label>
-          <label>
-            Estado de ejecucion
-            <input
-              value={statusLabel[project.completedStatus]}
-              readOnly
-              disabled
-            />
-          </label>
-        </div>
-        <label>
-          Descripcion del proyecto
-          <textarea value={project.description} readOnly disabled />
-        </label>
-        <div className="field-row">
-          <label>
-            Area verde
-            <input value={getSpaceName(project.spaceId)} readOnly disabled />
-          </label>
-          <label>
-            Propuesta origen
-            <input value={proposal.title} readOnly disabled />
-          </label>
+        <div className="details-grid">
+          <div className="details-item">
+            <span>Proyecto</span>
+            <strong>{project.title}</strong>
+          </div>
+          <div className="details-item">
+            <span>Estado de ejecucion</span>
+            <strong>{statusLabel[project.completedStatus]}</strong>
+          </div>
+          <div className="details-item full-width">
+            <span>Descripcion del proyecto</span>
+            <strong>{project.description}</strong>
+          </div>
+          <div className="details-item">
+            <span>Area verde</span>
+            <strong>{getSpaceName(project.spaceId)}</strong>
+          </div>
+          <div className="details-item">
+            <span>Propuesta origen</span>
+            <strong>{proposal.title}</strong>
+          </div>
         </div>
 
         {userRole === "admin" && (

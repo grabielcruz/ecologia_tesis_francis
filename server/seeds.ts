@@ -1,8 +1,11 @@
 import bcrypt from "bcryptjs";
 import {
   GreenSpace,
+  GreenSpaceReview,
   ProjectOfProposal,
+  ProjectUpdateOfProposal,
   ProposalOfGreenArea,
+  ReportOfGreenArea,
   Role,
   User,
   VoteOfProposal,
@@ -10,8 +13,11 @@ import {
 } from "./models";
 import {
   greenSpaceSeeds,
+  greenSpaceReviewSeeds,
   projectOfProposalSeeds,
+  projectUpdateOfProposalSeeds,
   proposalSeeds,
+  reportOfGreenAreaSeeds,
   roleSeeds,
   userSeeds,
   voteOfProposalSeeds,
@@ -33,6 +39,7 @@ export async function seedDatabase() {
   const userIdByUsername: Record<string, number> = {};
   const spaceIdByName: Record<string, number> = {};
   const proposalIdByTitle: Record<string, number> = {};
+  const projectIdByTitle: Record<string, number> = {};
   const proposalById: Record<number, ProposalOfGreenArea> = {};
 
   for (const role of roleSeeds) {
@@ -75,6 +82,58 @@ export async function seedDatabase() {
     spaceIdByName[greenSpaceSeed.name] = Number(
       createdGreenSpace.getDataValue("space_id"),
     );
+  }
+
+  for (const reviewSeed of greenSpaceReviewSeeds) {
+    const spaceId = spaceIdByName[reviewSeed.green_space_name];
+    if (!spaceId) {
+      throw new Error(
+        `Green space not found for review seed: ${reviewSeed.green_space_name}`,
+      );
+    }
+
+    const userId = userIdByUsername[reviewSeed.username];
+    if (!userId) {
+      throw new Error(`User not found for review seed: ${reviewSeed.username}`);
+    }
+
+    const createdAt = new Date(reviewSeed.created_at);
+
+    await GreenSpaceReview.create({
+      space_id: spaceId,
+      user_id: userId,
+      review_notes: reviewSeed.review_notes,
+      rating: reviewSeed.rating,
+      created_at: createdAt,
+      updated_at: createdAt,
+    });
+  }
+
+  for (const reportSeed of reportOfGreenAreaSeeds) {
+    const spaceId = spaceIdByName[reportSeed.green_space_name];
+    if (!spaceId) {
+      throw new Error(
+        `Green space not found for report seed: ${reportSeed.green_space_name}`,
+      );
+    }
+
+    const userId = userIdByUsername[reportSeed.username];
+    if (!userId) {
+      throw new Error(`User not found for report seed: ${reportSeed.username}`);
+    }
+
+    const createdAt = new Date(reportSeed.created_at);
+
+    await ReportOfGreenArea.create({
+      title: reportSeed.title,
+      description: reportSeed.description,
+      url_images: JSON.stringify(reportSeed.url_images),
+      state: reportSeed.state,
+      user_id: userId,
+      space_id: spaceId,
+      created_at: createdAt,
+      updated_at: createdAt,
+    });
   }
 
   for (const proposalSeed of proposalSeeds) {
@@ -172,7 +231,7 @@ export async function seedDatabase() {
       );
     }
 
-    await ProjectOfProposal.create({
+    const createdProject = await ProjectOfProposal.create({
       title: projectSeed.title,
       description: projectSeed.description,
       completed_status: projectSeed.completed_status,
@@ -181,10 +240,42 @@ export async function seedDatabase() {
       created_at: new Date(),
       updated_at: new Date(),
     });
+
+    projectIdByTitle[projectSeed.title] = Number(
+      createdProject.getDataValue("project_of_proposal_id"),
+    );
+  }
+
+  for (const projectUpdateSeed of projectUpdateOfProposalSeeds) {
+    const projectId = projectIdByTitle[projectUpdateSeed.project_title];
+    if (!projectId) {
+      throw new Error(
+        `Project not found for project update seed: ${projectUpdateSeed.project_title}`,
+      );
+    }
+
+    const userId = userIdByUsername[projectUpdateSeed.username];
+    if (!userId) {
+      throw new Error(
+        `User not found for project update seed: ${projectUpdateSeed.username}`,
+      );
+    }
+
+    const createdAt = new Date(projectUpdateSeed.created_at);
+
+    await ProjectUpdateOfProposal.create({
+      title: projectUpdateSeed.title,
+      description: projectUpdateSeed.description,
+      activity_images: JSON.stringify(projectUpdateSeed.activity_images),
+      project_of_proposal_id: projectId,
+      user_id: userId,
+      created_at: createdAt,
+      updated_at: createdAt,
+    });
   }
 
   console.log(
-    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${greenSpaceSeeds.length} green spaces, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes and ${projectOfProposalSeeds.length} projects created.`,
+    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${reportOfGreenAreaSeeds.length} reports, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
   );
 }
 

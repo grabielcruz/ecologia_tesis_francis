@@ -1,10 +1,20 @@
 import { FormEvent, useEffect, useState } from "react";
 import { AppModal } from "./components/AppModal";
 import { DefaultTable, DefaultTableColumn } from "./components/DefaultTable";
+import { ImageCarousel } from "./components/ImageCarousel";
+import { GreenSpaceDetailsModal } from "./components/greenSpaces/GreenSpaceDetailsModal";
+import { ProfileForm } from "./components/profile/ProfileForm";
+import { ProfilePage } from "./components/profile/ProfilePage";
 import { ProjectDetailSection } from "./components/projects/ProjectDetailSection";
 import { ProjectsListSection } from "./components/projects/ProjectsListSection";
+import { ProposalDetailsModal } from "./components/proposals/ProposalDetailsModal";
+import { ProposalManageModal } from "./components/proposals/ProposalManageModal";
 import { ProposalsListSection } from "./components/proposals/ProposalsListSection";
+import { Report } from "./components/reports/Report";
+import { Reports } from "./components/reports/Reports";
+import { UserDetailsModal } from "./components/users/UserDetailsModal";
 import { useProposalActions } from "./hooks/useProposalActions";
+import { useReports } from "./features/reports/useReports";
 import {
   ProjectExecutionStatus,
   ProjectListEntry,
@@ -180,7 +190,7 @@ function App() {
       const updatedUser = { ...(user as any), avatarUrl: data.avatarUrl };
       setUser(updatedUser as any);
       localStorage.setItem("user", JSON.stringify(updatedUser));
-    } catch (err) {
+    } catch {
       setError("Error al subir la imagen");
     }
   };
@@ -322,9 +332,40 @@ function App() {
     proposalProjectStatusByProposalId,
     setProposalProjectStatusByProposalId,
   ] = useState<Record<number, ProjectExecutionStatus>>({});
-  const [activeGreenSpaceImageIndex, setActiveGreenSpaceImageIndex] = useState<
-    Record<number, number>
-  >({});
+  const {
+    reports,
+    reportStateFilter,
+    reportTitleInput,
+    reportDescriptionInput,
+    reportSpaceIdInput,
+    reportImagesInput,
+    uploadingReportImages,
+    isSubmittingReport,
+    showReportCreateModal,
+    showReportEditModal,
+    editingReportStateInput,
+    selectedReportId,
+    selectedReport,
+    setReportStateFilter,
+    setReportTitleInput,
+    setReportDescriptionInput,
+    setReportSpaceIdInput,
+    setEditingReportStateInput,
+    openCreateReportModal,
+    closeCreateReportModal,
+    openEditReportModal,
+    closeEditReportModal,
+    uploadReportImages,
+    saveReport,
+    deleteReport,
+    completeReport,
+  } = useReports({
+    token,
+    route,
+    greenSpaces,
+    setError,
+    setSuccessMessage,
+  });
   const proposalActions = useProposalActions(token);
   const spaceImagePreviewList = spaceImagesInput
     .split("\n")
@@ -859,6 +900,12 @@ function App() {
     });
   };
 
+  const summarizeText = (value: string, maxLength = 120) => {
+    const normalized = (value || "").trim();
+    if (normalized.length <= maxLength) return normalized;
+    return `${normalized.slice(0, maxLength).trimEnd()}...`;
+  };
+
   const answeredPolls = surveys.filter((survey) =>
     Boolean(pollAnswers[survey.id]),
   ).length;
@@ -923,6 +970,7 @@ function App() {
     route === "/green-spaces" || route.startsWith("/green-spaces/");
   const isProjectsRoute =
     route === "/projects" || route.startsWith("/projects/");
+  const isReportsRoute = route === "/reports" || route.startsWith("/reports/");
   const selectedGreenSpaceId = (() => {
     if (!route.startsWith("/green-spaces/")) return null;
     const id = Number(route.split("/")[2]);
@@ -945,12 +993,16 @@ function App() {
       ? "Principal"
       : route === "/profile"
         ? "Mi perfil"
+        : route.startsWith("/reports/")
+          ? "Detalle de reporte"
         : route.startsWith("/projects/")
           ? "Detalle de proyecto"
           : route === "/proposals"
             ? "Propuestas"
             : route === "/projects"
               ? "Proyectos"
+              : route === "/reports"
+                ? "Reportes de areas verdes"
               : route === "/admin-users"
                 ? "Usuarios"
                 : route.startsWith("/green-spaces/")
@@ -963,12 +1015,16 @@ function App() {
       ? "Resumen general de encuestas y areas verdes"
       : route === "/profile"
         ? "Actualiza tus datos personales"
+        : route.startsWith("/reports/")
+          ? "Consulta la informacion completa del reporte y sus imagenes"
         : route.startsWith("/projects/")
           ? "Visualiza datos del proyecto y su historial de actividades"
           : route === "/proposals"
             ? "Consulta, valida y vota propuestas de mejora para areas verdes"
             : route === "/projects"
               ? "Consulta los proyectos generados a partir de propuestas aprobadas"
+              : route === "/reports"
+                ? "Registra, actualiza y sigue reportes de quejas o sugerencias"
               : route === "/admin-users"
                 ? "Gestion integral de usuarios del sistema"
                 : route.startsWith("/green-spaces/")
@@ -1588,17 +1644,23 @@ function App() {
 
   const renderAverageStars = (average: number) => {
     const safeAverage = Math.max(0, Math.min(5, average || 0));
-    const fillPercent = (safeAverage / 5) * 100;
+    const stars = [1, 2, 3, 4, 5].map((value) => {
+      const diff = safeAverage - (value - 1);
+      if (diff >= 1) return "full";
+      if (diff >= 0.5) return "half";
+      return "empty";
+    });
 
     return (
       <div
         className="avg-stars"
         aria-label={`Calificacion promedio ${safeAverage.toFixed(1)} de 5`}
       >
-        <span className="stars-base">★★★★★</span>
-        <span className="stars-fill" style={{ width: `${fillPercent}%` }}>
-          ★★★★★
-        </span>
+        {stars.map((tone, index) => (
+          <span key={index} className={`avg-star ${tone}`} aria-hidden="true">
+            ★
+          </span>
+        ))}
       </div>
     );
   };
@@ -1792,63 +1854,13 @@ function App() {
   };
 
   const renderUserDetailsModal = () => {
-    if (!showUserDetailsModal) return null;
-
     const targetUser = adminUsers.find((entry) => entry.id === detailsUserId);
-    if (!targetUser) return null;
-
     return (
-      <AppModal
+      <UserDetailsModal
         isOpen={showUserDetailsModal}
+        user={targetUser || null}
         onClose={closeUserDetailsModal}
-        title="Detalle de usuario"
-        description="Informacion completa del registro seleccionado."
-      >
-        <div className="admin-form">
-          <div className="field-row">
-            <label>
-              Nombre
-              <input value={targetUser.name} readOnly disabled />
-            </label>
-            <label>
-              Usuario
-              <input value={targetUser.username} readOnly disabled />
-            </label>
-          </div>
-
-          <div className="field-row">
-            <label>
-              Correo
-              <input value={targetUser.email} readOnly disabled />
-            </label>
-            <label>
-              Rol
-              <input value={targetUser.roleName} readOnly disabled />
-            </label>
-          </div>
-
-          <div className="field-row">
-            <label>
-              Estado
-              <input
-                value={targetUser.isActive ? "Activo" : "Inactivo"}
-                readOnly
-                disabled
-              />
-            </label>
-          </div>
-
-          <div className="button-row user-modal-actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={closeUserDetailsModal}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </AppModal>
+      />
     );
   };
 
@@ -1920,7 +1932,6 @@ function App() {
     setProfileUsername(user.username);
     setProfileEmail(user.email);
     setProfileAvatarUrl(resolveAvatarUrl(user.avatarUrl));
-    setIsProfileEditing(false);
   };
 
   useEffect(() => {
@@ -1932,6 +1943,13 @@ function App() {
   const cancelProfileEditing = () => {
     loadProfileForm();
     setError(null);
+    setShowProfileEditModal(false);
+  };
+
+  const openProfileEditModal = () => {
+    loadProfileForm();
+    setError(null);
+    setShowProfileEditModal(true);
   };
 
   const updateProfile = async () => {
@@ -1967,7 +1985,7 @@ function App() {
       localStorage.setItem("user", JSON.stringify(updated));
       setError(null);
       setSuccessMessage("Perfil actualizado correctamente.");
-      navigate("/");
+      setShowProfileEditModal(false);
     } catch {
       setError("No se pudo actualizar el perfil");
     }
@@ -2191,104 +2209,37 @@ function App() {
   }
 
   const renderProfileSection = () => (
-    <section className="box profile-box">
-      <h2>Mi perfil</h2>
-      <div className="profile-avatar-row">
-        <div className="profile-avatar-preview">
-          <img
-            src={profileAvatarUrl || "/default-avatar.svg"}
-            alt="Avatar preview"
-          />
-        </div>
-        <div className="profile-avatar-controls">
-          <label className="small">Subir imagen</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarFile}
-            disabled={!isProfileEditing}
-          />
-          <p className="muted">
-            O pega una URL en el campo Avatar URL más abajo.
-          </p>
-        </div>
-      </div>
-      <label>
-        Nombre completo
-        <input
-          value={profileName}
-          onChange={(e) => setProfileName(e.target.value)}
-          readOnly={!isProfileEditing}
-          disabled={!isProfileEditing}
-        />
-      </label>
-      <label>
-        Nombre de usuario
-        <input
-          value={profileUsername}
-          onChange={(e) => setProfileUsername(e.target.value)}
-          readOnly={!isProfileEditing}
-          disabled={!isProfileEditing}
-        />
-      </label>
-      <label>
-        Correo
-        <input
-          value={profileEmail}
-          onChange={(e) => setProfileEmail(e.target.value)}
-          readOnly={!isProfileEditing}
-          disabled={!isProfileEditing}
-        />
-      </label>
-      <label>
-        Avatar URL
-        <input
-          value={profileAvatarUrl}
-          onChange={(e) => setProfileAvatarUrl(e.target.value)}
-          placeholder="https://..."
-          readOnly={!isProfileEditing}
-          disabled={!isProfileEditing}
-        />
-      </label>
-      <div className="button-row">
-        {!isProfileEditing ? (
-          <button type="button" onClick={() => setIsProfileEditing(true)}>
-            Editar perfil
-          </button>
-        ) : (
-          <>
-            <button type="button" onClick={updateProfile}>
-              Guardar cambios
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={cancelProfileEditing}
-            >
-              Cancelar
-            </button>
-          </>
-        )}
-        {isProfileEditing && (
-          <button
-            type="button"
-            className="secondary"
-            onClick={openPasswordModal}
-          >
-            Cambiar contraseña
-          </button>
-        )}
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => navigate("/")}
-        >
-          Volver
-        </button>
-      </div>
-      {error && <p className="error">{error}</p>}
-    </section>
+    <ProfilePage
+      name={user?.name || ""}
+      username={user?.username || ""}
+      email={user?.email || ""}
+      avatarUrl={resolveAvatarUrl(user?.avatarUrl) || "/default-avatar.svg"}
+      onEdit={openProfileEditModal}
+      onChangePassword={openPasswordModal}
+      onBack={() => navigate("/")}
+      error={error}
+    />
   );
+
+  const renderProfileEditModal = () => {
+    return (
+      <ProfileForm
+        isOpen={showProfileEditModal}
+        profileName={profileName}
+        profileUsername={profileUsername}
+        profileEmail={profileEmail}
+        profileAvatarUrl={profileAvatarUrl}
+        error={error}
+        onClose={cancelProfileEditing}
+        onSave={updateProfile}
+        onAvatarFile={handleAvatarFile}
+        setProfileName={setProfileName}
+        setProfileUsername={setProfileUsername}
+        setProfileEmail={setProfileEmail}
+        setProfileAvatarUrl={setProfileAvatarUrl}
+      />
+    );
+  };
 
   const renderPasswordModal = () => {
     if (!showPasswordModal) return null;
@@ -2708,50 +2659,13 @@ function App() {
   };
 
   const renderGreenSpaceDetailsModal = () => {
-    if (!showGreenSpaceDetailsModal) return null;
-
     const space = greenSpaces.find((entry) => entry.id === greenSpaceDetailsId);
-    if (!space) return null;
-
     return (
-      <AppModal
+      <GreenSpaceDetailsModal
         isOpen={showGreenSpaceDetailsModal}
+        greenSpace={space || null}
         onClose={closeGreenSpaceDetailsModal}
-        title="Detalle de area verde"
-        description={space.name}
-      >
-        <div className="admin-form">
-          <div className="field-row">
-            <label>
-              Nombre
-              <input value={space.name} readOnly disabled />
-            </label>
-            <label>
-              Ubicacion
-              <input value={space.location} readOnly disabled />
-            </label>
-          </div>
-          <div className="field-row">
-            <label>
-              Area total
-              <input value={`${space.totalAreaM2} m2`} readOnly disabled />
-            </label>
-            <label>
-              Arboles altos
-              <input value={String(space.tallTreeCount)} readOnly disabled />
-            </label>
-          </div>
-          <div className="button-row">
-            <button
-              type="button"
-              className="secondary"
-              onClick={closeGreenSpaceDetailsModal}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </AppModal>
+      />
     );
   };
 
@@ -2846,19 +2760,19 @@ function App() {
         description={proposal.title}
       >
         <div className="admin-form">
-          <label>
-            Descripcion
-            <textarea value={proposal.description} readOnly disabled />
-          </label>
-          <div className="field-row">
-            <label>
-              Estado
-              <input value={proposal.status} readOnly disabled />
-            </label>
-            <label>
-              Votos
-              <input value={String(proposal.totalVotes)} readOnly disabled />
-            </label>
+          <div className="details-grid">
+            <div className="details-item full-width">
+              <span>Descripcion</span>
+              <strong>{proposal.description}</strong>
+            </div>
+            <div className="details-item">
+              <span>Estado</span>
+              <strong>{proposal.status}</strong>
+            </div>
+            <div className="details-item">
+              <span>Votos</span>
+              <strong>{proposal.totalVotes}</strong>
+            </div>
           </div>
 
           <h4>Seguimiento del proyecto</h4>
@@ -2874,15 +2788,15 @@ function App() {
 
           {!isProjectLoading && project && (
             <>
-              <div className="field-row">
-                <label>
-                  Proyecto
-                  <input value={project.title} readOnly disabled />
-                </label>
-                <label>
-                  Estado de ejecucion
-                  <input value={project.completedStatus} readOnly disabled />
-                </label>
+              <div className="details-grid">
+                <div className="details-item">
+                  <span>Proyecto</span>
+                  <strong>{project.title}</strong>
+                </div>
+                <div className="details-item">
+                  <span>Estado de ejecucion</span>
+                  <strong>{project.completedStatus}</strong>
+                </div>
               </div>
 
               {user?.role === "admin" && (
@@ -3056,89 +2970,49 @@ function App() {
   };
 
   const renderProposalManageModal = () => {
-    if (!showProposalManageModal) return null;
-
     const proposal = proposals.find((entry) => entry.id === proposalManageId);
-    if (!proposal) return null;
+    const votingWindow = proposal
+      ? proposalWindows[proposal.id] || { start: "", end: "" }
+      : { start: "", end: "" };
 
     return (
-      <AppModal
+      <ProposalManageModal
         isOpen={showProposalManageModal}
+        proposal={proposal || null}
+        votingStart={votingWindow.start}
+        votingEnd={votingWindow.end}
+        onChangeVotingStart={(value) => {
+          if (!proposal) return;
+          setProposalWindows((prev) => ({
+            ...prev,
+            [proposal.id]: {
+              start: value,
+              end: prev[proposal.id]?.end || "",
+            },
+          }));
+        }}
+        onChangeVotingEnd={(value) => {
+          if (!proposal) return;
+          setProposalWindows((prev) => ({
+            ...prev,
+            [proposal.id]: {
+              start: prev[proposal.id]?.start || "",
+              end: value,
+            },
+          }));
+        }}
+        onAccept={async () => {
+          if (!proposal) return;
+          await decideProposal(proposal.id, "accepted");
+          closeProposalManageModal();
+        }}
+        onReject={async () => {
+          if (!proposal) return;
+          await decideProposal(proposal.id, "rejected");
+          closeProposalManageModal();
+        }}
         onClose={closeProposalManageModal}
-        title="Editar propuesta"
-        description={proposal.title}
-      >
-        <div className="admin-form">
-          <label>
-            Descripcion
-            <textarea value={proposal.description} readOnly disabled />
-          </label>
-
-          <div className="field-row">
-            <label>
-              Inicio de votacion
-              <input
-                type="datetime-local"
-                value={proposalWindows[proposal.id]?.start || ""}
-                onChange={(e) =>
-                  setProposalWindows((prev) => ({
-                    ...prev,
-                    [proposal.id]: {
-                      start: e.target.value,
-                      end: prev[proposal.id]?.end || "",
-                    },
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Fin de votacion
-              <input
-                type="datetime-local"
-                value={proposalWindows[proposal.id]?.end || ""}
-                onChange={(e) =>
-                  setProposalWindows((prev) => ({
-                    ...prev,
-                    [proposal.id]: {
-                      start: prev[proposal.id]?.start || "",
-                      end: e.target.value,
-                    },
-                  }))
-                }
-              />
-            </label>
-          </div>
-
-          <div className="button-row">
-            <button
-              type="button"
-              onClick={async () => {
-                await decideProposal(proposal.id, "accepted");
-                closeProposalManageModal();
-              }}
-            >
-              Guardar y abrir votacion
-            </button>
-            <button
-              type="button"
-              className="danger"
-              onClick={async () => {
-                await decideProposal(proposal.id, "rejected");
-                closeProposalManageModal();
-              }}
-            >
-              Rechazar propuesta
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={closeProposalManageModal}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </AppModal>
+      />
     );
   };
 
@@ -3219,6 +3093,9 @@ function App() {
                   <span>
                     {(space.reviewSummary?.averageRating ?? 0).toFixed(1)}
                   </span>
+                  <span className="rating-votes-count">
+                    ({space.reviewSummary?.totalReviews ?? 0} votos)
+                  </span>
                 </div>
               ),
             },
@@ -3282,21 +3159,9 @@ function App() {
 
     const current = reviewDrafts[selectedGreenSpace.id]?.rating ?? 0;
     const greenSpaceImages = selectedGreenSpace.images || [];
-    const activeImageIndex =
-      activeGreenSpaceImageIndex[selectedGreenSpace.id] ?? 0;
-    const activeImage =
-      greenSpaceImages[activeImageIndex] || greenSpaceImages[0];
-
-    const goToImage = (direction: number) => {
-      if (greenSpaceImages.length <= 1) return;
-      const nextIndex =
-        (activeImageIndex + direction + greenSpaceImages.length) %
-        greenSpaceImages.length;
-      setActiveGreenSpaceImageIndex((prev) => ({
-        ...prev,
-        [selectedGreenSpace.id]: nextIndex,
-      }));
-    };
+    const communityAverageRating =
+      selectedGreenSpace.reviewSummary?.averageRating ?? 0;
+    const communityTotalVotes = selectedGreenSpace.reviewSummary?.totalReviews ?? 0;
 
     return (
       <section className="box green-spaces-box">
@@ -3364,6 +3229,9 @@ function App() {
                   ).toFixed(1)}{" "}
                   / 5
                 </strong>
+                <span className="rating-votes-count">
+                  ({selectedGreenSpace.reviewSummary?.totalReviews ?? 0} votos)
+                </span>
               </div>
             </div>
             <div className="summary-item">
@@ -3374,63 +3242,27 @@ function App() {
             </div>
           </div>
 
-          {activeImage && (
-            <div className="green-space-carousel">
-              <div className="green-space-carousel-main">
-                <img
-                  src={resolveAssetUrl(activeImage)}
-                  alt={`${selectedGreenSpace.name} imagen ${activeImageIndex + 1}`}
-                />
-                {greenSpaceImages.length > 1 && (
-                  <div className="green-space-carousel-controls">
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => goToImage(-1)}
-                    >
-                      ‹
-                    </button>
-                    <span>
-                      {activeImageIndex + 1} / {greenSpaceImages.length}
-                    </span>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => goToImage(1)}
-                    >
-                      ›
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {greenSpaceImages.length > 1 && (
-                <div className="green-space-carousel-thumbnails">
-                  {greenSpaceImages.map((image, index) => (
-                    <button
-                      key={`${selectedGreenSpace.id}-thumb-${index}`}
-                      type="button"
-                      className={`green-space-carousel-thumb ${index === activeImageIndex ? "selected" : ""}`}
-                      onClick={() =>
-                        setActiveGreenSpaceImageIndex((prev) => ({
-                          ...prev,
-                          [selectedGreenSpace.id]: index,
-                        }))
-                      }
-                    >
-                      <img
-                        src={resolveAssetUrl(image)}
-                        alt={`${selectedGreenSpace.name} thumbnail ${index + 1}`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          {greenSpaceImages.length > 0 && (
+            <ImageCarousel
+              images={greenSpaceImages}
+              title={selectedGreenSpace.name}
+              resolveAssetUrl={resolveAssetUrl}
+            />
           )}
 
           <div className="green-space-review-box">
             <h4>Califica este espacio (0 a 5 estrellas)</h4>
+            <div className="community-rating-summary">
+              <span>Valoracion de la comunidad</span>
+              <div className="detail-rating-row">
+                {renderAverageStars(communityAverageRating)}
+                <strong>{communityAverageRating.toFixed(1)} / 5</strong>
+                <span className="rating-votes-count">
+                  ({communityTotalVotes} votos)
+                </span>
+              </div>
+            </div>
+            <p className="muted">Tu calificacion</p>
             <div
               className="star-strip"
               role="radiogroup"
@@ -3534,6 +3366,11 @@ function App() {
     );
   };
 
+  const getSpaceName = (spaceId: number) => {
+    const target = greenSpaces.find((space) => space.id === spaceId);
+    return target?.name || `Area #${spaceId}`;
+  };
+
   const renderAdminUsersSection = () => {
     const userColumns: DefaultTableColumn<AdminUser>[] = [
       {
@@ -3629,11 +3466,6 @@ function App() {
 
   const renderProposalsSection = () => {
     const isProjectsRoute = route === "/projects";
-
-    const getSpaceName = (spaceId: number) => {
-      const target = greenSpaces.find((space) => space.id === spaceId);
-      return target?.name || `Area #${spaceId}`;
-    };
 
     if (isProjectsRoute) {
       return (
@@ -3785,6 +3617,63 @@ function App() {
     );
   };
 
+  const renderReportsSection = () => {
+    return (
+      <Reports
+        reports={reports}
+        greenSpaces={greenSpaces}
+        userId={user?.id}
+        userRole={user?.role}
+        reportStateFilter={reportStateFilter}
+        setReportStateFilter={setReportStateFilter}
+        showReportCreateModal={showReportCreateModal}
+        showReportEditModal={showReportEditModal}
+        reportTitleInput={reportTitleInput}
+        reportDescriptionInput={reportDescriptionInput}
+        reportSpaceIdInput={reportSpaceIdInput}
+        reportImagesInput={reportImagesInput}
+        editingReportStateInput={editingReportStateInput}
+        isSubmittingReport={isSubmittingReport}
+        uploadingReportImages={uploadingReportImages}
+        formatUpdatedAt={formatUpdatedAt}
+        resolveAssetUrl={resolveAssetUrl}
+        onOpenCreateReportModal={openCreateReportModal}
+        onCloseCreateReportModal={closeCreateReportModal}
+        onCloseEditReportModal={closeEditReportModal}
+        onSaveReport={saveReport}
+        onUploadReportImages={uploadReportImages}
+        setReportTitleInput={setReportTitleInput}
+        setReportDescriptionInput={setReportDescriptionInput}
+        setReportSpaceIdInput={setReportSpaceIdInput}
+        setEditingReportStateInput={setEditingReportStateInput}
+        onOpenEditReportModal={openEditReportModal}
+        onDeleteReport={(reportId) => {
+          void deleteReport(reportId);
+        }}
+        onCompleteReport={(reportId) => {
+          void completeReport(reportId);
+        }}
+        onOpenReportDetail={(reportId) => navigate(`/reports/${reportId}`)}
+      />
+    );
+  };
+
+  const renderReportDetailSection = () => {
+    return (
+      <Report
+        selectedReportId={selectedReportId}
+        selectedReport={selectedReport}
+        currentUserId={user?.id}
+        currentUserRole={user?.role}
+        onBack={() => navigate("/reports")}
+        onOpenEditReportModal={openEditReportModal}
+        onDeleteReport={deleteReport}
+        resolveAssetUrl={resolveAssetUrl}
+        formatUpdatedAt={formatUpdatedAt}
+      />
+    );
+  };
+
   const renderMainSection = () => {
     if (route === "/") {
       return renderPrincipalSection();
@@ -3802,6 +3691,10 @@ function App() {
       return renderProjectDetailSection();
     }
 
+    if (route.startsWith("/reports/")) {
+      return renderReportDetailSection();
+    }
+
     if (route === "/green-spaces") {
       return renderGreenSpacesSection();
     }
@@ -3812,6 +3705,10 @@ function App() {
 
     if (route === "/projects") {
       return renderProposalsSection();
+    }
+
+    if (route === "/reports") {
+      return renderReportsSection();
     }
 
     if (route === "/admin-users" && user?.role === "admin") {
@@ -4080,6 +3977,13 @@ function App() {
           >
             Proyectos
           </button>
+          <button
+            type="button"
+            className={isReportsRoute ? "active" : ""}
+            onClick={() => navigate("/reports")}
+          >
+            Reportes
+          </button>
           {user?.role === "admin" && (
             <>
               <button
@@ -4121,6 +4025,7 @@ function App() {
           </div>
         </header>
         {renderMainSection()}
+        {renderProfileEditModal()}
         {renderPasswordModal()}
       </main>
     </div>

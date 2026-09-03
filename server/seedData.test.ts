@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  greenSpaceReviewSeeds,
   greenSpaceSeeds,
   projectOfProposalSeeds,
+  projectUpdateOfProposalSeeds,
   proposalSeeds,
+  reportOfGreenAreaSeeds,
   roleSeeds,
   userSeeds,
   voteOfProposalSeeds,
@@ -36,6 +39,38 @@ describe("seedData", () => {
       for (const imageUrl of greenSpace.images) {
         expect(imageUrl.startsWith("https://")).toBe(true);
       }
+    }
+  });
+
+  it("defines green-space review seeds linked to existing users and spaces", () => {
+    expect(greenSpaceReviewSeeds.length).toBeGreaterThan(1);
+
+    const usernames = new Set(userSeeds.map((user) => user.username));
+    const spaceNames = new Set(greenSpaceSeeds.map((space) => space.name));
+
+    for (const review of greenSpaceReviewSeeds) {
+      expect(usernames.has(review.username)).toBe(true);
+      expect(spaceNames.has(review.green_space_name)).toBe(true);
+      expect(review.review_notes.trim().length).toBeGreaterThan(0);
+      expect(review.rating).toBeGreaterThanOrEqual(1);
+      expect(review.rating).toBeLessThanOrEqual(5);
+      expect(Number.isNaN(new Date(review.created_at).getTime())).toBe(false);
+    }
+  });
+
+  it("defines report seeds linked to existing users and spaces", () => {
+    expect(reportOfGreenAreaSeeds.length).toBeGreaterThan(1);
+
+    const usernames = new Set(userSeeds.map((user) => user.username));
+    const spaceNames = new Set(greenSpaceSeeds.map((space) => space.name));
+
+    for (const report of reportOfGreenAreaSeeds) {
+      expect(usernames.has(report.username)).toBe(true);
+      expect(spaceNames.has(report.green_space_name)).toBe(true);
+      expect(report.title.trim().length).toBeGreaterThan(0);
+      expect(report.description.trim().length).toBeGreaterThan(0);
+      expect(["open", "closed"]).toContain(report.state);
+      expect(Number.isNaN(new Date(report.created_at).getTime())).toBe(false);
     }
   });
 
@@ -79,6 +114,21 @@ describe("seedData", () => {
     for (const project of projectOfProposalSeeds) {
       expect(proposalTitles.has(project.proposal_title)).toBe(true);
       expect(spaceNames.has(project.green_space_name)).toBe(true);
+    }
+  });
+
+  it("defines project activity seeds linked to projects and users", () => {
+    expect(projectUpdateOfProposalSeeds.length).toBeGreaterThan(1);
+
+    const projectTitles = new Set(projectOfProposalSeeds.map((p) => p.title));
+    const usernames = new Set(userSeeds.map((user) => user.username));
+
+    for (const activity of projectUpdateOfProposalSeeds) {
+      expect(projectTitles.has(activity.project_title)).toBe(true);
+      expect(usernames.has(activity.username)).toBe(true);
+      expect(activity.title.trim().length).toBeGreaterThan(0);
+      expect(activity.description.trim().length).toBeGreaterThan(0);
+      expect(Number.isNaN(new Date(activity.created_at).getTime())).toBe(false);
     }
   });
 });

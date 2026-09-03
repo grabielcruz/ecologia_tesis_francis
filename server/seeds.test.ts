@@ -3,17 +3,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { seedDatabase } from "./seeds";
 import {
   GreenSpace,
+  GreenSpaceReview,
   ProjectOfProposal,
+  ProjectUpdateOfProposal,
   ProposalOfGreenArea,
+  ReportOfGreenArea,
   Role,
   User,
   VoteOfProposal,
   sequelize,
 } from "./models";
 import {
+  greenSpaceReviewSeeds,
   greenSpaceSeeds,
   projectOfProposalSeeds,
+  projectUpdateOfProposalSeeds,
   proposalSeeds,
+  reportOfGreenAreaSeeds,
   roleSeeds,
   userSeeds,
   voteOfProposalSeeds,
@@ -51,6 +57,8 @@ describe("seedDatabase", () => {
           },
         }) as never,
     );
+    vi.spyOn(GreenSpaceReview, "create").mockResolvedValue({} as never);
+    vi.spyOn(ReportOfGreenArea, "create").mockResolvedValue({} as never);
 
     vi.spyOn(ProposalOfGreenArea, "create").mockImplementation(
       async (payload?: Record<string, unknown>) =>
@@ -66,7 +74,18 @@ describe("seedDatabase", () => {
     );
 
     vi.spyOn(VoteOfProposal, "create").mockResolvedValue({} as never);
-    vi.spyOn(ProjectOfProposal, "create").mockResolvedValue({} as never);
+    vi.spyOn(ProjectOfProposal, "create").mockImplementation(
+      async (payload?: Record<string, unknown>) =>
+        ({
+          getDataValue: (key: string) => {
+            if (key === "project_of_proposal_id") {
+              return String(payload?.title || "").length;
+            }
+            return undefined;
+          },
+        }) as never,
+    );
+    vi.spyOn(ProjectUpdateOfProposal, "create").mockResolvedValue({} as never);
     vi.spyOn(bcrypt, "hash").mockImplementation(async () => "hashed-password");
   });
 
@@ -77,6 +96,12 @@ describe("seedDatabase", () => {
     expect(Role.create).toHaveBeenCalledTimes(roleSeeds.length);
     expect(User.create).toHaveBeenCalledTimes(userSeeds.length);
     expect(GreenSpace.create).toHaveBeenCalledTimes(greenSpaceSeeds.length);
+    expect(GreenSpaceReview.create).toHaveBeenCalledTimes(
+      greenSpaceReviewSeeds.length,
+    );
+    expect(ReportOfGreenArea.create).toHaveBeenCalledTimes(
+      reportOfGreenAreaSeeds.length,
+    );
     expect(ProposalOfGreenArea.create).toHaveBeenCalledTimes(
       proposalSeeds.length,
     );
@@ -85,6 +110,9 @@ describe("seedDatabase", () => {
     );
     expect(ProjectOfProposal.create).toHaveBeenCalledTimes(
       projectOfProposalSeeds.length,
+    );
+    expect(ProjectUpdateOfProposal.create).toHaveBeenCalledTimes(
+      projectUpdateOfProposalSeeds.length,
     );
     expect(bcrypt.hash).toHaveBeenCalledTimes(userSeeds.length);
 

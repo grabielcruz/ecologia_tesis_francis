@@ -21,6 +21,24 @@ export interface GreenSpaceSeed {
   images: string[];
 }
 
+export interface GreenSpaceReviewSeed {
+  green_space_name: string;
+  username: string;
+  review_notes: string;
+  rating: number;
+  created_at: string;
+}
+
+export interface ReportOfGreenAreaSeed {
+  title: string;
+  description: string;
+  url_images: string[];
+  state: "open" | "closed";
+  username: string;
+  green_space_name: string;
+  created_at: string;
+}
+
 export interface ProposalSeed {
   title: string;
   description: string;
@@ -43,6 +61,15 @@ export interface ProjectOfProposalSeed {
   completed_status: "planned" | "in_progress" | "completed";
   proposal_title: string;
   green_space_name: string;
+}
+
+export interface ProjectUpdateOfProposalSeed {
+  title: string;
+  description: string;
+  activity_images: string[];
+  project_title: string;
+  username: string;
+  created_at: string;
 }
 
 export const roleSeeds: RoleSeed[] = [
@@ -179,6 +206,82 @@ export const greenSpaceSeeds: GreenSpaceSeed[] = [
   },
 ];
 
+export const greenSpaceReviewSeeds: GreenSpaceReviewSeed[] = [
+  {
+    green_space_name: "Jardín Central",
+    username: "regular.user",
+    review_notes:
+      "Excelente espacio para estudiar al aire libre. Faltan mas puntos de hidratacion.",
+    rating: 4,
+    created_at: "2026-08-22T11:00:00.000Z",
+  },
+  {
+    green_space_name: "Bosque Universitario",
+    username: "daniela.t",
+    review_notes:
+      "Muy buena sombra y biodiversidad. Algunas rutas necesitan mejor señalizacion.",
+    rating: 5,
+    created_at: "2026-08-24T09:20:00.000Z",
+  },
+  {
+    green_space_name: "Parque de la Facultad",
+    username: "mateo.rios",
+    review_notes:
+      "Area agradable, pero en horarios pico se llena rapido. Sugiero ampliar zonas de descanso.",
+    rating: 4,
+    created_at: "2026-08-26T17:45:00.000Z",
+  },
+  {
+    green_space_name: "Área de descanso Estudiantil",
+    username: "laura.campos",
+    review_notes:
+      "Buen lugar para reuniones cortas. Seria ideal agregar mas arboles de copa amplia.",
+    rating: 4,
+    created_at: "2026-08-29T13:10:00.000Z",
+  },
+  {
+    green_space_name: "Sendero Verde",
+    username: "admin",
+    review_notes:
+      "El sendero quedo limpio y transitable. Recomendable mantener jornadas de mantenimiento quincenal.",
+    rating: 5,
+    created_at: "2026-09-01T08:30:00.000Z",
+  },
+];
+
+export const reportOfGreenAreaSeeds: ReportOfGreenAreaSeed[] = [
+  {
+    title: "Basureros saturados en sendero",
+    description:
+      "Los basureros del tramo norte estan saturados y se requiere mayor frecuencia de recoleccion.",
+    url_images: ["/green-spaces/bosque-ingenieria-2.svg"],
+    state: "open",
+    username: "regular.user",
+    green_space_name: "Sendero Verde",
+    created_at: "2026-09-01T11:15:00.000Z",
+  },
+  {
+    title: "Sugerencia de nuevo punto de sombra",
+    description:
+      "Propuesta para instalar pergola liviana cerca del acceso principal del Jardin Central.",
+    url_images: ["/green-spaces/jardin-central-2.svg"],
+    state: "open",
+    username: "daniela.t",
+    green_space_name: "Jardín Central",
+    created_at: "2026-09-02T09:00:00.000Z",
+  },
+  {
+    title: "Iluminacion reparada en parque",
+    description:
+      "El reporte de iluminacion deficiente fue atendido y las luminarias quedaron operativas.",
+    url_images: ["/green-spaces/plaza-ecologica-sur-2.svg"],
+    state: "closed",
+    username: "admin",
+    green_space_name: "Parque de la Facultad",
+    created_at: "2026-08-28T18:20:00.000Z",
+  },
+];
+
 export const proposalSeeds: ProposalSeed[] = [
   {
     title: "Huerto comunitario estudiantil",
@@ -309,5 +412,54 @@ export const projectOfProposalSeeds: ProjectOfProposalSeed[] = [
     completed_status: "planned",
     proposal_title: "Huerto comunitario estudiantil",
     green_space_name: "Jardín Central",
+  },
+];
+
+export const projectUpdateOfProposalSeeds: ProjectUpdateOfProposalSeed[] = [
+  {
+    title: "Levantamiento topografico y trazado",
+    description:
+      "Se midieron sectores criticos y se definieron los tramos para instalar la red principal de riego.",
+    activity_images: [
+      "/green-spaces/jardin-central-1.svg",
+      "/green-spaces/jardin-central-2.svg",
+    ],
+    project_title: "Implementacion inicial de riego",
+    username: "mateo.rios",
+    created_at: "2026-08-21T10:15:00.000Z",
+  },
+  {
+    title: "Instalacion de lineas secundarias",
+    description:
+      "Se completaron conexiones en el 60% del parque y se realizaron pruebas de presion sin fugas.",
+    activity_images: [
+      "/uploads/green-spaces/gs-1784588213929-0.jpg",
+    ],
+    project_title: "Implementacion inicial de riego",
+    username: "admin",
+    created_at: "2026-08-27T16:40:00.000Z",
+  },
+  {
+    title: "Diseno participativo del mobiliario",
+    description:
+      "Estudiantes validaron la ubicacion de bancas y tipos de sombra para zonas de mayor uso.",
+    activity_images: [
+      "/green-spaces/plaza-ecologica-sur-1.svg",
+    ],
+    project_title: "Zona de descanso bajo sombra",
+    username: "laura.campos",
+    created_at: "2026-08-25T14:00:00.000Z",
+  },
+  {
+    title: "Preparacion de suelo y compost",
+    description:
+      "Se habilitaron camas de cultivo iniciales y se integro compost generado en campus.",
+    activity_images: [
+      "/green-spaces/bosque-ingenieria-1.svg",
+      "/uploads/green-spaces/gs-1785434722487-0.jpg",
+    ],
+    project_title: "Piloto de huerto comunitario",
+    username: "daniela.t",
+    created_at: "2026-09-01T09:30:00.000Z",
   },
 ];
