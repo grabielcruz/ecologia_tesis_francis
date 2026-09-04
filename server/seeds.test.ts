@@ -9,6 +9,8 @@ import {
   ProposalOfGreenArea,
   ReportOfGreenArea,
   Role,
+  TreeType,
+  TreeInventory,
   User,
   VoteOfProposal,
   sequelize,
@@ -21,6 +23,8 @@ import {
   proposalSeeds,
   reportOfGreenAreaSeeds,
   roleSeeds,
+  treeTypeSeeds,
+  treeInventorySeeds,
   userSeeds,
   voteOfProposalSeeds,
 } from "./seedData";
@@ -58,6 +62,18 @@ describe("seedDatabase", () => {
         }) as never,
     );
     vi.spyOn(GreenSpaceReview, "create").mockResolvedValue({} as never);
+    vi.spyOn(TreeType, "create").mockImplementation(
+      async (payload?: Record<string, unknown>) =>
+        ({
+          getDataValue: (key: string) => {
+            if (key === "type_id") {
+              return String(payload?.name || "").length;
+            }
+            return undefined;
+          },
+        }) as never,
+    );
+    vi.spyOn(TreeInventory, "create").mockResolvedValue({} as never);
     vi.spyOn(ReportOfGreenArea, "create").mockResolvedValue({} as never);
 
     vi.spyOn(ProposalOfGreenArea, "create").mockImplementation(
@@ -98,6 +114,10 @@ describe("seedDatabase", () => {
     expect(GreenSpace.create).toHaveBeenCalledTimes(greenSpaceSeeds.length);
     expect(GreenSpaceReview.create).toHaveBeenCalledTimes(
       greenSpaceReviewSeeds.length,
+    );
+    expect(TreeType.create).toHaveBeenCalledTimes(treeTypeSeeds.length);
+    expect(TreeInventory.create).toHaveBeenCalledTimes(
+      treeInventorySeeds.length,
     );
     expect(ReportOfGreenArea.create).toHaveBeenCalledTimes(
       reportOfGreenAreaSeeds.length,

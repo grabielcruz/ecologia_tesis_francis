@@ -8,6 +8,8 @@ import greenSpaceRoutes from "./routes/greenSpaces";
 import suggestionRoutes from "./routes/suggestions";
 import proposalRoutes from "./routes/proposals";
 import projectsRoutes from "./routes/projects";
+import treeTypeRoutes from "./routes/treeTypes";
+import treeRoutes from "./routes/trees";
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
@@ -28,6 +30,8 @@ app.use("/api/green-spaces", greenSpaceRoutes);
 app.use("/api/suggestions", suggestionRoutes);
 app.use("/api/proposals", proposalRoutes);
 app.use("/api/projects", projectsRoutes);
+app.use("/api/tree-types", treeTypeRoutes);
+app.use("/api/trees", treeRoutes);
 
 initializeDatabase()
   .then(() => {

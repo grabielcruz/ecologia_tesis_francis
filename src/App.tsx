@@ -12,9 +12,16 @@ import { ProposalManageModal } from "./components/proposals/ProposalManageModal"
 import { ProposalsListSection } from "./components/proposals/ProposalsListSection";
 import { Report } from "./components/reports/Report";
 import { Reports } from "./components/reports/Reports";
+import { TreeTypeDetailSection } from "./components/treeTypes/TreeTypeDetailSection";
+import { TreeTypesSection } from "./components/treeTypes/TreeTypesSection";
+import { TreeDetailSection } from "./components/trees/TreeDetailSection";
+import { TreesSection } from "./components/trees/TreesSection";
 import { UserDetailsModal } from "./components/users/UserDetailsModal";
 import { useProposalActions } from "./hooks/useProposalActions";
 import { useReports } from "./features/reports/useReports";
+import { TreeInventoryItem } from "./features/trees/types";
+import { useTrees } from "./features/trees/useTrees";
+import { useTreeTypes } from "./features/treeTypes/useTreeTypes";
 import {
   ProjectExecutionStatus,
   ProjectListEntry,
@@ -141,7 +148,9 @@ function App() {
   const [registerName, setRegisterName] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [route, setRoute] = useState(window.location.pathname);
+  const [route, setRoute] = useState(
+    `${window.location.pathname}${window.location.search}`,
+  );
   const [user, setUser] = useState<{
     id: number;
     name: string;
@@ -333,6 +342,11 @@ function App() {
     proposalProjectStatusByProposalId,
     setProposalProjectStatusByProposalId,
   ] = useState<Record<number, ProjectExecutionStatus>>({});
+  const [treeTypeInventoryRows, setTreeTypeInventoryRows] = useState<
+    TreeInventoryItem[]
+  >([]);
+  const [selectedTreeDetail, setSelectedTreeDetail] =
+    useState<TreeInventoryItem | null>(null);
   const {
     reports,
     reportStateFilter,
@@ -368,13 +382,70 @@ function App() {
     setSuccessMessage,
   });
   const proposalActions = useProposalActions(token);
+  const {
+    treeTypes,
+    treeTypeNameInput,
+    treeTypeDescriptionInput,
+    treeTypeImagesInput,
+    editingTreeTypeId,
+    isSubmittingTreeType,
+    uploadingTreeTypeImages,
+    setTreeTypeNameInput,
+    setTreeTypeDescriptionInput,
+    setTreeTypeImagesInput,
+    resetTreeTypeForm,
+    startEditTreeType,
+    saveTreeType,
+    deleteTreeType,
+    uploadTreeTypeImages,
+  } = useTreeTypes({
+    token,
+    route,
+    userRole: user?.role,
+    setError,
+    setSuccessMessage,
+  });
+  const {
+    trees,
+    selectedSpaceFilterName,
+    treeNameInput,
+    treeHealthStatusInput,
+    treeTypeIdInput,
+    treeSpaceIdInput,
+    treeImagesInput,
+    editingTreeId,
+    isSubmittingTree,
+    uploadingTreeImages,
+    treeActionLoadingId,
+    setTreeNameInput,
+    setTreeHealthStatusInput,
+    setTreeTypeIdInput,
+    setTreeSpaceIdInput,
+    setTreeImagesInput,
+    resetTreeForm,
+    uploadTreeImages,
+    startEditTree,
+    saveTree,
+    deleteTree,
+    approveTree,
+    rejectTree,
+  } = useTrees({
+    token,
+    route,
+    userRole: user?.role,
+    treeTypes,
+    greenSpaces,
+    setError,
+    setSuccessMessage,
+  });
   const spaceImagePreviewList = spaceImagesInput
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
   const navigate = (path: string, replace = false) => {
-    if (window.location.pathname !== path) {
+    const currentPath = `${window.location.pathname}${window.location.search}`;
+    if (currentPath !== path) {
       if (replace) {
         window.history.replaceState(null, "", path);
       } else {
@@ -410,7 +481,8 @@ function App() {
 
     setAuthReady(true);
 
-    const handlePopState = () => setRoute(window.location.pathname);
+    const handlePopState = () =>
+      setRoute(`${window.location.pathname}${window.location.search}`);
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
@@ -976,6 +1048,12 @@ function App() {
   const isProjectsRoute =
     route === "/projects" || route.startsWith("/projects/");
   const isReportsRoute = route === "/reports" || route.startsWith("/reports/");
+  const isTreeTypesRoute =
+    route === "/tree-types" || route.startsWith("/tree-types/");
+  const isTreesRoute =
+    route === "/trees" ||
+    route.startsWith("/trees?") ||
+    route.startsWith("/trees/");
   const selectedGreenSpaceId = (() => {
     if (!route.startsWith("/green-spaces/")) return null;
     const id = Number(route.split("/")[2]);
@@ -993,6 +1071,21 @@ function App() {
     ? projectEntries.find((entry) => entry.project.id === selectedProjectId) ||
       null
     : null;
+  const selectedTreeTypeId = (() => {
+    if (!route.startsWith("/tree-types/")) return null;
+    const pathOnly = route.split("?")[0] || route;
+    const id = Number(pathOnly.split("/")[2]);
+    return Number.isFinite(id) ? id : null;
+  })();
+  const selectedTreeType = selectedTreeTypeId
+    ? treeTypes.find((entry) => entry.id === selectedTreeTypeId) || null
+    : null;
+  const selectedTreeId = (() => {
+    if (!route.startsWith("/trees/")) return null;
+    const pathOnly = route.split("?")[0] || route;
+    const id = Number(pathOnly.split("/")[2]);
+    return Number.isFinite(id) ? id : null;
+  })();
   const pageTitle =
     route === "/"
       ? "Principal"
@@ -1000,21 +1093,29 @@ function App() {
         ? "Mi perfil"
         : route.startsWith("/reports/")
           ? "Detalle de reporte"
-        : route.startsWith("/projects/")
-          ? "Detalle de proyecto"
-          : route === "/proposals"
-            ? "Propuestas"
-            : route === "/projects"
-              ? "Proyectos"
-              : route === "/reports"
-                ? "Reportes de areas verdes"
-              : route === "/admin-users"
-                ? "Usuarios"
-                : route.startsWith("/green-spaces/")
-                  ? "Detalle de area verde"
-                  : route === "/green-spaces"
-                    ? "Areas verdes del campus"
-                    : "Principal";
+          : route.startsWith("/projects/")
+            ? "Detalle de proyecto"
+            : route.startsWith("/tree-types/")
+              ? "Detalle de tipo de arbol"
+              : route.startsWith("/trees/")
+                ? "Detalle de arbol"
+                : route === "/proposals"
+                  ? "Propuestas"
+                  : route === "/projects"
+                    ? "Proyectos"
+                    : route === "/reports"
+                      ? "Reportes de areas verdes"
+                      : route === "/tree-types"
+                        ? "Tipos de arboles"
+                        : route === "/trees" || route.startsWith("/trees?")
+                          ? "Arboles"
+                          : route === "/admin-users"
+                            ? "Usuarios"
+                            : route.startsWith("/green-spaces/")
+                              ? "Detalle de area verde"
+                              : route === "/green-spaces"
+                                ? "Areas verdes del campus"
+                                : "Principal";
   const pageSubtitle =
     route === "/"
       ? "Resumen general de encuestas y areas verdes"
@@ -1022,21 +1123,29 @@ function App() {
         ? "Actualiza tus datos personales"
         : route.startsWith("/reports/")
           ? "Consulta la informacion completa del reporte y sus imagenes"
-        : route.startsWith("/projects/")
-          ? "Visualiza datos del proyecto y su historial de actividades"
-          : route === "/proposals"
-            ? "Consulta, valida y vota propuestas de mejora para areas verdes"
-            : route === "/projects"
-              ? "Consulta los proyectos generados a partir de propuestas aprobadas"
-              : route === "/reports"
-                ? "Registra, actualiza y sigue reportes de quejas o sugerencias"
-              : route === "/admin-users"
-                ? "Gestion integral de usuarios del sistema"
-                : route.startsWith("/green-spaces/")
-                  ? "Informacion completa, reseñas y sugerencias del espacio"
-                  : route === "/green-spaces"
-                    ? "Registro y consulta de espacios verdes universitarios"
-                    : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
+          : route.startsWith("/projects/")
+            ? "Visualiza datos del proyecto y su historial de actividades"
+            : route.startsWith("/tree-types/")
+              ? "Descripcion completa, imagenes referenciales y arboles registrados por ubicacion"
+              : route.startsWith("/trees/")
+                ? "Informacion completa del arbol, tipo y ubicacion en area verde"
+                : route === "/proposals"
+                  ? "Consulta, valida y vota propuestas de mejora para areas verdes"
+                  : route === "/projects"
+                    ? "Consulta los proyectos generados a partir de propuestas aprobadas"
+                    : route === "/reports"
+                      ? "Registra, actualiza y sigue reportes de quejas o sugerencias"
+                      : route === "/tree-types"
+                        ? "Catalogo oficial de especies y flujo de sugerencias de nuevos tipos"
+                        : route === "/trees" || route.startsWith("/trees?")
+                          ? "Inventario real de arboles por area verde y estado de salud"
+                          : route === "/admin-users"
+                            ? "Gestion integral de usuarios del sistema"
+                            : route.startsWith("/green-spaces/")
+                              ? "Informacion completa, reseñas y sugerencias del espacio"
+                              : route === "/green-spaces"
+                                ? "Registro y consulta de espacios verdes universitarios"
+                                : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
 
   useEffect(() => {
     if (!token || !route.startsWith("/projects/") || !selectedProjectEntry) {
@@ -1051,6 +1160,90 @@ function App() {
 
     fetchProposalProjectDetails(proposalId);
   }, [route, token, selectedProjectEntry, proposalProjectDetails]);
+
+  useEffect(() => {
+    if (!token || !route.startsWith("/tree-types/")) {
+      setTreeTypeInventoryRows([]);
+      return;
+    }
+
+    if (!selectedTreeTypeId) {
+      setTreeTypeInventoryRows([]);
+      return;
+    }
+
+    const fetchTreeTypeInventory = async () => {
+      try {
+        const response = await fetch(
+          `/api/trees?typeId=${selectedTreeTypeId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          setTreeTypeInventoryRows([]);
+          setError("No se pudo cargar el inventario de este tipo de arbol");
+          return;
+        }
+
+        const data = await response.json();
+        setTreeTypeInventoryRows(Array.isArray(data) ? data : []);
+      } catch {
+        setTreeTypeInventoryRows([]);
+        setError("No se pudo cargar el inventario de este tipo de arbol");
+      }
+    };
+
+    fetchTreeTypeInventory();
+  }, [token, route, selectedTreeTypeId]);
+
+  useEffect(() => {
+    if (!token || !route.startsWith("/trees/")) {
+      setSelectedTreeDetail(null);
+      return;
+    }
+
+    if (!selectedTreeId) {
+      setSelectedTreeDetail(null);
+      return;
+    }
+
+    const knownTree =
+      trees.find((entry) => entry.id === selectedTreeId) || null;
+    if (knownTree) {
+      setSelectedTreeDetail(knownTree);
+    }
+
+    const fetchTreeDetail = async () => {
+      try {
+        const response = await fetch(`/api/trees/${selectedTreeId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            setSelectedTreeDetail(null);
+            return;
+          }
+
+          setError("No se pudo cargar el detalle del arbol");
+          return;
+        }
+
+        const data = await response.json();
+        setSelectedTreeDetail(data as TreeInventoryItem);
+      } catch {
+        setError("No se pudo cargar el detalle del arbol");
+      }
+    };
+
+    fetchTreeDetail();
+  }, [token, route, selectedTreeId, trees]);
 
   const resetAdminForm = () => {
     setEditingSurvey(null);
@@ -2757,6 +2950,15 @@ function App() {
       ? projectStatusDrafts[project.id] || project.completedStatus
       : "planned";
 
+    const projectStatusLabel: Record<
+      "planned" | "in_progress" | "completed",
+      string
+    > = {
+      planned: "Planificado",
+      in_progress: "En progreso",
+      completed: "Completado",
+    };
+
     return (
       <AppModal
         isOpen={showProposalDetailsModal}
@@ -2800,7 +3002,7 @@ function App() {
                 </div>
                 <div className="details-item">
                   <span>Estado de ejecucion</span>
-                  <strong>{project.completedStatus}</strong>
+                  <strong>{projectStatusLabel[project.completedStatus]}</strong>
                 </div>
               </div>
 
@@ -2820,9 +3022,9 @@ function App() {
                         }))
                       }
                     >
-                      <option value="planned">Planned</option>
-                      <option value="in_progress">In progress</option>
-                      <option value="completed">Completed</option>
+                      <option value="planned">Planificado</option>
+                      <option value="in_progress">En progreso</option>
+                      <option value="completed">Completado</option>
                     </select>
                   </label>
                   <div className="button-row compact">
@@ -3166,7 +3368,8 @@ function App() {
     const greenSpaceImages = selectedGreenSpace.images || [];
     const communityAverageRating =
       selectedGreenSpace.reviewSummary?.averageRating ?? 0;
-    const communityTotalVotes = selectedGreenSpace.reviewSummary?.totalReviews ?? 0;
+    const communityTotalVotes =
+      selectedGreenSpace.reviewSummary?.totalReviews ?? 0;
 
     return (
       <section className="box green-spaces-box">
@@ -3177,6 +3380,12 @@ function App() {
             onClick={() => navigate("/green-spaces")}
           >
             Volver a lista
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(`/trees?spaceId=${selectedGreenSpace.id}`)}
+          >
+            Ver arboles de esta area
           </button>
           {user?.role === "admin" && (
             <>
@@ -3679,6 +3888,113 @@ function App() {
     );
   };
 
+  const renderTreeTypesSection = () => {
+    return (
+      <TreeTypesSection
+        treeTypes={treeTypes}
+        userRole={user?.role}
+        onOpenTreeTypeDetail={(treeType) =>
+          navigate(`/tree-types/${treeType.id}`)
+        }
+        treeTypeNameInput={treeTypeNameInput}
+        treeTypeDescriptionInput={treeTypeDescriptionInput}
+        treeTypeImagesInput={treeTypeImagesInput}
+        editingTreeTypeId={editingTreeTypeId}
+        isSubmittingTreeType={isSubmittingTreeType}
+        uploadingTreeTypeImages={uploadingTreeTypeImages}
+        resolveAssetUrl={resolveAssetUrl}
+        formatUpdatedAt={formatUpdatedAt}
+        setTreeTypeNameInput={setTreeTypeNameInput}
+        setTreeTypeDescriptionInput={setTreeTypeDescriptionInput}
+        setTreeTypeImagesInput={setTreeTypeImagesInput}
+        onResetTreeTypeForm={resetTreeTypeForm}
+        onStartEditTreeType={startEditTreeType}
+        onSaveTreeType={saveTreeType}
+        onDeleteTreeType={(treeTypeId) => {
+          void deleteTreeType(treeTypeId);
+        }}
+        onUploadTreeTypeImages={(event) => {
+          void uploadTreeTypeImages(event);
+        }}
+      />
+    );
+  };
+
+  const renderTreeTypeDetailSection = () => {
+    return (
+      <TreeTypeDetailSection
+        selectedTreeTypeId={selectedTreeTypeId}
+        selectedTreeType={selectedTreeType}
+        treesOfType={treeTypeInventoryRows}
+        onBack={() => navigate("/tree-types")}
+        onOpenTreeDetail={(tree) => navigate(`/trees/${tree.id}`)}
+        resolveAssetUrl={resolveAssetUrl}
+        formatUpdatedAt={formatUpdatedAt}
+      />
+    );
+  };
+
+  const renderTreesSection = () => {
+    return (
+      <TreesSection
+        trees={trees}
+        treeTypes={treeTypes}
+        greenSpaces={greenSpaces}
+        userRole={user?.role}
+        selectedSpaceFilterName={selectedSpaceFilterName}
+        onOpenGreenSpaces={() => navigate("/green-spaces")}
+        onClearSpaceFilter={() => navigate("/trees")}
+        treeNameInput={treeNameInput}
+        treeHealthStatusInput={treeHealthStatusInput}
+        treeTypeIdInput={treeTypeIdInput}
+        treeSpaceIdInput={treeSpaceIdInput}
+        treeImagesInput={treeImagesInput}
+        editingTreeId={editingTreeId}
+        isSubmittingTree={isSubmittingTree}
+        uploadingTreeImages={uploadingTreeImages}
+        treeActionLoadingId={treeActionLoadingId}
+        resolveAssetUrl={resolveAssetUrl}
+        formatUpdatedAt={formatUpdatedAt}
+        setTreeNameInput={setTreeNameInput}
+        setTreeHealthStatusInput={setTreeHealthStatusInput}
+        setTreeTypeIdInput={setTreeTypeIdInput}
+        setTreeSpaceIdInput={setTreeSpaceIdInput}
+        setTreeImagesInput={setTreeImagesInput}
+        onResetTreeForm={resetTreeForm}
+        onStartEditTree={startEditTree}
+        onOpenTreeDetail={(tree) => navigate(`/trees/${tree.id}`)}
+        onUploadTreeImages={(event) => {
+          void uploadTreeImages(event);
+        }}
+        onSaveTree={saveTree}
+        onDeleteTree={(treeId) => {
+          void deleteTree(treeId);
+        }}
+        onApproveTree={(treeId) => {
+          void approveTree(treeId);
+        }}
+        onRejectTree={(treeId) => {
+          void rejectTree(treeId);
+        }}
+      />
+    );
+  };
+
+  const renderTreeDetailSection = () => {
+    return (
+      <TreeDetailSection
+        selectedTreeId={selectedTreeId}
+        selectedTree={selectedTreeDetail}
+        onBack={() => navigate("/trees")}
+        onOpenTrees={() => navigate("/trees")}
+        onOpenTreeType={(treeTypeId) => navigate(`/tree-types/${treeTypeId}`)}
+        onOpenGreenSpace={(spaceId) => navigate(`/green-spaces/${spaceId}`)}
+        resolveAssetUrl={resolveAssetUrl}
+        formatUpdatedAt={formatUpdatedAt}
+      />
+    );
+  };
+
   const renderMainSection = () => {
     if (route === "/") {
       return renderPrincipalSection();
@@ -3700,6 +4016,14 @@ function App() {
       return renderReportDetailSection();
     }
 
+    if (route.startsWith("/tree-types/")) {
+      return renderTreeTypeDetailSection();
+    }
+
+    if (route.startsWith("/trees/")) {
+      return renderTreeDetailSection();
+    }
+
     if (route === "/green-spaces") {
       return renderGreenSpacesSection();
     }
@@ -3714,6 +4038,14 @@ function App() {
 
     if (route === "/reports") {
       return renderReportsSection();
+    }
+
+    if (route === "/tree-types") {
+      return renderTreeTypesSection();
+    }
+
+    if (route === "/trees" || route.startsWith("/trees?")) {
+      return renderTreesSection();
     }
 
     if (route === "/admin-users" && user?.role === "admin") {
@@ -3988,6 +4320,20 @@ function App() {
             onClick={() => navigate("/reports")}
           >
             Reportes
+          </button>
+          <button
+            type="button"
+            className={isTreeTypesRoute ? "active" : ""}
+            onClick={() => navigate("/tree-types")}
+          >
+            Tipos de arboles
+          </button>
+          <button
+            type="button"
+            className={isTreesRoute ? "active" : ""}
+            onClick={() => navigate("/trees")}
+          >
+            Arboles
           </button>
           {user?.role === "admin" && (
             <>

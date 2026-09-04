@@ -7,6 +7,8 @@ import {
   ProposalOfGreenArea,
   ReportOfGreenArea,
   Role,
+  TreeType,
+  TreeInventory,
   User,
   VoteOfProposal,
   sequelize,
@@ -19,6 +21,8 @@ import {
   proposalSeeds,
   reportOfGreenAreaSeeds,
   roleSeeds,
+  treeTypeSeeds,
+  treeInventorySeeds,
   userSeeds,
   voteOfProposalSeeds,
 } from "./seedData";
@@ -41,6 +45,14 @@ export async function seedDatabase() {
   const proposalIdByTitle: Record<string, number> = {};
   const projectIdByTitle: Record<string, number> = {};
   const proposalById: Record<number, ProposalOfGreenArea> = {};
+  const treeTypeIdByName: Record<string, number> = {};
+
+  const normalizeTreeNameKey = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLocaleLowerCase("es");
 
   for (const role of roleSeeds) {
     const createdRole = await Role.create({
@@ -104,6 +116,51 @@ export async function seedDatabase() {
       user_id: userId,
       review_notes: reviewSeed.review_notes,
       rating: reviewSeed.rating,
+      created_at: createdAt,
+      updated_at: createdAt,
+    });
+  }
+
+  for (const treeTypeSeed of treeTypeSeeds) {
+    const createdTreeType = await TreeType.create({
+      name: treeTypeSeed.name,
+      description: treeTypeSeed.description,
+      reference_images: JSON.stringify(treeTypeSeed.reference_images),
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    treeTypeIdByName[normalizeTreeNameKey(treeTypeSeed.name)] = Number(
+      createdTreeType.getDataValue("type_id"),
+    );
+  }
+
+  for (const inventorySeed of treeInventorySeeds) {
+    const spaceId = spaceIdByName[inventorySeed.green_space_name];
+    if (!spaceId) {
+      throw new Error(
+        `Green space not found for tree inventory seed: ${inventorySeed.green_space_name}`,
+      );
+    }
+
+    const typeId =
+      treeTypeIdByName[normalizeTreeNameKey(inventorySeed.tree_type_name)];
+    if (!typeId) {
+      throw new Error(
+        `Tree type not found for tree inventory seed: ${inventorySeed.tree_type_name}`,
+      );
+    }
+
+    const createdAt = new Date(inventorySeed.created_at);
+    await TreeInventory.create({
+      name: inventorySeed.name,
+      health_status: inventorySeed.health_status,
+      space_id: spaceId,
+      type_id: typeId,
+      status: "approved",
+      submitted_by_user_id: userIdByUsername.admin,
+      validated_by_user_id: userIdByUsername.admin,
+      images: JSON.stringify(inventorySeed.image_urls),
       created_at: createdAt,
       updated_at: createdAt,
     });
@@ -275,7 +332,7 @@ export async function seedDatabase() {
   }
 
   console.log(
-    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${reportOfGreenAreaSeeds.length} reports, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
+    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
   );
 }
 

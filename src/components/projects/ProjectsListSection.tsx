@@ -22,9 +22,9 @@ export function ProjectsListSection({
 }: ProjectsListSectionProps) {
   const projectStatusLabel: Record<ProjectExecutionStatus, string> = {
     not_created: "Sin proyecto",
-    planned: "Planned",
-    in_progress: "In progress",
-    completed: "Completed",
+    planned: "Planificado",
+    in_progress: "En progreso",
+    completed: "Completado",
   };
 
   const summarizeText = (value: string, maxLength = 92) => {

@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+
 export interface RoleSeed {
   role_name: string;
   description: string;
@@ -26,6 +29,21 @@ export interface GreenSpaceReviewSeed {
   username: string;
   review_notes: string;
   rating: number;
+  created_at: string;
+}
+
+export interface TreeTypeSeed {
+  name: string;
+  description: string;
+  reference_images: string[];
+}
+
+export interface TreeInventorySeed {
+  name: string;
+  health_status: "healthy" | "regular" | "sick" | "dead";
+  green_space_name: string;
+  tree_type_name: string;
+  image_urls: string[];
   created_at: string;
 }
 
@@ -249,6 +267,170 @@ export const greenSpaceReviewSeeds: GreenSpaceReviewSeed[] = [
   },
 ];
 
+const fallbackTreeNames = [
+  "Araguaney",
+  "Apamate",
+  "Flamboyan",
+  "Mango",
+  "Ucaro",
+  "Camoruco",
+  "Nispero",
+];
+
+const normalizeTreeName = (rawName: string) => {
+  const cleaned = rawName.trim().replace(/[()]/g, "").replace(/\s+/g, " ");
+  if (!cleaned) return "";
+
+  const withoutAccents = cleaned
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const normalized =
+    withoutAccents.charAt(0).toUpperCase() +
+    withoutAccents.slice(1).toLowerCase();
+
+  return normalized;
+};
+
+const readCommonTreeNames = () => {
+  const filename = path.resolve(process.cwd(), "common_trees.txt");
+
+  try {
+    const content = fs.readFileSync(filename, "utf8");
+    const matches = content.match(
+      /Araguaney|Apamate|Flamboy[a-zA-Z\u00c0-\u017f]*|Mango|Ucaro|\u00dacar[a-zA-Z\u00c0-\u017f]*|Camoruco|Nispero|N\u00edspero/gi,
+    );
+
+    const names = Array.from(
+      new Set(
+        (matches || [])
+          .map((item) => normalizeTreeName(item))
+          .filter((item) => item.length > 0),
+      ),
+    );
+
+    if (!names.length) {
+      return fallbackTreeNames;
+    }
+
+    return names;
+  } catch {
+    return fallbackTreeNames;
+  }
+};
+
+const treeDescriptionByName: Record<string, string> = {
+  Araguaney:
+    "Arbol nativo de floracion amarilla intensa en epoca seca, ideal para paisaje y biodiversidad.",
+  Apamate:
+    "Especie ornamental de flor rosada o lila, usada para sombra ligera y alto valor estetico.",
+  Flamboyan:
+    "Arbol de copa amplia y floracion roja-anaranjada, util para sombra en espacios abiertos.",
+  Mango:
+    "Arbol frutal de sombra densa, aporta cobertura termica y frutos estacionales.",
+  Ucaro:
+    "Especie resistente al calor con follaje denso y raices poco agresivas para zonas urbanas.",
+  Camoruco:
+    "Arbol de crecimiento rapido y porte alto, adecuado para reforestacion en areas amplias.",
+  Nispero:
+    "Arbol perenne de tamano medio, util para jardines con espacio moderado y produccion frutal.",
+};
+
+const treeImagePool = [
+  "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1502085671122-2d218cd434e6?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1473773508845-188df298d2d1?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1492496913980-501348b61469?auto=format&fit=crop&w=1200&q=80",
+];
+
+const commonTreeNames = readCommonTreeNames();
+
+export const treeTypeSeeds: TreeTypeSeed[] = commonTreeNames.map(
+  (name, index) => ({
+    name,
+    description:
+      treeDescriptionByName[name] ||
+      "Especie propuesta para catalogo de arboles en areas verdes universitarias.",
+    reference_images: [
+      treeImagePool[index % treeImagePool.length],
+      treeImagePool[(index + 3) % treeImagePool.length],
+    ],
+  }),
+);
+
+export const treeInventorySeeds: TreeInventorySeed[] = [
+  {
+    name: "Arbol JC-01",
+    health_status: "healthy",
+    green_space_name: "Jardín Central",
+    tree_type_name: "Araguaney",
+    image_urls: [
+      "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=80",
+    ],
+    created_at: "2026-08-20T09:00:00.000Z",
+  },
+  {
+    name: "Arbol JC-02",
+    health_status: "regular",
+    green_space_name: "Jardín Central",
+    tree_type_name: "Mango",
+    image_urls: [
+      "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=1200&q=80",
+    ],
+    created_at: "2026-08-22T10:10:00.000Z",
+  },
+  {
+    name: "Arbol BU-01",
+    health_status: "healthy",
+    green_space_name: "Bosque Universitario",
+    tree_type_name: "Ucaro",
+    image_urls: [
+      "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
+    ],
+    created_at: "2026-08-24T11:30:00.000Z",
+  },
+  {
+    name: "Arbol PF-01",
+    health_status: "sick",
+    green_space_name: "Parque de la Facultad",
+    tree_type_name: "Apamate",
+    image_urls: [
+      "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1471193945509-9ad0617afabf?auto=format&fit=crop&w=1200&q=80",
+    ],
+    created_at: "2026-08-25T13:45:00.000Z",
+  },
+  {
+    name: "Arbol SV-01",
+    health_status: "regular",
+    green_space_name: "Sendero Verde",
+    tree_type_name: "Flamboyan",
+    image_urls: [
+      "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80",
+    ],
+    created_at: "2026-08-27T08:20:00.000Z",
+  },
+  {
+    name: "Arbol ADE-01",
+    health_status: "healthy",
+    green_space_name: "Área de descanso Estudiantil",
+    tree_type_name: "Nispero",
+    image_urls: [
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1200&q=80",
+    ],
+    created_at: "2026-08-29T16:05:00.000Z",
+  },
+];
+
 export const reportOfGreenAreaSeeds: ReportOfGreenAreaSeed[] = [
   {
     title: "Basureros saturados en sendero",
@@ -432,9 +614,7 @@ export const projectUpdateOfProposalSeeds: ProjectUpdateOfProposalSeed[] = [
     title: "Instalacion de lineas secundarias",
     description:
       "Se completaron conexiones en el 60% del parque y se realizaron pruebas de presion sin fugas.",
-    activity_images: [
-      "/uploads/green-spaces/gs-1784588213929-0.jpg",
-    ],
+    activity_images: ["/uploads/green-spaces/gs-1784588213929-0.jpg"],
     project_title: "Implementacion inicial de riego",
     username: "admin",
     created_at: "2026-08-27T16:40:00.000Z",
@@ -443,9 +623,7 @@ export const projectUpdateOfProposalSeeds: ProjectUpdateOfProposalSeed[] = [
     title: "Diseno participativo del mobiliario",
     description:
       "Estudiantes validaron la ubicacion de bancas y tipos de sombra para zonas de mayor uso.",
-    activity_images: [
-      "/green-spaces/plaza-ecologica-sur-1.svg",
-    ],
+    activity_images: ["/green-spaces/plaza-ecologica-sur-1.svg"],
     project_title: "Zona de descanso bajo sombra",
     username: "laura.campos",
     created_at: "2026-08-25T14:00:00.000Z",

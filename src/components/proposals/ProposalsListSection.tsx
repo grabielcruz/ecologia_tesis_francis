@@ -53,9 +53,9 @@ export function ProposalsListSection({
 
   const projectStatusLabel: Record<ProjectExecutionStatus, string> = {
     not_created: "Sin proyecto",
-    planned: "Planned",
-    in_progress: "In progress",
-    completed: "Completed",
+    planned: "Planificado",
+    in_progress: "En progreso",
+    completed: "Completado",
   };
 
   const filteredProposals = proposals.filter((proposal) => {

@@ -106,7 +106,7 @@ export function ProjectDetailSection({
 
   const statusLabel: Record<ProjectExecutionStatus, string> = {
     planned: "Planificado",
-    in_progress: "En ejecucion",
+    in_progress: "En progreso",
     completed: "Completado",
     not_created: "Sin proyecto",
   };
@@ -215,9 +215,9 @@ export function ProjectDetailSection({
                   }))
                 }
               >
-                <option value="planned">Planned</option>
-                <option value="in_progress">In progress</option>
-                <option value="completed">Completed</option>
+                <option value="planned">Planificado</option>
+                <option value="in_progress">En progreso</option>
+                <option value="completed">Completado</option>
               </select>
             </label>
             <div className="button-row compact">

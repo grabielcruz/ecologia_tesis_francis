@@ -10,7 +10,12 @@ import { Role, User } from "../models";
 const router = Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || "secret_key";
-const avatarUploadsDir = path.resolve(process.cwd(), "public", "uploads", "avatars");
+const avatarUploadsDir = path.resolve(
+  process.cwd(),
+  "public",
+  "uploads",
+  "avatars",
+);
 
 if (!fs.existsSync(avatarUploadsDir)) {
   fs.mkdirSync(avatarUploadsDir, { recursive: true });
@@ -63,7 +68,9 @@ router.post("/login", async (req, res) => {
   const password = String(req.body?.password || "");
 
   if (!username || !password) {
-    return res.status(400).json({ error: "Usuario y contrasena son obligatorios" });
+    return res
+      .status(400)
+      .json({ error: "Usuario y contrasena son obligatorios" });
   }
 
   const user = await User.findOne({
@@ -119,11 +126,15 @@ router.post("/register", async (req, res) => {
   const password = String(req.body?.password || "");
 
   if (!name || !username || !email || !password) {
-    return res.status(400).json({ error: "Completa todos los campos obligatorios" });
+    return res
+      .status(400)
+      .json({ error: "Completa todos los campos obligatorios" });
   }
 
   if (password.length < 8) {
-    return res.status(400).json({ error: "La contrasena debe tener al menos 8 caracteres" });
+    return res
+      .status(400)
+      .json({ error: "La contrasena debe tener al menos 8 caracteres" });
   }
 
   const existingUsername = await User.findOne({ where: { username } });
@@ -169,98 +180,117 @@ router.post("/register", async (req, res) => {
   });
 });
 
-router.put("/profile/:id", authenticate, async (req: AuthRequest, res: Response) => {
-  const userId = Number(req.params.id);
-  if (!Number.isFinite(userId)) {
-    return res.status(400).json({ error: "Identificador invalido" });
-  }
-
-  if (!canEditUser(req, userId)) {
-    return res.status(403).json({ error: "No autorizado" });
-  }
-
-  const row = await User.findByPk(userId, {
-    include: [{ model: Role, attributes: ["role_name"] }],
-  });
-
-  if (!row) {
-    return res.status(404).json({ error: "Usuario no encontrado" });
-  }
-
-  const updates: Record<string, unknown> = {
-    updated_at: new Date(),
-  };
-
-  const nextName = req.body?.name;
-  const nextUsername = req.body?.username;
-  const nextEmail = req.body?.email;
-  const nextAvatarUrl = req.body?.avatarUrl;
-  const oldPassword = req.body?.oldPassword;
-  const nextPassword = req.body?.password;
-
-  if (typeof nextName === "string" && nextName.trim()) {
-    updates.name = nextName.trim();
-  }
-
-  if (typeof nextUsername === "string" && nextUsername.trim()) {
-    const usernameTaken = await User.findOne({ where: { username: nextUsername.trim() } });
-    if (
-      usernameTaken &&
-      Number(usernameTaken.getDataValue("user_id")) !== Number(row.getDataValue("user_id"))
-    ) {
-      return res.status(409).json({ error: "El nombre de usuario ya existe" });
-    }
-    updates.username = nextUsername.trim();
-  }
-
-  if (typeof nextEmail === "string" && nextEmail.trim()) {
-    const emailTaken = await User.findOne({ where: { email: nextEmail.trim() } });
-    if (
-      emailTaken &&
-      Number(emailTaken.getDataValue("user_id")) !== Number(row.getDataValue("user_id"))
-    ) {
-      return res.status(409).json({ error: "El correo ya esta registrado" });
-    }
-    updates.email = nextEmail.trim();
-  }
-
-  if (typeof nextAvatarUrl === "string") {
-    updates.avatar_url = nextAvatarUrl.trim();
-  }
-
-  if (typeof nextPassword === "string" && nextPassword.length > 0) {
-    if (nextPassword.length < 8) {
-      return res.status(400).json({ error: "La contrasena debe tener al menos 8 caracteres" });
+router.put(
+  "/profile/:id",
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    const userId = Number(req.params.id);
+    if (!Number.isFinite(userId)) {
+      return res.status(400).json({ error: "Identificador invalido" });
     }
 
-    if (!oldPassword || typeof oldPassword !== "string") {
-      return res.status(400).json({ error: "Debes ingresar la contrasena actual" });
+    if (!canEditUser(req, userId)) {
+      return res.status(403).json({ error: "No autorizado" });
     }
 
-    const currentHash = String(row.getDataValue("password_hash") || "");
-    const oldMatches = await bcrypt.compare(oldPassword, currentHash);
-    if (!oldMatches) {
-      return res.status(400).json({ error: "La contrasena actual es incorrecta" });
+    const row = await User.findByPk(userId, {
+      include: [{ model: Role, attributes: ["role_name"] }],
+    });
+
+    if (!row) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    updates.password_hash = await bcrypt.hash(nextPassword, 10);
-  }
+    const updates: Record<string, unknown> = {
+      updated_at: new Date(),
+    };
 
-  await row.update(updates);
+    const nextName = req.body?.name;
+    const nextUsername = req.body?.username;
+    const nextEmail = req.body?.email;
+    const nextAvatarUrl = req.body?.avatarUrl;
+    const oldPassword = req.body?.oldPassword;
+    const nextPassword = req.body?.password;
 
-  const roleRecord = row.get("Role") as Role | undefined;
-  const roleName = roleRecord?.getDataValue("role_name") || req.user?.role || "regular";
+    if (typeof nextName === "string" && nextName.trim()) {
+      updates.name = nextName.trim();
+    }
 
-  return res.json({
-    id: row.getDataValue("user_id"),
-    name: row.getDataValue("name"),
-    username: row.getDataValue("username"),
-    email: row.getDataValue("email"),
-    role: roleName,
-    points: 0,
-    avatarUrl: row.getDataValue("avatar_url"),
-  });
-});
+    if (typeof nextUsername === "string" && nextUsername.trim()) {
+      const usernameTaken = await User.findOne({
+        where: { username: nextUsername.trim() },
+      });
+      if (
+        usernameTaken &&
+        Number(usernameTaken.getDataValue("user_id")) !==
+          Number(row.getDataValue("user_id"))
+      ) {
+        return res
+          .status(409)
+          .json({ error: "El nombre de usuario ya existe" });
+      }
+      updates.username = nextUsername.trim();
+    }
+
+    if (typeof nextEmail === "string" && nextEmail.trim()) {
+      const emailTaken = await User.findOne({
+        where: { email: nextEmail.trim() },
+      });
+      if (
+        emailTaken &&
+        Number(emailTaken.getDataValue("user_id")) !==
+          Number(row.getDataValue("user_id"))
+      ) {
+        return res.status(409).json({ error: "El correo ya esta registrado" });
+      }
+      updates.email = nextEmail.trim();
+    }
+
+    if (typeof nextAvatarUrl === "string") {
+      updates.avatar_url = nextAvatarUrl.trim();
+    }
+
+    if (typeof nextPassword === "string" && nextPassword.length > 0) {
+      if (nextPassword.length < 8) {
+        return res
+          .status(400)
+          .json({ error: "La contrasena debe tener al menos 8 caracteres" });
+      }
+
+      if (!oldPassword || typeof oldPassword !== "string") {
+        return res
+          .status(400)
+          .json({ error: "Debes ingresar la contrasena actual" });
+      }
+
+      const currentHash = String(row.getDataValue("password_hash") || "");
+      const oldMatches = await bcrypt.compare(oldPassword, currentHash);
+      if (!oldMatches) {
+        return res
+          .status(400)
+          .json({ error: "La contrasena actual es incorrecta" });
+      }
+
+      updates.password_hash = await bcrypt.hash(nextPassword, 10);
+    }
+
+    await row.update(updates);
+
+    const roleRecord = row.get("Role") as Role | undefined;
+    const roleName =
+      roleRecord?.getDataValue("role_name") || req.user?.role || "regular";
+
+    return res.json({
+      id: row.getDataValue("user_id"),
+      name: row.getDataValue("name"),
+      username: row.getDataValue("username"),
+      email: row.getDataValue("email"),
+      role: roleName,
+      points: 0,
+      avatarUrl: row.getDataValue("avatar_url"),
+    });
+  },
+);
 
 router.post(
   "/profile/:id/avatar",

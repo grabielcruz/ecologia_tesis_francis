@@ -73,7 +73,10 @@ const makeReportRow = (overrides?: Record<string, unknown>) => {
 describe("suggestions routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(jwt.verify).mockReturnValue({ user_id: 3, role: "regular" } as never);
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 3,
+      role: "regular",
+    } as never);
     vi.mocked(ReportOfGreenArea.findAll).mockResolvedValue([] as never);
   });
 
@@ -132,7 +135,10 @@ describe("suggestions routes", () => {
   });
 
   it("prevents edition by non-creator", async () => {
-    vi.mocked(jwt.verify).mockReturnValue({ user_id: 9, role: "regular" } as never);
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 9,
+      role: "regular",
+    } as never);
     vi.mocked(ReportOfGreenArea.findByPk).mockResolvedValue(
       makeReportRow({ user_id: 3, state: "open" }) as never,
     );
@@ -165,7 +171,10 @@ describe("suggestions routes", () => {
   });
 
   it("allows admin to mark report as completed", async () => {
-    vi.mocked(jwt.verify).mockReturnValue({ user_id: 1, role: "admin" } as never);
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
 
     const openReport = makeReportRow({ state: "open" });
     vi.mocked(ReportOfGreenArea.findByPk)
@@ -184,7 +193,10 @@ describe("suggestions routes", () => {
   });
 
   it("prevents non-admin from marking report as completed", async () => {
-    vi.mocked(jwt.verify).mockReturnValue({ user_id: 3, role: "regular" } as never);
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 3,
+      role: "regular",
+    } as never);
 
     const response = await request(app)
       .patch("/api/suggestions/11/complete")
@@ -195,10 +207,15 @@ describe("suggestions routes", () => {
   });
 
   it("allows deletion only for admin and closed reports", async () => {
-    vi.mocked(jwt.verify).mockReturnValue({ user_id: 1, role: "admin" } as never);
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
 
     const openReport = makeReportRow({ state: "open" });
-    vi.mocked(ReportOfGreenArea.findByPk).mockResolvedValue(openReport as never);
+    vi.mocked(ReportOfGreenArea.findByPk).mockResolvedValue(
+      openReport as never,
+    );
 
     const openDelete = await request(app)
       .delete("/api/suggestions/11")
@@ -210,7 +227,9 @@ describe("suggestions routes", () => {
     });
 
     const closedReport = makeReportRow({ state: "closed" });
-    vi.mocked(ReportOfGreenArea.findByPk).mockResolvedValue(closedReport as never);
+    vi.mocked(ReportOfGreenArea.findByPk).mockResolvedValue(
+      closedReport as never,
+    );
 
     const closedDelete = await request(app)
       .delete("/api/suggestions/11")

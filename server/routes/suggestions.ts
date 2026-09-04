@@ -95,7 +95,9 @@ const toIsoStringOrNull = (value: unknown) => {
 };
 
 const normalizeState = (value: unknown): "open" | "closed" => {
-  const state = String(value || "open").trim().toLowerCase();
+  const state = String(value || "open")
+    .trim()
+    .toLowerCase();
   return state === "closed" || state === "close" ? "closed" : "open";
 };
 
@@ -143,7 +145,9 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response) => {
     ],
   });
 
-  return res.json(reports.map((report) => serializeReport(report as ReportOfGreenArea)));
+  return res.json(
+    reports.map((report) => serializeReport(report as ReportOfGreenArea)),
+  );
 });
 
 router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
@@ -193,7 +197,9 @@ router.post(
 
       return res.status(201).json({ images: savedUrls });
     } catch {
-      return res.status(500).json({ error: "No se pudieron subir las imagenes" });
+      return res
+        .status(500)
+        .json({ error: "No se pudieron subir las imagenes" });
     }
   },
 );
@@ -244,12 +250,14 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
     },
   );
 
-  return res.status(201).json(
-    serializeReport(
-      (createdWithRelations as ReportOfGreenArea | null) ||
-        (created as ReportOfGreenArea),
-    ),
-  );
+  return res
+    .status(201)
+    .json(
+      serializeReport(
+        (createdWithRelations as ReportOfGreenArea | null) ||
+          (created as ReportOfGreenArea),
+      ),
+    );
 });
 
 router.put("/:id", authenticate, async (req: AuthRequest, res: Response) => {
@@ -269,11 +277,15 @@ router.put("/:id", authenticate, async (req: AuthRequest, res: Response) => {
 
   const currentState = normalizeState(report.getDataValue("state"));
   if (currentState !== "open") {
-    return res.status(409).json({ error: "Solo se pueden editar reportes abiertos" });
+    return res
+      .status(409)
+      .json({ error: "Solo se pueden editar reportes abiertos" });
   }
 
   if (Number(report.getDataValue("user_id")) !== req.user.user_id) {
-    return res.status(403).json({ error: "Solo el creador puede editar este reporte" });
+    return res
+      .status(403)
+      .json({ error: "Solo el creador puede editar este reporte" });
   }
 
   const title = String(req.body?.title || "").trim();
@@ -303,7 +315,9 @@ router.put("/:id", authenticate, async (req: AuthRequest, res: Response) => {
   });
 
   return res.json(
-    serializeReport((updated as ReportOfGreenArea | null) || (report as ReportOfGreenArea)),
+    serializeReport(
+      (updated as ReportOfGreenArea | null) || (report as ReportOfGreenArea),
+    ),
   );
 });
 

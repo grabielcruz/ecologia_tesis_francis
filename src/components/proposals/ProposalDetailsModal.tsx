@@ -21,7 +21,9 @@ interface ProposalDetailsModalProps {
   setProjectUpdateTitleInput: (value: string) => void;
   setProjectUpdateDescriptionInput: (value: string) => void;
   setProjectUpdateImagesInput: (value: string) => void;
-  setSelectedProjectStatus: (value: "planned" | "in_progress" | "completed") => void;
+  setSelectedProjectStatus: (
+    value: "planned" | "in_progress" | "completed",
+  ) => void;
   onUpdateProjectCompletedStatus: (
     proposalId: number,
     projectId: number,
@@ -67,6 +69,15 @@ export function ProposalDetailsModal({
 }: ProposalDetailsModalProps) {
   if (!isOpen || !proposal) return null;
 
+  const projectStatusLabel: Record<
+    "planned" | "in_progress" | "completed",
+    string
+  > = {
+    planned: "Planificado",
+    in_progress: "En progreso",
+    completed: "Completado",
+  };
+
   const project = projectDetails?.project || null;
   const updates = projectDetails?.updates || [];
 
@@ -94,7 +105,9 @@ export function ProposalDetailsModal({
         </div>
 
         <h4>Seguimiento del proyecto</h4>
-        {isProjectLoading && <p className="muted">Cargando detalles del proyecto...</p>}
+        {isProjectLoading && (
+          <p className="muted">Cargando detalles del proyecto...</p>
+        )}
         {!isProjectLoading && !project && (
           <p className="muted">
             Esta propuesta aun no tiene proyecto generado. Debe quedar aprobada
@@ -111,7 +124,7 @@ export function ProposalDetailsModal({
               </div>
               <div className="details-item">
                 <span>Estado de ejecucion</span>
-                <strong>{project.completedStatus}</strong>
+                <strong>{projectStatusLabel[project.completedStatus]}</strong>
               </div>
             </div>
 
@@ -123,13 +136,16 @@ export function ProposalDetailsModal({
                     value={selectedProjectStatus}
                     onChange={(e) =>
                       setSelectedProjectStatus(
-                        e.target.value as "planned" | "in_progress" | "completed",
+                        e.target.value as
+                          | "planned"
+                          | "in_progress"
+                          | "completed",
                       )
                     }
                   >
-                    <option value="planned">Planned</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="completed">Completed</option>
+                    <option value="planned">Planificado</option>
+                    <option value="in_progress">En progreso</option>
+                    <option value="completed">Completado</option>
                   </select>
                 </label>
                 <div className="button-row compact">
@@ -147,7 +163,9 @@ export function ProposalDetailsModal({
                       selectedProjectStatus === project.completedStatus
                     }
                   >
-                    {isUpdatingProjectStatus ? "Actualizando..." : "Guardar estado"}
+                    {isUpdatingProjectStatus
+                      ? "Actualizando..."
+                      : "Guardar estado"}
                   </button>
                 </div>
               </div>
@@ -168,7 +186,8 @@ export function ProposalDetailsModal({
                     <p>{update.description}</p>
                     {update.createdBy && (
                       <p className="small muted">
-                        Registrado por: {update.createdBy.name || update.createdBy.username}
+                        Registrado por:{" "}
+                        {update.createdBy.name || update.createdBy.username}
                       </p>
                     )}
                     {update.images.length > 0 && (
@@ -227,7 +246,9 @@ export function ProposalDetailsModal({
                     type="file"
                     accept="image/*"
                     multiple
-                    onChange={(event) => onUploadProjectActivityImages(project.id, event)}
+                    onChange={(event) =>
+                      onUploadProjectActivityImages(project.id, event)
+                    }
                     disabled={uploadingProjectUpdateImages}
                   />
                   <span className="muted">
@@ -241,7 +262,9 @@ export function ProposalDetailsModal({
                   Rutas cargadas
                   <textarea
                     value={projectUpdateImagesInput}
-                    onChange={(e) => setProjectUpdateImagesInput(e.target.value)}
+                    onChange={(e) =>
+                      setProjectUpdateImagesInput(e.target.value)
+                    }
                     placeholder="Se completa automaticamente al subir imagenes"
                   />
                 </label>

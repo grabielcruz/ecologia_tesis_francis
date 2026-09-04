@@ -1769,6 +1769,12 @@ button.danger:hover {
   border-color: #f6d190;
 }
 
+.proposal-status.pending {
+  color: #8d5d16;
+  background: #fff3d8;
+  border-color: #f6d190;
+}
+
 .proposal-status.open {
   color: #0d5e58;
   background: #d6f0ee;
@@ -1815,6 +1821,30 @@ button.danger:hover {
   color: #2356a1;
   background: #e8f0ff;
   border-color: #c6d8ff;
+}
+
+.tree-health.healthy {
+  color: #0d5e58;
+  background: #d6f0ee;
+  border-color: #b3dfda;
+}
+
+.tree-health.regular {
+  color: #8d5d16;
+  background: #fff3d8;
+  border-color: #f6d190;
+}
+
+.tree-health.sick {
+  color: #932020;
+  background: #ffe2e2;
+  border-color: #f3b4b4;
+}
+
+.tree-health.dead {
+  color: #59453e;
+  background: #f0e2db;
+  border-color: #dcc7bc;
 }
 
 .proposal-updates-list {

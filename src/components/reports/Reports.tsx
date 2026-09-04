@@ -1,6 +1,9 @@
 import { ChangeEvent, FormEvent } from "react";
 import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
-import { GreenAreaReport, ReportStateFilter } from "../../features/reports/types";
+import {
+  GreenAreaReport,
+  ReportStateFilter,
+} from "../../features/reports/types";
 import { ReportForm } from "./ReportForm";
 
 interface GreenSpaceOption {
@@ -81,7 +84,9 @@ export function Reports({
         const thumbnail = report.images?.[0];
         if (!thumbnail) {
           return (
-            <span className="report-table-thumbnail placeholder">Sin imagen</span>
+            <span className="report-table-thumbnail placeholder">
+              Sin imagen
+            </span>
           );
         }
 
@@ -114,7 +119,9 @@ export function Reports({
       sortable: true,
       sortValue: (report) => report.state,
       render: (report) => (
-        <span className={`pill ${report.state === "open" ? "active" : "inactive"}`}>
+        <span
+          className={`pill ${report.state === "open" ? "active" : "inactive"}`}
+        >
           {report.state === "open" ? "Abierto" : "Cerrado"}
         </span>
       ),

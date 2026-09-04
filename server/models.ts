@@ -255,6 +255,82 @@ TreeType.init(
   },
 );
 
+export class TreeTypeSuggestion extends Model {}
+TreeTypeSuggestion.init(
+  {
+    tree_type_suggestion_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "",
+    },
+    reference_images: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    },
+    status: {
+      type: DataTypes.ENUM("pending", "approved", "rejected"),
+      allowNull: false,
+      defaultValue: "pending",
+    },
+    suggested_by_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    approved_by_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    tree_type_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "TreeType",
+        key: "type_id",
+      },
+    },
+    admin_notes: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "TreeTypeSuggestion",
+    tableName: "TreeTypeSuggestion",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
 export class TreeInventory extends Model {}
 TreeInventory.init(
   {
@@ -282,11 +358,37 @@ TreeInventory.init(
     },
     type_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: "TreeType",
         key: "type_id",
       },
+    },
+    status: {
+      type: DataTypes.ENUM("pending", "approved", "rejected"),
+      allowNull: false,
+      defaultValue: "approved",
+    },
+    submitted_by_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    validated_by_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    images: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
     },
     created_at: {
       type: DataTypes.DATE,
@@ -651,6 +753,33 @@ TreeInventory.belongsTo(GreenSpace, { foreignKey: "space_id" });
 
 TreeType.hasMany(TreeInventory, { foreignKey: "type_id" });
 TreeInventory.belongsTo(TreeType, { foreignKey: "type_id" });
+
+User.hasMany(TreeInventory, { foreignKey: "submitted_by_user_id" });
+TreeInventory.belongsTo(User, {
+  foreignKey: "submitted_by_user_id",
+  as: "SubmittedBy",
+});
+
+User.hasMany(TreeInventory, { foreignKey: "validated_by_user_id" });
+TreeInventory.belongsTo(User, {
+  foreignKey: "validated_by_user_id",
+  as: "ValidatedBy",
+});
+
+User.hasMany(TreeTypeSuggestion, { foreignKey: "suggested_by_user_id" });
+TreeTypeSuggestion.belongsTo(User, {
+  foreignKey: "suggested_by_user_id",
+  as: "SuggestedBy",
+});
+
+User.hasMany(TreeTypeSuggestion, { foreignKey: "approved_by_user_id" });
+TreeTypeSuggestion.belongsTo(User, {
+  foreignKey: "approved_by_user_id",
+  as: "ApprovedBy",
+});
+
+TreeType.hasMany(TreeTypeSuggestion, { foreignKey: "tree_type_id" });
+TreeTypeSuggestion.belongsTo(TreeType, { foreignKey: "tree_type_id" });
 
 const enforceFixedRoles = async () => {
   const fixedRoles = [

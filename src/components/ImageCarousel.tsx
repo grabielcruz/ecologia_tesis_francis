@@ -39,12 +39,17 @@ export function ImageCarousel({
 
   const goToImage = (direction: number) => {
     if (images.length <= 1) return;
-    setActiveIndex((prev) => (prev + direction + images.length) % images.length);
+    setActiveIndex(
+      (prev) => (prev + direction + images.length) % images.length,
+    );
   };
 
   const modal = showModal
     ? createPortal(
-        <div className="image-lightbox-overlay" onClick={() => setShowModal(false)}>
+        <div
+          className="image-lightbox-overlay"
+          onClick={() => setShowModal(false)}
+        >
           <div
             className="image-lightbox-card"
             onClick={(event) => event.stopPropagation()}

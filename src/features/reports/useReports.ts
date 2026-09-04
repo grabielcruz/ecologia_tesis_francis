@@ -36,7 +36,9 @@ export function useReports({
   const [editingReportStateInput, setEditingReportStateInput] = useState<
     "open" | "closed"
   >("open");
-  const [reportDetail, setReportDetail] = useState<GreenAreaReport | null>(null);
+  const [reportDetail, setReportDetail] = useState<GreenAreaReport | null>(
+    null,
+  );
 
   const selectedReportId = useMemo(() => {
     if (!route.startsWith("/reports/")) return null;

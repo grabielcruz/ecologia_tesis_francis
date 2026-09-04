@@ -7,6 +7,8 @@ import {
   proposalSeeds,
   reportOfGreenAreaSeeds,
   roleSeeds,
+  treeTypeSeeds,
+  treeInventorySeeds,
   userSeeds,
   voteOfProposalSeeds,
 } from "./seedData";
@@ -71,6 +73,40 @@ describe("seedData", () => {
       expect(report.description.trim().length).toBeGreaterThan(0);
       expect(["open", "closed"]).toContain(report.state);
       expect(Number.isNaN(new Date(report.created_at).getTime())).toBe(false);
+    }
+  });
+
+  it("defines tree type seeds with images", () => {
+    expect(treeTypeSeeds.length).toBeGreaterThan(0);
+
+    for (const treeType of treeTypeSeeds) {
+      expect(treeType.name.trim().length).toBeGreaterThan(0);
+      expect(treeType.description.trim().length).toBeGreaterThan(0);
+      expect(treeType.reference_images.length).toBeGreaterThan(0);
+
+      for (const imageUrl of treeType.reference_images) {
+        expect(imageUrl.startsWith("https://")).toBe(true);
+      }
+    }
+  });
+
+  it("defines tree inventory seeds linked to existing spaces and tree types", () => {
+    expect(treeInventorySeeds.length).toBeGreaterThan(0);
+
+    const spaceNames = new Set(greenSpaceSeeds.map((space) => space.name));
+    const treeTypeNames = new Set(treeTypeSeeds.map((type) => type.name));
+    const allowedHealthStates = new Set(["healthy", "regular", "sick", "dead"]);
+
+    for (const tree of treeInventorySeeds) {
+      expect(tree.name.trim().length).toBeGreaterThan(0);
+      expect(spaceNames.has(tree.green_space_name)).toBe(true);
+      expect(treeTypeNames.has(tree.tree_type_name)).toBe(true);
+      expect(allowedHealthStates.has(tree.health_status)).toBe(true);
+      expect(tree.image_urls.length).toBeGreaterThan(0);
+      for (const imageUrl of tree.image_urls) {
+        expect(imageUrl.startsWith("https://")).toBe(true);
+      }
+      expect(Number.isNaN(new Date(tree.created_at).getTime())).toBe(false);
     }
   });
 

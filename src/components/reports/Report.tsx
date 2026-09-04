@@ -49,7 +49,8 @@ export function Report({
   const reportImages = selectedReport.images || [];
   const isCreator = currentUserId === selectedReport.userId;
   const canEdit = isCreator && selectedReport.state === "open";
-  const canDelete = currentUserRole === "admin" && selectedReport.state === "closed";
+  const canDelete =
+    currentUserRole === "admin" && selectedReport.state === "closed";
 
   return (
     <section className="box reports-box">
@@ -89,7 +90,8 @@ export function Report({
           <div>
             <h3>{selectedReport.title}</h3>
             <p>
-              {selectedReport.spaceName} · por {selectedReport.createdBy?.name || "Usuario"}
+              {selectedReport.spaceName} · por{" "}
+              {selectedReport.createdBy?.name || "Usuario"}
             </p>
           </div>
           <span
