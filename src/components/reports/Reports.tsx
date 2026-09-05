@@ -14,12 +14,9 @@ interface GreenSpaceOption {
 interface ReportsProps {
   reports: GreenAreaReport[];
   greenSpaces: GreenSpaceOption[];
-  userId?: number;
-  userRole?: string;
   reportStateFilter: ReportStateFilter;
   setReportStateFilter: (value: ReportStateFilter) => void;
   showReportCreateModal: boolean;
-  showReportEditModal: boolean;
   reportTitleInput: string;
   reportDescriptionInput: string;
   reportSpaceIdInput: number;
@@ -31,28 +28,21 @@ interface ReportsProps {
   resolveAssetUrl: (assetPath: string) => string;
   onOpenCreateReportModal: () => void;
   onCloseCreateReportModal: () => void;
-  onCloseEditReportModal: () => void;
   onSaveReport: (event: FormEvent<HTMLFormElement>) => void;
   onUploadReportImages: (event: ChangeEvent<HTMLInputElement>) => void;
   setReportTitleInput: (value: string) => void;
   setReportDescriptionInput: (value: string) => void;
   setReportSpaceIdInput: (value: number) => void;
   setEditingReportStateInput: (value: "open" | "closed") => void;
-  onOpenEditReportModal: (report: GreenAreaReport) => void;
-  onDeleteReport: (reportId: number) => void;
-  onCompleteReport: (reportId: number) => void;
   onOpenReportDetail: (reportId: number) => void;
 }
 
 export function Reports({
   reports,
   greenSpaces,
-  userId,
-  userRole,
   reportStateFilter,
   setReportStateFilter,
   showReportCreateModal,
-  showReportEditModal,
   reportTitleInput,
   reportDescriptionInput,
   reportSpaceIdInput,
@@ -64,16 +54,12 @@ export function Reports({
   resolveAssetUrl,
   onOpenCreateReportModal,
   onCloseCreateReportModal,
-  onCloseEditReportModal,
   onSaveReport,
   onUploadReportImages,
   setReportTitleInput,
   setReportDescriptionInput,
   setReportSpaceIdInput,
   setEditingReportStateInput,
-  onOpenEditReportModal,
-  onDeleteReport,
-  onCompleteReport,
   onOpenReportDetail,
 }: ReportsProps) {
   const reportColumns: DefaultTableColumn<GreenAreaReport>[] = [
@@ -132,65 +118,6 @@ export function Reports({
       sortable: true,
       sortValue: (report) => report.updatedAt || "",
       render: (report) => formatUpdatedAt(report.updatedAt || undefined),
-    },
-    {
-      key: "actions",
-      label: "Acciones",
-      render: (report) => {
-        const isCreator = userId === report.userId;
-        const canEdit = isCreator && report.state === "open";
-        const canComplete = userRole === "admin" && report.state === "open";
-        const canDelete = userRole === "admin" && report.state === "closed";
-
-        return (
-          <div className="table-actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenReportDetail(report.id);
-              }}
-            >
-              Ver detalle
-            </button>
-            {canEdit && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenEditReportModal(report);
-                }}
-              >
-                Editar
-              </button>
-            )}
-            {canComplete && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onCompleteReport(report.id);
-                }}
-              >
-                Marcar completado
-              </button>
-            )}
-            {canDelete && (
-              <button
-                type="button"
-                className="danger"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDeleteReport(report.id);
-                }}
-              >
-                Eliminar
-              </button>
-            )}
-          </div>
-        );
-      },
     },
   ];
 
@@ -252,27 +179,6 @@ export function Reports({
         isSubmittingReport={isSubmittingReport}
         uploadingReportImages={uploadingReportImages}
         onClose={onCloseCreateReportModal}
-        onSubmit={onSaveReport}
-        onUploadReportImages={onUploadReportImages}
-        setReportTitleInput={setReportTitleInput}
-        setReportDescriptionInput={setReportDescriptionInput}
-        setReportSpaceIdInput={setReportSpaceIdInput}
-        setEditingReportStateInput={setEditingReportStateInput}
-        resolveAssetUrl={resolveAssetUrl}
-      />
-
-      <ReportForm
-        isOpen={showReportEditModal}
-        mode="edit"
-        greenSpaces={greenSpaces}
-        reportTitleInput={reportTitleInput}
-        reportDescriptionInput={reportDescriptionInput}
-        reportSpaceIdInput={reportSpaceIdInput}
-        reportImagesInput={reportImagesInput}
-        editingReportStateInput={editingReportStateInput}
-        isSubmittingReport={isSubmittingReport}
-        uploadingReportImages={uploadingReportImages}
-        onClose={onCloseEditReportModal}
         onSubmit={onSaveReport}
         onUploadReportImages={onUploadReportImages}
         setReportTitleInput={setReportTitleInput}

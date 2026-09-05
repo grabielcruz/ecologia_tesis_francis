@@ -23,6 +23,12 @@ interface CreateProjectUpdatePayload {
   images: string[];
 }
 
+interface UpdateProjectUpdatePayload {
+  title: string;
+  description: string;
+  images: string[];
+}
+
 const readResponseError = async (response: Response, fallback: string) => {
   const data = await response.json().catch(() => ({}));
   const message =
@@ -59,6 +65,24 @@ export const fetchProposalProjectDetailsApi = async (
   proposalId: number,
 ): Promise<ProposalProjectDetails> => {
   const response = await fetch(`/api/proposals/${proposalId}/project`, {
+    headers: authHeaders(token),
+  });
+
+  if (!response.ok) {
+    await readResponseError(
+      response,
+      "No se pudo cargar el detalle del proyecto",
+    );
+  }
+
+  return (await response.json()) as ProposalProjectDetails;
+};
+
+export const fetchProjectDetailsByProjectIdApi = async (
+  token: string,
+  projectId: number,
+): Promise<ProposalProjectDetails> => {
+  const response = await fetch(`/api/proposals/projects/${projectId}`, {
     headers: authHeaders(token),
   });
 
@@ -197,6 +221,44 @@ export const createProjectActivityUpdateApi = async (
 
   if (!response.ok) {
     await readResponseError(response, "No se pudo guardar la actividad");
+  }
+};
+
+export const updateProjectActivityUpdateApi = async (
+  token: string,
+  projectId: number,
+  updateId: number,
+  payload: UpdateProjectUpdatePayload,
+): Promise<void> => {
+  const response = await fetch(
+    `/api/proposals/projects/${projectId}/updates/${updateId}`,
+    {
+      method: "PUT",
+      headers: authJsonHeaders(token),
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    await readResponseError(response, "No se pudo actualizar la actividad");
+  }
+};
+
+export const deleteProjectActivityUpdateApi = async (
+  token: string,
+  projectId: number,
+  updateId: number,
+): Promise<void> => {
+  const response = await fetch(
+    `/api/proposals/projects/${projectId}/updates/${updateId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+    },
+  );
+
+  if (!response.ok) {
+    await readResponseError(response, "No se pudo eliminar la actividad");
   }
 };
 

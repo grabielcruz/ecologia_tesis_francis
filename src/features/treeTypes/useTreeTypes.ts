@@ -2,7 +2,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { TreeType } from "./types";
 
 interface UseTreeTypesParams {
-  token: string;
+  token: string | null;
   route: string;
   userRole?: string;
   setError: (message: string | null) => void;
@@ -113,7 +113,7 @@ export function useTreeTypes({
     event.preventDefault();
     if (!token || userRole !== "admin") {
       setError("Solo administradores pueden gestionar tipos de arboles");
-      return;
+      return false;
     }
 
     const name = treeTypeNameInput.trim();
@@ -122,7 +122,7 @@ export function useTreeTypes({
 
     if (!name || !description || referenceImages.length === 0) {
       setError("Completa nombre, descripcion e imagenes referenciales");
-      return;
+      return false;
     }
 
     setIsSubmittingTreeType(true);
@@ -151,7 +151,7 @@ export function useTreeTypes({
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         setError(data.error || "No se pudo guardar el tipo de arbol");
-        return;
+        return false;
       }
 
       setSuccessMessage(
@@ -161,8 +161,10 @@ export function useTreeTypes({
       );
       resetTreeTypeForm();
       await fetchTreeTypes();
+      return true;
     } catch {
       setError("No se pudo guardar el tipo de arbol");
+      return false;
     } finally {
       setIsSubmittingTreeType(false);
     }
@@ -171,7 +173,7 @@ export function useTreeTypes({
   const deleteTreeType = async (treeTypeId: number) => {
     if (!token || userRole !== "admin") {
       setError("Solo administradores pueden eliminar tipos de arboles");
-      return;
+      return false;
     }
 
     try {
@@ -183,14 +185,16 @@ export function useTreeTypes({
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         setError(data.error || "No se pudo eliminar el tipo de arbol");
-        return;
+        return false;
       }
 
       setSuccessMessage("Tipo de arbol eliminado correctamente.");
       setError(null);
       await fetchTreeTypes();
+      return true;
     } catch {
       setError("No se pudo eliminar el tipo de arbol");
+      return false;
     }
   };
 

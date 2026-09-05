@@ -2,11 +2,14 @@ import { useMemo } from "react";
 import {
   createProjectActivityUpdateApi,
   createProposalApi,
+  deleteProjectActivityUpdateApi,
   decideProposalApi,
+  fetchProjectDetailsByProjectIdApi,
   fetchProjectsApi,
   fetchProposalProjectDetailsApi,
   fetchProposalsApi,
   finalizeProposalApi,
+  updateProjectActivityUpdateApi,
   updateProjectCompletedStatusApi,
   uploadProjectActivityImagesApi,
   voteProposalApi,
@@ -28,6 +31,8 @@ export const useProposalActions = (token: string | null) =>
       fetchProjects: () => fetchProjectsApi(requireToken(token)),
       fetchProposalProjectDetails: (proposalId: number) =>
         fetchProposalProjectDetailsApi(requireToken(token), proposalId),
+      fetchProjectDetailsByProjectId: (projectId: number) =>
+        fetchProjectDetailsByProjectIdApi(requireToken(token), projectId),
       createProposal: (payload: {
         title: string;
         description: string;
@@ -52,6 +57,19 @@ export const useProposalActions = (token: string | null) =>
         payload: { title: string; description: string; images: string[] },
       ) =>
         createProjectActivityUpdateApi(requireToken(token), projectId, payload),
+      updateProjectActivityUpdate: (
+        projectId: number,
+        updateId: number,
+        payload: { title: string; description: string; images: string[] },
+      ) =>
+        updateProjectActivityUpdateApi(
+          requireToken(token),
+          projectId,
+          updateId,
+          payload,
+        ),
+      deleteProjectActivityUpdate: (projectId: number, updateId: number) =>
+        deleteProjectActivityUpdateApi(requireToken(token), projectId, updateId),
       updateProjectCompletedStatus: (
         projectId: number,
         completedStatus: ProjectCompletionStatus,

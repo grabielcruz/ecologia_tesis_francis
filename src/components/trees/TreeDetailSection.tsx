@@ -1,12 +1,41 @@
+import { ChangeEvent, FormEvent, useState } from "react";
+import { AppModal } from "../AppModal";
 import {
   TreeInventoryItem,
   TreeHealthStatus,
 } from "../../features/trees/types";
 import { ImageCarousel } from "../ImageCarousel";
+import { TreeFormModal } from "./TreeFormModal";
+import { TreeType } from "../../features/treeTypes/types";
+
+interface GreenSpaceOption {
+  id: number;
+  name: string;
+}
 
 interface TreeDetailSectionProps {
   selectedTreeId: number | null;
   selectedTree: TreeInventoryItem | null;
+  userRole?: string;
+  treeTypes: TreeType[];
+  greenSpaces: GreenSpaceOption[];
+  treeNameInput: string;
+  treeHealthStatusInput: TreeHealthStatus;
+  treeTypeIdInput: number;
+  treeSpaceIdInput: number;
+  treeImagesInput: string;
+  isSubmittingTree: boolean;
+  uploadingTreeImages: boolean;
+  setTreeNameInput: (value: string) => void;
+  setTreeHealthStatusInput: (value: TreeHealthStatus) => void;
+  setTreeTypeIdInput: (value: number) => void;
+  setTreeSpaceIdInput: (value: number) => void;
+  setTreeImagesInput: (value: string) => void;
+  onResetTreeForm: () => void;
+  onStartEditTree: (tree: TreeInventoryItem) => void;
+  onUploadTreeImages: (event: ChangeEvent<HTMLInputElement>) => void;
+  onSaveTree: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
+  onDeleteTree: (treeId: number) => Promise<boolean>;
   onBack: () => void;
   onOpenTrees?: () => void;
   onOpenTreeType?: (treeTypeId: number) => void;
@@ -25,6 +54,26 @@ const healthLabel: Record<TreeHealthStatus, string> = {
 export function TreeDetailSection({
   selectedTreeId,
   selectedTree,
+  userRole,
+  treeTypes,
+  greenSpaces,
+  treeNameInput,
+  treeHealthStatusInput,
+  treeTypeIdInput,
+  treeSpaceIdInput,
+  treeImagesInput,
+  isSubmittingTree,
+  uploadingTreeImages,
+  setTreeNameInput,
+  setTreeHealthStatusInput,
+  setTreeTypeIdInput,
+  setTreeSpaceIdInput,
+  setTreeImagesInput,
+  onResetTreeForm,
+  onStartEditTree,
+  onUploadTreeImages,
+  onSaveTree,
+  onDeleteTree,
   onBack,
   onOpenTrees,
   onOpenTreeType,
@@ -32,6 +81,42 @@ export function TreeDetailSection({
   resolveAssetUrl,
   formatUpdatedAt,
 }: TreeDetailSectionProps) {
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const openEditModal = () => {
+    if (!selectedTree) return;
+    onStartEditTree(selectedTree);
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+  };
+
+  const openDeleteModal = () => {
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setShowDeleteModal(false);
+  };
+
+  const confirmDeleteTree = async () => {
+    if (!selectedTree) return;
+
+    setIsDeleting(true);
+    const deleted = await onDeleteTree(selectedTree.id);
+    setIsDeleting(false);
+
+    if (deleted) {
+      setShowDeleteModal(false);
+      onBack();
+    }
+  };
+
   if (!selectedTreeId) {
     return (
       <section className="box">
@@ -82,6 +167,16 @@ export function TreeDetailSection({
         <button type="button" className="secondary" onClick={onBack}>
           Volver a arboles
         </button>
+        {userRole === "admin" && (
+          <>
+            <button type="button" onClick={openEditModal}>
+              Editar arbol
+            </button>
+            <button type="button" className="danger" onClick={openDeleteModal}>
+              Eliminar arbol
+            </button>
+          </>
+        )}
       </div>
 
       <article className="principal-panel">
@@ -134,6 +229,61 @@ export function TreeDetailSection({
           </div>
         </div>
       </article>
+
+      {userRole === "admin" && (
+        <TreeFormModal
+          isOpen={showEditModal}
+          isEditing={true}
+          userRole={userRole}
+          treeTypes={treeTypes}
+          greenSpaces={greenSpaces}
+          treeNameInput={treeNameInput}
+          treeHealthStatusInput={treeHealthStatusInput}
+          treeTypeIdInput={treeTypeIdInput}
+          treeSpaceIdInput={treeSpaceIdInput}
+          treeImagesInput={treeImagesInput}
+          isSubmittingTree={isSubmittingTree}
+          uploadingTreeImages={uploadingTreeImages}
+          setTreeNameInput={setTreeNameInput}
+          setTreeHealthStatusInput={setTreeHealthStatusInput}
+          setTreeTypeIdInput={setTreeTypeIdInput}
+          setTreeSpaceIdInput={setTreeSpaceIdInput}
+          setTreeImagesInput={setTreeImagesInput}
+          onUploadTreeImages={onUploadTreeImages}
+          onSaveTree={onSaveTree}
+          onResetTreeForm={onResetTreeForm}
+          onClose={closeEditModal}
+        />
+      )}
+
+      <AppModal
+        isOpen={showDeleteModal}
+        onClose={closeDeleteModal}
+        title="Eliminar arbol"
+        description="Esta accion eliminara el arbol seleccionado."
+      >
+        <p>Esta seguro de que desea continuar?</p>
+        <div className="button-row">
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              void confirmDeleteTree();
+            }}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Eliminando..." : "Eliminar"}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={closeDeleteModal}
+            disabled={isDeleting}
+          >
+            Cancelar
+          </button>
+        </div>
+      </AppModal>
     </section>
   );
 }

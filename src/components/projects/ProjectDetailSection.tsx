@@ -1,4 +1,5 @@
-import { ChangeEvent, FormEvent } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
+import { AppModal } from "../AppModal";
 import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
 import {
   ProjectExecutionStatus,
@@ -29,6 +30,7 @@ interface ProjectDetailSectionProps {
   setProjectUpdateDescriptionInput: (value: string) => void;
   setProjectUpdateImagesInput: (value: string) => void;
   onBack: () => void;
+  onOpenProjectActivityDetail: (updateId: number) => void;
   onUpdateProjectCompletedStatus: (
     proposalId: number,
     projectId: number,
@@ -68,6 +70,7 @@ export function ProjectDetailSection({
   setProjectUpdateDescriptionInput,
   setProjectUpdateImagesInput,
   onBack,
+  onOpenProjectActivityDetail,
   onUpdateProjectCompletedStatus,
   onSubmitProjectActivityUpdate,
   onUploadProjectActivityImages,
@@ -77,6 +80,9 @@ export function ProjectDetailSection({
   resolveAssetUrl,
   userRole,
 }: ProjectDetailSectionProps) {
+  const [showRegisterActivityModal, setShowRegisterActivityModal] =
+    useState(false);
+
   if (!selectedProjectEntry && selectedProjectId && projectEntriesCount === 0) {
     return (
       <section className="box">
@@ -155,6 +161,7 @@ export function ProjectDetailSection({
                 target="_blank"
                 rel="noreferrer"
                 className="link-button"
+                onClick={(event) => event.stopPropagation()}
               >
                 Imagen {index + 1}
               </a>
@@ -244,6 +251,16 @@ export function ProjectDetailSection({
 
       <article className="principal-panel">
         <h3>Actividades del proyecto</h3>
+        {userRole === "admin" && (
+          <div className="button-row">
+            <button
+              type="button"
+              onClick={() => setShowRegisterActivityModal(true)}
+            >
+              Registrar actividad
+            </button>
+          </div>
+        )}
         {isProjectLoading && <p className="muted">Cargando actividades...</p>}
         {!isProjectLoading && (
           <DefaultTable
@@ -253,6 +270,7 @@ export function ProjectDetailSection({
             getSearchText={(update) =>
               `${update.title} ${update.description} ${update.createdBy?.name || ""} ${update.createdBy?.username || ""}`
             }
+            onRowClick={(update) => onOpenProjectActivityDetail(update.id)}
             emptyMessage="No hay actividades registradas por el momento."
             searchPlaceholder="Buscar por actividad, descripcion o responsable"
           />
@@ -260,8 +278,12 @@ export function ProjectDetailSection({
       </article>
 
       {userRole === "admin" && (
-        <article className="principal-panel">
-          <h3>Registrar actividad</h3>
+        <AppModal
+          isOpen={showRegisterActivityModal}
+          onClose={() => setShowRegisterActivityModal(false)}
+          title="Registrar actividad del proyecto"
+          description="Documenta los avances y evidencias del proyecto."
+        >
           <form
             className="admin-form"
             onSubmit={(event) =>
@@ -318,9 +340,16 @@ export function ProjectDetailSection({
                   ? "Guardando actividad..."
                   : "Guardar actividad"}
               </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setShowRegisterActivityModal(false)}
+              >
+                Cancelar
+              </button>
             </div>
           </form>
-        </article>
+        </AppModal>
       )}
     </section>
   );

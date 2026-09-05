@@ -548,6 +548,51 @@ router.get(
   },
 );
 
+router.get(
+  "/projects/:projectId",
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    const projectId = Number(req.params.projectId);
+    if (!Number.isFinite(projectId)) {
+      return res
+        .status(400)
+        .json({ error: "Identificador de proyecto invalido" });
+    }
+
+    const project = await ProjectOfProposal.findByPk(projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Proyecto no encontrado" });
+    }
+
+    const proposalId = Number(project.getDataValue("proposal_of_green_area_id"));
+    if (!Number.isFinite(proposalId)) {
+      return res.status(409).json({ error: "Proyecto sin propuesta valida" });
+    }
+
+    const proposal = await ProposalOfGreenArea.findByPk(proposalId);
+    if (!proposal) {
+      return res.status(404).json({ error: "Propuesta no encontrada" });
+    }
+
+    const updates = await ProjectUpdateOfProposal.findAll({
+      where: { project_of_proposal_id: projectId },
+      include: [{ model: User, attributes: ["user_id", "username", "name"] }],
+      order: [
+        ["created_at", "DESC"],
+        ["project_update_of_proposal_id", "DESC"],
+      ],
+    });
+
+    return res.json({
+      proposal: serializeProposal(proposal),
+      project: serializeProject(project),
+      updates: updates.map((entry) =>
+        serializeProjectUpdate(entry as ProjectUpdateOfProposal),
+      ),
+    });
+  },
+);
+
 router.post(
   "/projects/:projectId/updates/images",
   authenticate,
@@ -703,6 +748,38 @@ router.put(
         (withUser || projectUpdate) as ProjectUpdateOfProposal,
       ),
     );
+  },
+);
+
+router.delete(
+  "/projects/:projectId/updates/:updateId",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const projectId = Number(req.params.projectId);
+    const updateId = Number(req.params.updateId);
+
+    if (!Number.isFinite(projectId) || !Number.isFinite(updateId)) {
+      return res.status(400).json({ error: "Identificadores invalidos" });
+    }
+
+    const projectUpdate = await ProjectUpdateOfProposal.findByPk(updateId);
+    if (!projectUpdate) {
+      return res
+        .status(404)
+        .json({ error: "Registro de actividad no encontrado" });
+    }
+
+    if (
+      Number(projectUpdate.getDataValue("project_of_proposal_id")) !== projectId
+    ) {
+      return res
+        .status(409)
+        .json({ error: "El registro no pertenece a este proyecto" });
+    }
+
+    await projectUpdate.destroy();
+    return res.status(204).send();
   },
 );
 

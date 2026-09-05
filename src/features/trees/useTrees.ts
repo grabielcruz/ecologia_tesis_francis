@@ -8,7 +8,7 @@ interface GreenSpaceOption {
 }
 
 interface UseTreesParams {
-  token: string;
+  token: string | null;
   route: string;
   userRole?: string;
   treeTypes: TreeType[];
@@ -155,17 +155,17 @@ export function useTrees({
 
     if (!token) {
       setError("Debes iniciar sesion para gestionar arboles");
-      return;
+      return false;
     }
 
     if (!treeNameInput.trim()) {
       setError("El nombre del arbol es obligatorio");
-      return;
+      return false;
     }
 
     if (!Number.isFinite(treeSpaceIdInput) || treeSpaceIdInput <= 0) {
       setError("Selecciona un area verde valida");
-      return;
+      return false;
     }
 
     setIsSubmittingTree(true);
@@ -195,7 +195,7 @@ export function useTrees({
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         setError(data.error || "No se pudo guardar el arbol");
-        return;
+        return false;
       }
 
       const data = await response.json().catch(() => ({}));
@@ -212,8 +212,10 @@ export function useTrees({
       );
       resetTreeForm();
       await fetchTrees();
+      return true;
     } catch {
       setError("No se pudo guardar el arbol");
+      return false;
     } finally {
       setIsSubmittingTree(false);
     }
@@ -222,7 +224,7 @@ export function useTrees({
   const deleteTree = async (treeId: number) => {
     if (!token || userRole !== "admin") {
       setError("Solo administradores pueden eliminar arboles");
-      return;
+      return false;
     }
 
     try {
@@ -236,14 +238,16 @@ export function useTrees({
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         setError(data.error || "No se pudo eliminar el arbol");
-        return;
+        return false;
       }
 
       setSuccessMessage("Arbol eliminado correctamente.");
       setError(null);
       await fetchTrees();
+      return true;
     } catch {
       setError("No se pudo eliminar el arbol");
+      return false;
     }
   };
 

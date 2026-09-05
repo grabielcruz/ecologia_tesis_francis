@@ -1,5 +1,6 @@
-import { ChangeEvent, FormEvent } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
+import { TreeFormModal } from "./TreeFormModal";
 import {
   TreeInventoryItem,
   TreeHealthStatus,
@@ -25,7 +26,6 @@ interface TreesSectionProps {
   treeTypeIdInput: number;
   treeSpaceIdInput: number;
   treeImagesInput: string;
-  editingTreeId: number | null;
   isSubmittingTree: boolean;
   uploadingTreeImages: boolean;
   treeActionLoadingId: number | null;
@@ -37,11 +37,9 @@ interface TreesSectionProps {
   setTreeSpaceIdInput: (value: number) => void;
   setTreeImagesInput: (value: string) => void;
   onResetTreeForm: () => void;
-  onStartEditTree: (tree: TreeInventoryItem) => void;
   onOpenTreeDetail: (tree: TreeInventoryItem) => void;
   onUploadTreeImages: (event: ChangeEvent<HTMLInputElement>) => void;
-  onSaveTree: (event: FormEvent<HTMLFormElement>) => void;
-  onDeleteTree: (treeId: number) => void;
+  onSaveTree: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
   onApproveTree: (treeId: number) => void;
   onRejectTree: (treeId: number) => void;
 }
@@ -72,7 +70,6 @@ export function TreesSection({
   treeTypeIdInput,
   treeSpaceIdInput,
   treeImagesInput,
-  editingTreeId,
   isSubmittingTree,
   uploadingTreeImages,
   treeActionLoadingId,
@@ -84,22 +81,21 @@ export function TreesSection({
   setTreeSpaceIdInput,
   setTreeImagesInput,
   onResetTreeForm,
-  onStartEditTree,
   onOpenTreeDetail,
   onUploadTreeImages,
   onSaveTree,
-  onDeleteTree,
   onApproveTree,
   onRejectTree,
 }: TreesSectionProps) {
-  const imageUrlRows = treeImagesInput
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const removeImageUrl = (indexToRemove: number) => {
-    const next = imageUrlRows.filter((_, index) => index !== indexToRemove);
-    setTreeImagesInput(next.join("\n"));
+  const openCreateModal = () => {
+    onResetTreeForm();
+    setShowCreateModal(true);
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
   };
 
   const treeColumns: DefaultTableColumn<TreeInventoryItem>[] = [
@@ -180,16 +176,6 @@ export function TreesSection({
       label: "Acciones",
       render: (tree) => (
         <div className="table-actions">
-          <button
-            type="button"
-            className="secondary"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenTreeDetail(tree);
-            }}
-          >
-            Ver detalle
-          </button>
           {userRole === "admin" && tree.status === "pending" && (
             <>
               <button
@@ -215,30 +201,6 @@ export function TreesSection({
               </button>
             </>
           )}
-          {userRole === "admin" && (
-            <>
-              <button
-                type="button"
-                className="secondary"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onStartEditTree(tree);
-                }}
-              >
-                Editar
-              </button>
-              <button
-                type="button"
-                className="danger"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDeleteTree(tree.id);
-                }}
-              >
-                Eliminar
-              </button>
-            </>
-          )}
         </div>
       ),
     },
@@ -252,6 +214,15 @@ export function TreesSection({
           Registro de arboles reales presentes en las areas verdes, vinculados a
           tipos oficiales.
         </p>
+        {(userRole === "admin" || userRole === "regular") && (
+          <div className="button-row">
+            <button type="button" onClick={openCreateModal}>
+              {userRole === "regular"
+                ? "Registrar arbol para validacion"
+                : "Registrar arbol"}
+            </button>
+          </div>
+        )}
         {selectedSpaceFilterName && (
           <div className="button-row compact">
             <button
@@ -289,220 +260,30 @@ export function TreesSection({
         />
       </article>
 
-      {userRole === "admin" && (
-        <article className="principal-panel">
-          <h3>{editingTreeId ? "Editar arbol" : "Registrar arbol"}</h3>
-          <p className="small muted">
-            Puedes registrar arboles sin tipo y asignar el tipo al editar.
-          </p>
-          <form className="admin-form" onSubmit={onSaveTree}>
-            <label>
-              Nombre del arbol
-              <input
-                value={treeNameInput}
-                onChange={(e) => setTreeNameInput(e.target.value)}
-                placeholder="Ejemplo: Arbol JC-10"
-                required
-              />
-            </label>
-
-            <label>
-              Estado de salud
-              <select
-                value={treeHealthStatusInput}
-                onChange={(e) =>
-                  setTreeHealthStatusInput(e.target.value as TreeHealthStatus)
-                }
-              >
-                <option value="healthy">Saludable</option>
-                <option value="regular">Regular</option>
-                <option value="sick">Enfermo</option>
-                <option value="dead">Seco</option>
-              </select>
-            </label>
-
-            {editingTreeId && (
-              <label>
-                Tipo de arbol
-                <select
-                  value={String(treeTypeIdInput)}
-                  onChange={(e) => setTreeTypeIdInput(Number(e.target.value))}
-                >
-                  <option value="0">Sin asignar</option>
-                  {treeTypes.map((treeType) => (
-                    <option key={treeType.id} value={String(treeType.id)}>
-                      {treeType.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            <label>
-              Area verde
-              <select
-                value={String(treeSpaceIdInput)}
-                onChange={(e) => setTreeSpaceIdInput(Number(e.target.value))}
-              >
-                {greenSpaces.map((space) => (
-                  <option key={space.id} value={String(space.id)}>
-                    {space.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Galeria de imagenes (una URL por linea)
-              <textarea
-                value={treeImagesInput}
-                onChange={(e) => setTreeImagesInput(e.target.value)}
-                placeholder="https://..."
-              />
-            </label>
-            {imageUrlRows.length > 0 && (
-              <div className="green-space-preview-list">
-                {imageUrlRows.map((imageUrl, index) => (
-                  <div
-                    key={`tree-gallery-url-${index}`}
-                    className="button-row compact"
-                  >
-                    <span className="small muted">{imageUrl}</span>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => removeImageUrl(index)}
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <label>
-              Subir imagenes para la galeria
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onUploadTreeImages}
-                disabled={uploadingTreeImages}
-              />
-            </label>
-            {uploadingTreeImages && (
-              <p className="small muted">Subiendo imagenes...</p>
-            )}
-
-            <div className="button-row">
-              <button
-                type="submit"
-                disabled={
-                  isSubmittingTree ||
-                  treeTypes.length === 0 ||
-                  greenSpaces.length === 0
-                }
-              >
-                {isSubmittingTree
-                  ? "Guardando..."
-                  : editingTreeId
-                    ? "Actualizar"
-                    : "Registrar"}
-              </button>
-              {editingTreeId && (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={onResetTreeForm}
-                >
-                  Cancelar edicion
-                </button>
-              )}
-            </div>
-          </form>
-        </article>
-      )}
-
-      {userRole === "regular" && (
-        <article className="principal-panel">
-          <h3>Registrar arbol para validacion</h3>
-          <p className="small muted">
-            Tu registro sera revisado por un administrador antes de aparecer
-            como aprobado.
-          </p>
-          <form className="admin-form" onSubmit={onSaveTree}>
-            <label>
-              Nombre del arbol
-              <input
-                value={treeNameInput}
-                onChange={(e) => setTreeNameInput(e.target.value)}
-                placeholder="Ejemplo: Arbol nuevo"
-                required
-              />
-            </label>
-
-            <label>
-              Estado de salud
-              <select
-                value={treeHealthStatusInput}
-                onChange={(e) =>
-                  setTreeHealthStatusInput(e.target.value as TreeHealthStatus)
-                }
-              >
-                <option value="healthy">Saludable</option>
-                <option value="regular">Regular</option>
-                <option value="sick">Enfermo</option>
-                <option value="dead">Seco</option>
-              </select>
-            </label>
-
-            <label>
-              Area verde
-              <select
-                value={String(treeSpaceIdInput)}
-                onChange={(e) => setTreeSpaceIdInput(Number(e.target.value))}
-              >
-                {greenSpaces.map((space) => (
-                  <option key={space.id} value={String(space.id)}>
-                    {space.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Galeria de imagenes (una URL por linea)
-              <textarea
-                value={treeImagesInput}
-                onChange={(e) => setTreeImagesInput(e.target.value)}
-                placeholder="https://..."
-              />
-            </label>
-
-            <label>
-              Subir imagenes para la galeria
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onUploadTreeImages}
-                disabled={uploadingTreeImages}
-              />
-            </label>
-            {uploadingTreeImages && (
-              <p className="small muted">Subiendo imagenes...</p>
-            )}
-
-            <div className="button-row">
-              <button
-                type="submit"
-                disabled={isSubmittingTree || greenSpaces.length === 0}
-              >
-                {isSubmittingTree ? "Enviando..." : "Enviar para validacion"}
-              </button>
-            </div>
-          </form>
-        </article>
+      {(userRole === "admin" || userRole === "regular") && (
+        <TreeFormModal
+          isOpen={showCreateModal}
+          isEditing={false}
+          userRole={userRole}
+          treeTypes={treeTypes}
+          greenSpaces={greenSpaces}
+          treeNameInput={treeNameInput}
+          treeHealthStatusInput={treeHealthStatusInput}
+          treeTypeIdInput={treeTypeIdInput}
+          treeSpaceIdInput={treeSpaceIdInput}
+          treeImagesInput={treeImagesInput}
+          isSubmittingTree={isSubmittingTree}
+          uploadingTreeImages={uploadingTreeImages}
+          setTreeNameInput={setTreeNameInput}
+          setTreeHealthStatusInput={setTreeHealthStatusInput}
+          setTreeTypeIdInput={setTreeTypeIdInput}
+          setTreeSpaceIdInput={setTreeSpaceIdInput}
+          setTreeImagesInput={setTreeImagesInput}
+          onUploadTreeImages={onUploadTreeImages}
+          onSaveTree={onSaveTree}
+          onResetTreeForm={onResetTreeForm}
+          onClose={closeCreateModal}
+        />
       )}
     </section>
   );

@@ -9,9 +9,14 @@ import {
 import "@testing-library/jest-dom/vitest";
 import App from "./App";
 
-const buildJsonResponse = (payload: unknown, ok: boolean = true) =>
+const buildJsonResponse = (
+  payload: unknown,
+  ok: boolean = true,
+  status = ok ? 200 : 400,
+) =>
   Promise.resolve({
     ok,
+    status,
     json: () => Promise.resolve(payload),
   } as Response);
 
@@ -29,6 +34,35 @@ describe("App UI", () => {
     render(<App />);
 
     expect(screen.getByText("Iniciar sesión")).toBeInTheDocument();
+  });
+
+  it("redirects to login when an authenticated request returns 401", async () => {
+    localStorage.setItem("token", "expired-token");
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        id: 2,
+        name: "Regular User",
+        username: "regular.user",
+        email: "user@greenmetric.local",
+        role: "regular",
+        points: 0,
+      }),
+    );
+
+    const fetchMock = vi.fn(() =>
+      buildJsonResponse({ error: "Unauthorized" }, false, 401),
+    );
+    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Iniciar sesión")).toBeInTheDocument();
+    });
+
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(localStorage.getItem("user")).toBeNull();
   });
 
   it("navigates from proposal summary counter to filtered proposals list", async () => {

@@ -1,13 +1,20 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { AppModal } from "./components/AppModal";
+import { LoginView } from "./components/auth/LoginView";
+import { RegisterView } from "./components/auth/RegisterView";
 import { DefaultTable, DefaultTableColumn } from "./components/DefaultTable";
 import { ImageCarousel } from "./components/ImageCarousel";
 import { GreenSpaceDetailsModal } from "./components/greenSpaces/GreenSpaceDetailsModal";
+import { GreenSpaceFormModal } from "./components/greenSpaces/GreenSpaceFormModal";
+import { GreenSpacesSection } from "./components/greenSpaces/GreenSpacesSection";
+import { AppSidebar } from "./components/layout/AppSidebar";
 import { ProfileForm } from "./components/profile/ProfileForm";
 import { ProfilePage } from "./components/profile/ProfilePage";
+import { ProjectActivityDetailSection } from "./components/projects/ProjectActivityDetailSection";
 import { ProjectDetailSection } from "./components/projects/ProjectDetailSection";
 import { ProjectsListSection } from "./components/projects/ProjectsListSection";
 import { ProposalDetailsModal } from "./components/proposals/ProposalDetailsModal";
+import { ProposalCreateModal } from "./components/proposals/ProposalCreateModal";
 import { ProposalManageModal } from "./components/proposals/ProposalManageModal";
 import { ProposalsListSection } from "./components/proposals/ProposalsListSection";
 import { Report } from "./components/reports/Report";
@@ -16,18 +23,19 @@ import { TreeTypeDetailSection } from "./components/treeTypes/TreeTypeDetailSect
 import { TreeTypesSection } from "./components/treeTypes/TreeTypesSection";
 import { TreeDetailSection } from "./components/trees/TreeDetailSection";
 import { TreesSection } from "./components/trees/TreesSection";
+import { AdminUserFormModal } from "./components/users/AdminUserFormModal";
+import { AdminUsersSection } from "./components/users/AdminUsersSection";
 import { UserDetailsModal } from "./components/users/UserDetailsModal";
-import { useProposalActions } from "./hooks/useProposalActions";
+import { useProposalWorkflow } from "./features/proposals/useProposalWorkflow";
 import { useReports } from "./features/reports/useReports";
+import {
+  getPageHeaderMeta,
+  getRouteFlags,
+  getSelectedRouteIds,
+} from "./features/navigation/routeMeta";
 import { TreeInventoryItem } from "./features/trees/types";
 import { useTrees } from "./features/trees/useTrees";
 import { useTreeTypes } from "./features/treeTypes/useTreeTypes";
-import {
-  ProjectExecutionStatus,
-  ProjectListEntry,
-  Proposal,
-  ProposalProjectDetails,
-} from "./features/proposals/types";
 
 interface SurveySummary {
   totalResponses: number;
@@ -71,14 +79,6 @@ interface GreenSpaceReviewDraft {
   rating: number;
   comment: string;
 }
-
-type ProposalStatusFilter =
-  | "all"
-  | "draft"
-  | "open"
-  | "approved"
-  | "closed"
-  | "rejected";
 
 interface AdminRole {
   id: number;
@@ -215,6 +215,7 @@ function App() {
   const [successVisible, setSuccessVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adminPage, setAdminPage] = useState(1);
+  const isHandlingUnauthorizedRef = useRef(false);
 
   useEffect(() => {
     if (!successMessage) {
@@ -298,50 +299,6 @@ function App() {
   const [reviewDrafts, setReviewDrafts] = useState<
     Record<number, GreenSpaceReviewDraft>
   >({});
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [projectEntries, setProjectEntries] = useState<ProjectListEntry[]>([]);
-  const [proposalTitleInput, setProposalTitleInput] = useState("");
-  const [proposalDescriptionInput, setProposalDescriptionInput] = useState("");
-  const [proposalSpaceIdInput, setProposalSpaceIdInput] = useState(0);
-  const [proposalActionLoadingId, setProposalActionLoadingId] = useState<
-    number | null
-  >(null);
-  const [proposalWindows, setProposalWindows] = useState<
-    Record<number, { start: string; end: string }>
-  >({});
-  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
-  const [showProposalModal, setShowProposalModal] = useState(false);
-  const [showProposalDetailsModal, setShowProposalDetailsModal] =
-    useState(false);
-  const [proposalDetailsId, setProposalDetailsId] = useState<number | null>(
-    null,
-  );
-  const [proposalProjectDetails, setProposalProjectDetails] = useState<
-    Record<number, ProposalProjectDetails>
-  >({});
-  const [proposalProjectLoadingId, setProposalProjectLoadingId] = useState<
-    number | null
-  >(null);
-  const [projectUpdateTitleInput, setProjectUpdateTitleInput] = useState("");
-  const [projectUpdateDescriptionInput, setProjectUpdateDescriptionInput] =
-    useState("");
-  const [projectUpdateImagesInput, setProjectUpdateImagesInput] = useState("");
-  const [projectStatusDrafts, setProjectStatusDrafts] = useState<
-    Record<number, "planned" | "in_progress" | "completed">
-  >({});
-  const [uploadingProjectUpdateImages, setUploadingProjectUpdateImages] =
-    useState(false);
-  const [isSubmittingProjectUpdate, setIsSubmittingProjectUpdate] =
-    useState(false);
-  const [isUpdatingProjectStatus, setIsUpdatingProjectStatus] = useState(false);
-  const [showProposalManageModal, setShowProposalManageModal] = useState(false);
-  const [proposalManageId, setProposalManageId] = useState<number | null>(null);
-  const [proposalStatusFilter, setProposalStatusFilter] =
-    useState<ProposalStatusFilter>("all");
-  const [
-    proposalProjectStatusByProposalId,
-    setProposalProjectStatusByProposalId,
-  ] = useState<Record<number, ProjectExecutionStatus>>({});
   const [treeTypeInventoryRows, setTreeTypeInventoryRows] = useState<
     TreeInventoryItem[]
   >([]);
@@ -381,7 +338,6 @@ function App() {
     setError,
     setSuccessMessage,
   });
-  const proposalActions = useProposalActions(token);
   const {
     treeTypes,
     treeTypeNameInput,
@@ -455,14 +411,120 @@ function App() {
     setRoute(path);
   };
 
-  const openProposalsWithFilter = (filter: ProposalStatusFilter) => {
-    setProposalStatusFilter(filter);
-    navigate("/proposals");
-  };
+  const {
+    proposals,
+    projectEntries,
+    proposalTitleInput,
+    proposalDescriptionInput,
+    proposalSpaceIdInput,
+    proposalActionLoadingId,
+    proposalWindows,
+    isSubmittingProposal,
+    showProposalModal,
+    showProposalDetailsModal,
+    proposalDetailsId,
+    proposalProjectDetails,
+    proposalProjectLoadingId,
+    projectUpdateTitleInput,
+    projectUpdateDescriptionInput,
+    projectUpdateImagesInput,
+    projectStatusDrafts,
+    uploadingProjectUpdateImages,
+    isSubmittingProjectUpdate,
+    isUpdatingProjectStatus,
+    showProposalManageModal,
+    proposalManageId,
+    proposalStatusFilter,
+    proposalProjectStatusByProposalId,
+    selectedProjectId,
+    selectedProjectEntry,
+    setProposalTitleInput,
+    setProposalDescriptionInput,
+    setProposalSpaceIdInput,
+    setProjectUpdateTitleInput,
+    setProjectUpdateDescriptionInput,
+    setProjectUpdateImagesInput,
+    setProjectStatusDrafts,
+    setProposalStatusFilter,
+    fetchProposals,
+    fetchProjects,
+    fetchProposalProjectDetails,
+    fetchProjectDetailsByProjectId,
+    uploadProjectActivityImages,
+    submitProjectActivityUpdate,
+    updateProjectActivityUpdate,
+    deleteProjectActivityUpdate,
+    updateProjectCompletedStatus,
+    openProposalsWithFilter,
+    openProjects,
+    openCreateProposalModal,
+    closeCreateProposalModal,
+    openProjectDetailPage,
+    openProposalDetailsModal,
+    closeProposalDetailsModal,
+    openProposalManageModal,
+    closeProposalManageModal,
+    setProposalVotingStart,
+    setProposalVotingEnd,
+    submitProposal,
+    voteProposal,
+    decideProposal,
+    finalizeProposal,
+    resetProposalState,
+  } = useProposalWorkflow({
+    token,
+    route,
+    greenSpaces,
+    setError,
+    setSuccessMessage,
+    getErrorMessage,
+    navigate,
+  });
 
-  const openProjects = () => {
-    navigate("/projects");
-  };
+  useEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    const ignoredAuthEndpoints = ["/api/auth/login", "/api/auth/register"];
+
+    const readRequestUrl = (input: RequestInfo | URL) => {
+      if (typeof input === "string") return input;
+      if (input instanceof URL) return input.toString();
+      return input.url;
+    };
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await originalFetch(input, init);
+
+      if (
+        response.status === 401 &&
+        token &&
+        !isHandlingUnauthorizedRef.current
+      ) {
+        const requestUrl = readRequestUrl(input);
+        const shouldIgnore = ignoredAuthEndpoints.some((endpoint) =>
+          requestUrl.includes(endpoint),
+        );
+
+        if (!shouldIgnore) {
+          isHandlingUnauthorizedRef.current = true;
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setToken(null);
+          setUser(null);
+          setError("Tu sesion expiro. Inicia sesion nuevamente.");
+          navigate("/login", true);
+          window.setTimeout(() => {
+            isHandlingUnauthorizedRef.current = false;
+          }, 0);
+        }
+      }
+
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [token]);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -522,12 +584,6 @@ function App() {
   }, [token, route, user]);
 
   useEffect(() => {
-    if (greenSpaces.length > 0 && proposalSpaceIdInput === 0) {
-      setProposalSpaceIdInput(greenSpaces[0].id);
-    }
-  }, [greenSpaces, proposalSpaceIdInput]);
-
-  useEffect(() => {
     const maxPage = Math.max(
       1,
       Math.ceil(adminUsers.length / usersTablePageSize),
@@ -550,210 +606,6 @@ function App() {
     } catch {
       setGreenSpaces([]);
       setError("No se pudieron cargar las areas verdes");
-    }
-  };
-
-  const fetchProposals = async () => {
-    if (!token) return;
-
-    try {
-      const proposalRows = await proposalActions.fetchProposals();
-      setProposals(proposalRows);
-      await fetchProjectStatusesForProposals(proposalRows);
-    } catch (error) {
-      setProposals([]);
-      setError(getErrorMessage(error, "No se pudieron cargar las propuestas"));
-    }
-  };
-
-  const fetchProjects = async () => {
-    if (!token) return;
-
-    try {
-      const rows = await proposalActions.fetchProjects();
-
-      const prefetchedDetails = rows.reduce<
-        Record<number, ProposalProjectDetails>
-      >((acc, entry) => {
-        if (!entry?.proposal || !entry?.project) {
-          return acc;
-        }
-
-        acc[entry.proposal.id] = {
-          proposal: entry.proposal,
-          project: entry.project,
-          updates: [],
-        };
-
-        return acc;
-      }, {});
-
-      setProjectEntries(rows);
-      setProposalProjectDetails((prev) => ({
-        ...prev,
-        ...prefetchedDetails,
-      }));
-    } catch (error) {
-      setProjectEntries([]);
-      setError(getErrorMessage(error, "No se pudieron cargar los proyectos"));
-    }
-  };
-
-  const fetchProjectStatusesForProposals = async (proposalRows: Proposal[]) => {
-    if (!token || proposalRows.length === 0) {
-      setProposalProjectStatusByProposalId({});
-      return;
-    }
-
-    const nextStatuses: Record<number, ProjectExecutionStatus> = {};
-
-    await Promise.all(
-      proposalRows.map(async (proposal) => {
-        try {
-          const details = await proposalActions.fetchProposalProjectDetails(
-            proposal.id,
-          );
-          setProposalProjectDetails((prev) => ({
-            ...prev,
-            [proposal.id]: details,
-          }));
-
-          nextStatuses[proposal.id] = details.project
-            ? details.project.completedStatus
-            : "not_created";
-        } catch {
-          // Ignore per-row failures so remaining statuses can still load.
-        }
-      }),
-    );
-
-    setProposalProjectStatusByProposalId(nextStatuses);
-  };
-
-  const fetchProposalProjectDetails = async (proposalId: number) => {
-    if (!token) return;
-
-    setProposalProjectLoadingId(proposalId);
-    try {
-      const data =
-        await proposalActions.fetchProposalProjectDetails(proposalId);
-      setProposalProjectDetails((prev) => ({
-        ...prev,
-        [proposalId]: data,
-      }));
-    } catch (error) {
-      setError(
-        getErrorMessage(error, "No se pudo cargar el detalle del proyecto"),
-      );
-    } finally {
-      setProposalProjectLoadingId(null);
-    }
-  };
-
-  const uploadProjectActivityImages = async (
-    projectId: number,
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-    if (!token) return;
-
-    setUploadingProjectUpdateImages(true);
-    setError(null);
-
-    try {
-      const uploadedPaths = await proposalActions.uploadProjectActivityImages(
-        projectId,
-        files,
-      );
-
-      if (uploadedPaths.length > 0) {
-        setProjectUpdateImagesInput((prev) => {
-          const current = prev
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0);
-          const merged = [...new Set([...current, ...uploadedPaths])];
-          return merged.join("\n");
-        });
-      }
-      event.target.value = "";
-    } catch (error) {
-      setError(
-        getErrorMessage(
-          error,
-          "No se pudieron subir las imagenes de actividad",
-        ),
-      );
-    } finally {
-      setUploadingProjectUpdateImages(false);
-    }
-  };
-
-  const submitProjectActivityUpdate = async (
-    event: FormEvent<HTMLFormElement>,
-    proposalId: number,
-    projectId: number,
-  ) => {
-    event.preventDefault();
-    if (!token) return;
-
-    const images = projectUpdateImagesInput
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    if (!projectUpdateDescriptionInput.trim()) {
-      setError("Debes describir la actividad realizada");
-      return;
-    }
-
-    setIsSubmittingProjectUpdate(true);
-    setError(null);
-    try {
-      await proposalActions.createProjectActivityUpdate(projectId, {
-        title: projectUpdateTitleInput.trim(),
-        description: projectUpdateDescriptionInput.trim(),
-        images,
-      });
-
-      setProjectUpdateTitleInput("");
-      setProjectUpdateDescriptionInput("");
-      setProjectUpdateImagesInput("");
-      setSuccessMessage("Actividad del proyecto registrada correctamente.");
-      await fetchProposalProjectDetails(proposalId);
-      await fetchProposals();
-    } catch (error) {
-      setError(getErrorMessage(error, "No se pudo guardar la actividad"));
-    } finally {
-      setIsSubmittingProjectUpdate(false);
-    }
-  };
-
-  const updateProjectCompletedStatus = async (
-    proposalId: number,
-    projectId: number,
-    completedStatus: "planned" | "in_progress" | "completed",
-  ) => {
-    if (!token) return;
-
-    setIsUpdatingProjectStatus(true);
-    setError(null);
-    try {
-      await proposalActions.updateProjectCompletedStatus(
-        projectId,
-        completedStatus,
-      );
-
-      setSuccessMessage("Estado del proyecto actualizado correctamente.");
-      await fetchProposalProjectDetails(proposalId);
-      await fetchProposals();
-    } catch (error) {
-      setError(
-        getErrorMessage(error, "No se pudo actualizar el estado del proyecto"),
-      );
-    } finally {
-      setIsUpdatingProjectStatus(false);
     }
   };
 
@@ -944,9 +796,7 @@ function App() {
     setSurveys([]);
     setAdminSurveyOverview([]);
     setGreenSpaces([]);
-    setProposals([]);
-    setProjectEntries([]);
-    setProposalProjectStatusByProposalId({});
+    resetProposalState();
     setUsername("");
     setPassword("");
     setError(null);
@@ -1043,112 +893,58 @@ function App() {
     }
     setUsersTablePage(1);
   };
-  const isGreenSpacesRoute =
-    route === "/green-spaces" || route.startsWith("/green-spaces/");
-  const isProjectsRoute =
-    route === "/projects" || route.startsWith("/projects/");
-  const isReportsRoute = route === "/reports" || route.startsWith("/reports/");
-  const isTreeTypesRoute =
-    route === "/tree-types" || route.startsWith("/tree-types/");
-  const isTreesRoute =
-    route === "/trees" ||
-    route.startsWith("/trees?") ||
-    route.startsWith("/trees/");
-  const selectedGreenSpaceId = (() => {
-    if (!route.startsWith("/green-spaces/")) return null;
-    const id = Number(route.split("/")[2]);
+  const {
+    isGreenSpacesRoute,
+    isProjectsRoute,
+    isReportsRoute,
+    isTreeTypesRoute,
+    isTreesRoute,
+  } = getRouteFlags(route);
+  const { selectedGreenSpaceId, selectedTreeTypeId, selectedTreeId } =
+    getSelectedRouteIds(route);
+  const selectedProjectUpdateId = (() => {
+    if (!route.startsWith("/projects/")) return null;
+    const pathOnly = route.split("?")[0] || route;
+    const segments = pathOnly.split("/");
+    if (segments[3] !== "updates") return null;
+    const id = Number(segments[4]);
     return Number.isFinite(id) ? id : null;
   })();
   const selectedGreenSpace = selectedGreenSpaceId
     ? greenSpaces.find((space) => space.id === selectedGreenSpaceId) || null
     : null;
-  const selectedProjectId = (() => {
-    if (!route.startsWith("/projects/")) return null;
-    const id = Number(route.split("/")[2]);
-    return Number.isFinite(id) ? id : null;
-  })();
-  const selectedProjectEntry = selectedProjectId
-    ? projectEntries.find((entry) => entry.project.id === selectedProjectId) ||
-      null
-    : null;
-  const selectedTreeTypeId = (() => {
-    if (!route.startsWith("/tree-types/")) return null;
-    const pathOnly = route.split("?")[0] || route;
-    const id = Number(pathOnly.split("/")[2]);
-    return Number.isFinite(id) ? id : null;
-  })();
   const selectedTreeType = selectedTreeTypeId
     ? treeTypes.find((entry) => entry.id === selectedTreeTypeId) || null
     : null;
-  const selectedTreeId = (() => {
-    if (!route.startsWith("/trees/")) return null;
-    const pathOnly = route.split("?")[0] || route;
-    const id = Number(pathOnly.split("/")[2]);
-    return Number.isFinite(id) ? id : null;
-  })();
-  const pageTitle =
-    route === "/"
-      ? "Principal"
-      : route === "/profile"
-        ? "Mi perfil"
-        : route.startsWith("/reports/")
-          ? "Detalle de reporte"
-          : route.startsWith("/projects/")
-            ? "Detalle de proyecto"
-            : route.startsWith("/tree-types/")
-              ? "Detalle de tipo de arbol"
-              : route.startsWith("/trees/")
-                ? "Detalle de arbol"
-                : route === "/proposals"
-                  ? "Propuestas"
-                  : route === "/projects"
-                    ? "Proyectos"
-                    : route === "/reports"
-                      ? "Reportes de areas verdes"
-                      : route === "/tree-types"
-                        ? "Tipos de arboles"
-                        : route === "/trees" || route.startsWith("/trees?")
-                          ? "Arboles"
-                          : route === "/admin-users"
-                            ? "Usuarios"
-                            : route.startsWith("/green-spaces/")
-                              ? "Detalle de area verde"
-                              : route === "/green-spaces"
-                                ? "Areas verdes del campus"
-                                : "Principal";
-  const pageSubtitle =
-    route === "/"
-      ? "Resumen general de encuestas y areas verdes"
-      : route === "/profile"
-        ? "Actualiza tus datos personales"
-        : route.startsWith("/reports/")
-          ? "Consulta la informacion completa del reporte y sus imagenes"
-          : route.startsWith("/projects/")
-            ? "Visualiza datos del proyecto y su historial de actividades"
-            : route.startsWith("/tree-types/")
-              ? "Descripcion completa, imagenes referenciales y arboles registrados por ubicacion"
-              : route.startsWith("/trees/")
-                ? "Informacion completa del arbol, tipo y ubicacion en area verde"
-                : route === "/proposals"
-                  ? "Consulta, valida y vota propuestas de mejora para areas verdes"
-                  : route === "/projects"
-                    ? "Consulta los proyectos generados a partir de propuestas aprobadas"
-                    : route === "/reports"
-                      ? "Registra, actualiza y sigue reportes de quejas o sugerencias"
-                      : route === "/tree-types"
-                        ? "Catalogo oficial de especies y flujo de sugerencias de nuevos tipos"
-                        : route === "/trees" || route.startsWith("/trees?")
-                          ? "Inventario real de arboles por area verde y estado de salud"
-                          : route === "/admin-users"
-                            ? "Gestion integral de usuarios del sistema"
-                            : route.startsWith("/green-spaces/")
-                              ? "Informacion completa, reseñas y sugerencias del espacio"
-                              : route === "/green-spaces"
-                                ? "Registro y consulta de espacios verdes universitarios"
-                                : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
+  const selectedProjectEntryFromDetails = selectedProjectId
+    ? Object.values(proposalProjectDetails).find(
+        (details) => details.project?.id === selectedProjectId,
+      )
+    : undefined;
+  const resolvedSelectedProjectEntry =
+    selectedProjectEntry ||
+    (selectedProjectEntryFromDetails?.project
+      ? {
+          proposal: selectedProjectEntryFromDetails.proposal,
+          project: selectedProjectEntryFromDetails.project,
+          latestUpdate: null,
+        }
+      : null);
+  const { pageTitle, pageSubtitle } = getPageHeaderMeta(route, displayName);
 
   useEffect(() => {
-    if (!token || !route.startsWith("/projects/") || !selectedProjectEntry) {
+    if (!token || !route.startsWith("/projects/") || !selectedProjectId) {
+      return;
+    }
+
+    if (!selectedProjectEntry) {
+      const hasCachedDetails = Object.values(proposalProjectDetails).some(
+        (details) => details.project?.id === selectedProjectId,
+      );
+
+      if (!hasCachedDetails) {
+        fetchProjectDetailsByProjectId(selectedProjectId);
+      }
       return;
     }
 
@@ -1159,7 +955,13 @@ function App() {
     }
 
     fetchProposalProjectDetails(proposalId);
-  }, [route, token, selectedProjectEntry, proposalProjectDetails]);
+  }, [
+    route,
+    token,
+    selectedProjectId,
+    selectedProjectEntry,
+    proposalProjectDetails,
+  ]);
 
   useEffect(() => {
     if (!token || !route.startsWith("/tree-types/")) {
@@ -1386,51 +1188,6 @@ function App() {
   const closeUserDetailsModal = () => {
     setShowUserDetailsModal(false);
     setDetailsUserId(null);
-  };
-
-  const openCreateProposalModal = () => {
-    setProposalTitleInput("");
-    setProposalDescriptionInput("");
-    setShowProposalModal(true);
-  };
-
-  const closeCreateProposalModal = () => {
-    setShowProposalModal(false);
-  };
-
-  const openProjectDetailPage = async (entry: ProjectListEntry) => {
-    setProjectUpdateTitleInput("");
-    setProjectUpdateDescriptionInput("");
-    setProjectUpdateImagesInput("");
-    navigate(`/projects/${entry.project.id}`);
-    await fetchProposalProjectDetails(entry.proposal.id);
-  };
-
-  const openProposalDetailsModal = async (proposal: Proposal) => {
-    setProposalDetailsId(proposal.id);
-    setShowProposalDetailsModal(true);
-    setProjectUpdateTitleInput("");
-    setProjectUpdateDescriptionInput("");
-    setProjectUpdateImagesInput("");
-    await fetchProposalProjectDetails(proposal.id);
-  };
-
-  const closeProposalDetailsModal = () => {
-    setShowProposalDetailsModal(false);
-    setProposalDetailsId(null);
-    setProjectUpdateTitleInput("");
-    setProjectUpdateDescriptionInput("");
-    setProjectUpdateImagesInput("");
-  };
-
-  const openProposalManageModal = (proposal: Proposal) => {
-    setProposalManageId(proposal.id);
-    setShowProposalManageModal(true);
-  };
-
-  const closeProposalManageModal = () => {
-    setShowProposalManageModal(false);
-    setProposalManageId(null);
   };
 
   const saveAdminUser = async (event: FormEvent<HTMLFormElement>) => {
@@ -1694,105 +1451,6 @@ function App() {
     }));
   };
 
-  const submitProposal = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!token) return;
-
-    if (!proposalTitleInput.trim() || !proposalDescriptionInput.trim()) {
-      setError("Completa titulo y descripcion de la propuesta");
-      return;
-    }
-
-    if (!Number.isFinite(proposalSpaceIdInput) || proposalSpaceIdInput <= 0) {
-      setError("Selecciona un area verde valida para la propuesta");
-      return;
-    }
-
-    setIsSubmittingProposal(true);
-    setError(null);
-    try {
-      await proposalActions.createProposal({
-        title: proposalTitleInput.trim(),
-        description: proposalDescriptionInput.trim(),
-        spaceId: proposalSpaceIdInput,
-      });
-
-      setProposalTitleInput("");
-      setProposalDescriptionInput("");
-      setShowProposalModal(false);
-      setSuccessMessage(
-        "Propuesta enviada. Queda pendiente de validacion administrativa.",
-      );
-      await fetchProposals();
-    } catch (error) {
-      setError(getErrorMessage(error, "No se pudo registrar la propuesta"));
-    } finally {
-      setIsSubmittingProposal(false);
-    }
-  };
-
-  const voteProposal = async (proposalId: number) => {
-    if (!token) return;
-    setProposalActionLoadingId(proposalId);
-    setError(null);
-    try {
-      await proposalActions.voteProposal(proposalId);
-
-      setSuccessMessage("Voto registrado correctamente.");
-      await fetchProposals();
-    } catch (error) {
-      setError(getErrorMessage(error, "No se pudo votar la propuesta"));
-    } finally {
-      setProposalActionLoadingId(null);
-    }
-  };
-
-  const decideProposal = async (
-    proposalId: number,
-    decision: "accepted" | "rejected",
-  ) => {
-    if (!token) return;
-    setProposalActionLoadingId(proposalId);
-    setError(null);
-    const windowInput = proposalWindows[proposalId] || { start: "", end: "" };
-    const payload: Record<string, unknown> = { decision };
-    if (decision === "accepted") {
-      payload.votingStarts = windowInput.start;
-      payload.votingEnds = windowInput.end;
-    }
-
-    try {
-      await proposalActions.decideProposal(proposalId, payload);
-
-      setSuccessMessage(
-        decision === "accepted"
-          ? "Propuesta validada y habilitada para votacion."
-          : "Propuesta rechazada.",
-      );
-      await fetchProposals();
-    } catch (error) {
-      setError(getErrorMessage(error, "No se pudo actualizar la propuesta"));
-    } finally {
-      setProposalActionLoadingId(null);
-    }
-  };
-
-  const finalizeProposal = async (proposalId: number) => {
-    if (!token) return;
-    setProposalActionLoadingId(proposalId);
-    setError(null);
-    try {
-      await proposalActions.finalizeProposal(proposalId);
-
-      setSuccessMessage("Proceso de votacion finalizado para la propuesta.");
-      await fetchProposals();
-    } catch (error) {
-      setError(getErrorMessage(error, "No se pudo finalizar la propuesta"));
-    } finally {
-      setProposalActionLoadingId(null);
-    }
-  };
-
   const submitGreenSpaceReview = async (greenSpaceId: number) => {
     if (!token) {
       setError("Debes iniciar sesion para enviar una reseña");
@@ -1938,116 +1596,34 @@ function App() {
   };
 
   const renderUserModal = () => {
-    if (!showUserModal) return null;
-
     const editingUser = adminUsers.find((entry) => entry.id === editingUserId);
     const isOriginalAdminUser = editingUser?.username === "admin";
 
     return (
-      <AppModal
+      <AdminUserFormModal
         isOpen={showUserModal}
+        editingUserId={editingUserId}
+        isOriginalAdminUser={Boolean(isOriginalAdminUser)}
+        userNameInput={userNameInput}
+        userUsernameInput={userUsernameInput}
+        userEmailInput={userEmailInput}
+        userPasswordInput={userPasswordInput}
+        userRoleIdInput={userRoleIdInput}
+        userIsActiveInput={userIsActiveInput}
+        adminRoles={adminRoles}
+        onUserNameChange={setUserNameInput}
+        onUserUsernameChange={setUserUsernameInput}
+        onUserEmailChange={setUserEmailInput}
+        onUserPasswordChange={setUserPasswordInput}
+        onUserRoleIdChange={setUserRoleIdInput}
+        onUserIsActiveChange={setUserIsActiveInput}
+        onSubmit={saveAdminUser}
         onClose={closeUserModal}
-        title={editingUserId ? "Editar usuario" : "Crear usuario"}
-        description={
-          editingUserId
-            ? "Actualiza datos del usuario o elimina si no tiene registros relacionados."
-            : "Completa la informacion para crear un nuevo usuario del sistema."
-        }
-      >
-        <form className="admin-form" onSubmit={saveAdminUser}>
-          <div className="field-row">
-            <label>
-              Nombre
-              <input
-                value={userNameInput}
-                onChange={(e) => setUserNameInput(e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Usuario
-              <input
-                value={userUsernameInput}
-                onChange={(e) => setUserUsernameInput(e.target.value)}
-                required
-              />
-            </label>
-          </div>
-
-          <div className="field-row">
-            <label>
-              Correo
-              <input
-                type="email"
-                value={userEmailInput}
-                onChange={(e) => setUserEmailInput(e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Contrasena {editingUserId ? "(opcional)" : ""}
-              <input
-                type="password"
-                value={userPasswordInput}
-                onChange={(e) => setUserPasswordInput(e.target.value)}
-                required={!editingUserId}
-              />
-            </label>
-          </div>
-
-          <div className="field-row">
-            {!isOriginalAdminUser && (
-              <label>
-                Rol
-                <select
-                  value={String(userRoleIdInput)}
-                  onChange={(e) => setUserRoleIdInput(Number(e.target.value))}
-                  required
-                >
-                  <option value="0" disabled>
-                    Selecciona un rol
-                  </option>
-                  {adminRoles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={userIsActiveInput}
-                onChange={(e) => setUserIsActiveInput(e.target.checked)}
-              />
-              Usuario activo
-            </label>
-          </div>
-
-          <div className="button-row user-modal-actions">
-            <button type="submit">
-              {editingUserId ? "Guardar cambios" : "Crear usuario"}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={closeUserModal}
-            >
-              Cancelar
-            </button>
-            {editingUserId && !isOriginalAdminUser && (
-              <button
-                type="button"
-                className="danger"
-                onClick={() => deleteAdminUser(editingUserId)}
-              >
-                Eliminar usuario
-              </button>
-            )}
-          </div>
-        </form>
-      </AppModal>
+        onDeleteEditingUser={() => {
+          if (!editingUserId) return;
+          deleteAdminUser(editingUserId);
+        }}
+      />
     );
   };
 
@@ -2258,151 +1834,37 @@ function App() {
 
   if (route === "/login") {
     return (
-      <div className="container">
-        <h1>Univerde</h1>
-        <section className="box login-box">
-          <h2>Iniciar sesión</h2>
-          <div className="input-group">
-            <label className="input-with-icon">
-              <input
-                placeholder="Usuario"
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="input-group">
-            <label className="input-with-icon">
-              <input
-                placeholder="Contraseña"
-                type={showPasswordField ? "text" : "password"}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPasswordField((visible) => !visible)}
-                aria-label={
-                  showPasswordField
-                    ? "Ocultar contraseña"
-                    : "Mostrar contraseña"
-                }
-              >
-                {showPasswordField ? (
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M4 4l16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinejoin="round"
-                    />
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="3"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                )}
-              </button>
-            </label>
-          </div>
-          <button onClick={login}>Entrar</button>
-          {successMessage && (
-            <p className={`success-message${successVisible ? " visible" : ""}`}>
-              {successMessage}
-            </p>
-          )}
-          {error && <p className="error">{error}</p>}
-          <p>
-            No tienes cuenta?{" "}
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => navigate("/register")}
-            >
-              Regístrate
-            </button>
-          </p>
-        </section>
-      </div>
+      <LoginView
+        username={username}
+        password={password}
+        showPasswordField={showPasswordField}
+        successMessage={successMessage}
+        successVisible={successVisible}
+        error={error}
+        onUsernameChange={setUsername}
+        onPasswordChange={setPassword}
+        onTogglePassword={() => setShowPasswordField((visible) => !visible)}
+        onLogin={login}
+        onGoRegister={() => navigate("/register")}
+      />
     );
   }
 
   if (route === "/register") {
     return (
-      <div className="container">
-        <h1>Registro de usuario</h1>
-        <section className="box">
-          <h2>Crea tu cuenta</h2>
-          <label>
-            Nombre completo
-            <input
-              placeholder="Nombre completo"
-              value={registerName}
-              onChange={(e) => setRegisterName(e.target.value)}
-            />
-          </label>
-          <label>
-            Nombre de usuario
-            <input
-              placeholder="Nombre de usuario"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </label>
-          <label>
-            Correo
-            <input
-              placeholder="Correo"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label>
-            Contraseña
-            <input
-              placeholder="Contraseña"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-          <button onClick={register}>Registrarse</button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => navigate("/login")}
-          >
-            Volver al login
-          </button>
-          {error && <p className="error">{error}</p>}
-        </section>
-      </div>
+      <RegisterView
+        registerName={registerName}
+        username={username}
+        email={email}
+        password={password}
+        error={error}
+        onRegisterNameChange={setRegisterName}
+        onUsernameChange={setUsername}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onRegister={register}
+        onBackToLogin={() => navigate("/login")}
+      />
     );
   }
 
@@ -2730,129 +2192,35 @@ function App() {
   );
 
   const renderGreenSpaceModal = () => {
-    if (!showGreenSpaceModal || user?.role !== "admin") return null;
+    if (user?.role !== "admin") return null;
 
     return (
-      <AppModal
+      <GreenSpaceFormModal
         isOpen={showGreenSpaceModal}
+        isEditing={Boolean(editingGreenSpace)}
+        spaceName={spaceName}
+        spaceLocation={spaceLocation}
+        spaceArea={spaceArea}
+        spaceTrees={spaceTrees}
+        spaceImagePreviewList={spaceImagePreviewList}
+        uploadingSpaceImages={uploadingSpaceImages}
+        onSpaceNameChange={setSpaceName}
+        onSpaceLocationChange={setSpaceLocation}
+        onSpaceAreaChange={setSpaceArea}
+        onSpaceTreesChange={setSpaceTrees}
+        onUploadGreenSpaceImages={uploadGreenSpaceImages}
+        onResolveAssetUrl={resolveAssetUrl}
+        onSubmit={saveGreenSpace}
         onClose={closeGreenSpaceModal}
-        title={editingGreenSpace ? "Editar area verde" : "Registrar area verde"}
-        description={
+        onDelete={
           editingGreenSpace
-            ? "Actualiza la informacion del espacio verde."
-            : "Completa la informacion para registrar un nuevo espacio verde."
+            ? () => {
+                deleteGreenSpace(editingGreenSpace.id);
+                closeGreenSpaceModal();
+              }
+            : undefined
         }
-      >
-        <form className="admin-form" onSubmit={saveGreenSpace}>
-          <div className="field-row">
-            <label>
-              Nombre
-              <input
-                value={spaceName}
-                onChange={(e) => setSpaceName(e.target.value)}
-                placeholder="Ej: Jardin Central"
-                required
-              />
-            </label>
-            <label>
-              Ubicacion
-              <input
-                value={spaceLocation}
-                onChange={(e) => setSpaceLocation(e.target.value)}
-                placeholder="Ej: Frente a biblioteca"
-                required
-              />
-            </label>
-          </div>
-          <div className="field-row">
-            <label>
-              Area total (m2)
-              <input
-                type="number"
-                min="0"
-                value={spaceArea}
-                onChange={(e) => setSpaceArea(e.target.value)}
-                placeholder="0"
-                required
-              />
-            </label>
-            <label>
-              Numero de arboles altos
-              <input
-                type="number"
-                min="0"
-                value={spaceTrees}
-                onChange={(e) => setSpaceTrees(e.target.value)}
-                placeholder="0"
-                required
-              />
-            </label>
-          </div>
-
-          <p className="muted">
-            Las imagenes se agregan solo desde tu equipo con el boton "Elegir
-            archivos".
-          </p>
-          {spaceImagePreviewList.length > 0 && (
-            <div className="green-space-preview-list">
-              {spaceImagePreviewList.map((image, index) => (
-                <figure
-                  key={`${image}-${index}`}
-                  className="green-space-preview-item"
-                >
-                  <img
-                    src={resolveAssetUrl(image)}
-                    alt={`Previsualizacion ${index + 1}`}
-                  />
-                  <figcaption>{image}</figcaption>
-                </figure>
-              ))}
-            </div>
-          )}
-
-          <label>
-            Imagenes del area verde (solo carga local)
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={uploadGreenSpaceImages}
-              disabled={uploadingSpaceImages}
-            />
-          </label>
-          {spaceImagePreviewList.length === 0 && (
-            <p className="muted">Aun no se han subido imagenes.</p>
-          )}
-          {uploadingSpaceImages && (
-            <p className="muted">Subiendo imagenes, por favor espera...</p>
-          )}
-
-          <div className="button-row user-modal-actions">
-            <button type="submit">
-              {editingGreenSpace ? "Guardar cambios" : "Registrar"}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={closeGreenSpaceModal}
-            >
-              Cancelar
-            </button>
-            {editingGreenSpace && (
-              <button
-                type="button"
-                className="danger"
-                onClick={() => {
-                  deleteGreenSpace(editingGreenSpace.id);
-                  closeGreenSpaceModal();
-                }}
-              >
-                Eliminar
-              </button>
-            )}
-          </div>
-        </form>
-      </AppModal>
+      />
     );
   };
 
@@ -2868,69 +2236,20 @@ function App() {
   };
 
   const renderProposalCreateModal = () => {
-    if (!showProposalModal) return null;
-
     return (
-      <AppModal
+      <ProposalCreateModal
         isOpen={showProposalModal}
+        proposalTitleInput={proposalTitleInput}
+        proposalDescriptionInput={proposalDescriptionInput}
+        proposalSpaceIdInput={proposalSpaceIdInput}
+        greenSpaces={greenSpaces}
+        isSubmittingProposal={isSubmittingProposal}
+        setProposalTitleInput={setProposalTitleInput}
+        setProposalDescriptionInput={setProposalDescriptionInput}
+        setProposalSpaceIdInput={setProposalSpaceIdInput}
+        onSubmit={submitProposal}
         onClose={closeCreateProposalModal}
-        title="Nueva propuesta"
-        description="Registra una propuesta de mejora para un area verde."
-      >
-        <form className="admin-form" onSubmit={submitProposal}>
-          <div className="field-row">
-            <label>
-              Titulo
-              <input
-                value={proposalTitleInput}
-                onChange={(e) => setProposalTitleInput(e.target.value)}
-                placeholder="Ej: Reforestacion del sendero norte"
-                required
-              />
-            </label>
-            <label>
-              Area verde
-              <select
-                value={String(proposalSpaceIdInput)}
-                onChange={(e) =>
-                  setProposalSpaceIdInput(Number(e.target.value))
-                }
-                required
-              >
-                {greenSpaces.map((space) => (
-                  <option key={space.id} value={space.id}>
-                    {space.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label>
-            Descripcion
-            <textarea
-              value={proposalDescriptionInput}
-              onChange={(e) => setProposalDescriptionInput(e.target.value)}
-              placeholder="Describe el problema y la mejora propuesta"
-              required
-            />
-          </label>
-          <div className="button-row">
-            <button
-              type="submit"
-              disabled={isSubmittingProposal || greenSpaces.length === 0}
-            >
-              {isSubmittingProposal ? "Enviando..." : "Guardar propuesta"}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={closeCreateProposalModal}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      </AppModal>
+      />
     );
   };
 
@@ -2943,236 +2262,44 @@ function App() {
     if (!proposal) return null;
 
     const projectDetails = proposalProjectDetails[proposal.id];
-    const project = projectDetails?.project || null;
-    const updates = projectDetails?.updates || [];
+    const project = projectDetails?.project;
     const isProjectLoading = proposalProjectLoadingId === proposal.id;
     const selectedProjectStatus = project
       ? projectStatusDrafts[project.id] || project.completedStatus
       : "planned";
 
-    const projectStatusLabel: Record<
-      "planned" | "in_progress" | "completed",
-      string
-    > = {
-      planned: "Planificado",
-      in_progress: "En progreso",
-      completed: "Completado",
-    };
-
     return (
-      <AppModal
+      <ProposalDetailsModal
         isOpen={showProposalDetailsModal}
+        proposal={proposal}
+        projectDetails={projectDetails}
+        isProjectLoading={isProjectLoading}
+        selectedProjectStatus={selectedProjectStatus}
+        userRole={user?.role}
+        isUpdatingProjectStatus={isUpdatingProjectStatus}
+        isSubmittingProjectUpdate={isSubmittingProjectUpdate}
+        uploadingProjectUpdateImages={uploadingProjectUpdateImages}
+        projectUpdateTitleInput={projectUpdateTitleInput}
+        projectUpdateDescriptionInput={projectUpdateDescriptionInput}
+        projectUpdateImagesInput={projectUpdateImagesInput}
+        setProjectUpdateTitleInput={setProjectUpdateTitleInput}
+        setProjectUpdateDescriptionInput={setProjectUpdateDescriptionInput}
+        setProjectUpdateImagesInput={setProjectUpdateImagesInput}
+        setSelectedProjectStatus={(value) => {
+          const project = projectDetails?.project;
+          if (!project) return;
+          setProjectStatusDrafts((prev) => ({
+            ...prev,
+            [project.id]: value,
+          }));
+        }}
+        onUpdateProjectCompletedStatus={updateProjectCompletedStatus}
+        onSubmitProjectActivityUpdate={submitProjectActivityUpdate}
+        onUploadProjectActivityImages={uploadProjectActivityImages}
+        resolveAssetUrl={resolveAssetUrl}
+        formatUpdatedAt={formatUpdatedAt}
         onClose={closeProposalDetailsModal}
-        title="Detalle de propuesta"
-        description={proposal.title}
-      >
-        <div className="admin-form">
-          <div className="details-grid">
-            <div className="details-item full-width">
-              <span>Descripcion</span>
-              <strong>{proposal.description}</strong>
-            </div>
-            <div className="details-item">
-              <span>Estado</span>
-              <strong>{proposal.status}</strong>
-            </div>
-            <div className="details-item">
-              <span>Votos</span>
-              <strong>{proposal.totalVotes}</strong>
-            </div>
-          </div>
-
-          <h4>Seguimiento del proyecto</h4>
-          {isProjectLoading && (
-            <p className="muted">Cargando detalles del proyecto...</p>
-          )}
-          {!isProjectLoading && !project && (
-            <p className="muted">
-              Esta propuesta aun no tiene proyecto generado. Debe quedar
-              aprobada por votacion y finalizarse para crear el proyecto.
-            </p>
-          )}
-
-          {!isProjectLoading && project && (
-            <>
-              <div className="details-grid">
-                <div className="details-item">
-                  <span>Proyecto</span>
-                  <strong>{project.title}</strong>
-                </div>
-                <div className="details-item">
-                  <span>Estado de ejecucion</span>
-                  <strong>{projectStatusLabel[project.completedStatus]}</strong>
-                </div>
-              </div>
-
-              {user?.role === "admin" && (
-                <div className="field-row">
-                  <label>
-                    Actualizar estado del proyecto
-                    <select
-                      value={selectedProjectStatus}
-                      onChange={(e) =>
-                        setProjectStatusDrafts((prev) => ({
-                          ...prev,
-                          [project.id]: e.target.value as
-                            | "planned"
-                            | "in_progress"
-                            | "completed",
-                        }))
-                      }
-                    >
-                      <option value="planned">Planificado</option>
-                      <option value="in_progress">En progreso</option>
-                      <option value="completed">Completado</option>
-                    </select>
-                  </label>
-                  <div className="button-row compact">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateProjectCompletedStatus(
-                          proposal.id,
-                          project.id,
-                          selectedProjectStatus,
-                        )
-                      }
-                      disabled={
-                        isUpdatingProjectStatus ||
-                        selectedProjectStatus === project.completedStatus
-                      }
-                    >
-                      {isUpdatingProjectStatus
-                        ? "Actualizando..."
-                        : "Guardar estado"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {updates.length === 0 ? (
-                <p className="muted">No hay actividades registradas todavia.</p>
-              ) : (
-                <div className="proposal-updates-list">
-                  {updates.map((update) => (
-                    <article key={update.id} className="proposal-update-card">
-                      <div className="proposal-update-header">
-                        <strong>{update.title || "Actividad"}</strong>
-                        <span className="muted">
-                          {formatUpdatedAt(update.createdAt || undefined)}
-                        </span>
-                      </div>
-                      <p>{update.description}</p>
-                      {update.createdBy && (
-                        <p className="small muted">
-                          Registrado por:{" "}
-                          {update.createdBy.name || update.createdBy.username}
-                        </p>
-                      )}
-                      {update.images.length > 0 && (
-                        <div className="proposal-update-images">
-                          {update.images.map((imageUrl, imageIndex) => (
-                            <a
-                              key={`${update.id}-${imageIndex}`}
-                              href={resolveAssetUrl(imageUrl)}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <img
-                                src={resolveAssetUrl(imageUrl)}
-                                alt={`Actividad ${update.id} imagen ${imageIndex + 1}`}
-                              />
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              )}
-
-              {user?.role === "admin" && (
-                <form
-                  className="admin-form"
-                  onSubmit={(event) =>
-                    submitProjectActivityUpdate(event, proposal.id, project.id)
-                  }
-                >
-                  <h4>Registrar actividad</h4>
-                  <label>
-                    Titulo de actividad
-                    <input
-                      value={projectUpdateTitleInput}
-                      onChange={(e) =>
-                        setProjectUpdateTitleInput(e.target.value)
-                      }
-                      placeholder="Ejemplo: Jornada de limpieza"
-                    />
-                  </label>
-                  <label>
-                    Descripcion de actividad
-                    <textarea
-                      value={projectUpdateDescriptionInput}
-                      onChange={(e) =>
-                        setProjectUpdateDescriptionInput(e.target.value)
-                      }
-                      placeholder="Describe lo realizado en esta etapa"
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    Imagenes de actividad
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(event) =>
-                        uploadProjectActivityImages(project.id, event)
-                      }
-                      disabled={uploadingProjectUpdateImages}
-                    />
-                    <span className="muted">
-                      {uploadingProjectUpdateImages
-                        ? "Subiendo imagenes..."
-                        : "Puedes subir una o varias imagenes"}
-                    </span>
-                  </label>
-
-                  <label>
-                    Rutas cargadas
-                    <textarea
-                      value={projectUpdateImagesInput}
-                      onChange={(e) =>
-                        setProjectUpdateImagesInput(e.target.value)
-                      }
-                      placeholder="Se completa automaticamente al subir imagenes"
-                    />
-                  </label>
-
-                  <div className="button-row">
-                    <button type="submit" disabled={isSubmittingProjectUpdate}>
-                      {isSubmittingProjectUpdate
-                        ? "Guardando actividad..."
-                        : "Guardar actividad"}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </>
-          )}
-
-          <div className="button-row">
-            <button
-              type="button"
-              className="secondary"
-              onClick={closeProposalDetailsModal}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </AppModal>
+      />
     );
   };
 
@@ -3190,23 +2317,11 @@ function App() {
         votingEnd={votingWindow.end}
         onChangeVotingStart={(value) => {
           if (!proposal) return;
-          setProposalWindows((prev) => ({
-            ...prev,
-            [proposal.id]: {
-              start: value,
-              end: prev[proposal.id]?.end || "",
-            },
-          }));
+          setProposalVotingStart(proposal.id, value);
         }}
         onChangeVotingEnd={(value) => {
           if (!proposal) return;
-          setProposalWindows((prev) => ({
-            ...prev,
-            [proposal.id]: {
-              start: prev[proposal.id]?.start || "",
-              end: value,
-            },
-          }));
+          setProposalVotingEnd(proposal.id, value);
         }}
         onAccept={async () => {
           if (!proposal) return;
@@ -3224,132 +2339,16 @@ function App() {
   };
 
   const renderGreenSpacesSection = () => (
-    <section className="box admin-box">
-      <div className="admin-header">
-        <div>
-          <h2>Administracion de areas verdes</h2>
-          <p>Gestiona los espacios verdes del campus.</p>
-        </div>
-      </div>
-
-      <article className="principal-panel">
-        <h3>Areas verdes del campus</h3>
-        <DefaultTable
-          rows={greenSpaces}
-          columns={[
-            {
-              key: "thumbnail",
-              label: "Imagen",
-              render: (space: GreenSpace) => {
-                const thumbnail = space.images?.[0];
-
-                if (!thumbnail) {
-                  return (
-                    <span className="green-space-table-thumbnail placeholder">
-                      Sin imagen
-                    </span>
-                  );
-                }
-
-                return (
-                  <img
-                    className="green-space-table-thumbnail"
-                    src={resolveAssetUrl(thumbnail)}
-                    alt={`${space.name} miniatura`}
-                  />
-                );
-              },
-            },
-            {
-              key: "name",
-              label: "Nombre",
-              sortable: true,
-              sortValue: (space: GreenSpace) => space.name,
-              render: (space: GreenSpace) => space.name,
-            },
-            {
-              key: "location",
-              label: "Ubicacion",
-              sortable: true,
-              sortValue: (space: GreenSpace) => space.location,
-              render: (space: GreenSpace) => space.location,
-            },
-            {
-              key: "area",
-              label: "Area",
-              sortable: true,
-              sortValue: (space: GreenSpace) => space.totalAreaM2,
-              render: (space: GreenSpace) => `${space.totalAreaM2} m2`,
-            },
-            {
-              key: "trees",
-              label: "Arboles",
-              sortable: true,
-              sortValue: (space: GreenSpace) => space.tallTreeCount,
-              render: (space: GreenSpace) => space.tallTreeCount,
-            },
-            {
-              key: "rating",
-              label: "Valoracion",
-              sortable: true,
-              sortValue: (space: GreenSpace) =>
-                Number(space.reviewSummary?.averageRating ?? 0),
-              render: (space: GreenSpace) => (
-                <div className="mini-rating-row">
-                  {renderAverageStars(space.reviewSummary?.averageRating ?? 0)}
-                  <span>
-                    {(space.reviewSummary?.averageRating ?? 0).toFixed(1)}
-                  </span>
-                  <span className="rating-votes-count">
-                    ({space.reviewSummary?.totalReviews ?? 0} votos)
-                  </span>
-                </div>
-              ),
-            },
-            {
-              key: "actions",
-              label: "Acciones",
-              render: (space: GreenSpace) => (
-                <div className="table-actions">
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      navigate(`/green-spaces/${space.id}`);
-                    }}
-                  >
-                    Ver detalle
-                  </button>
-                  {user?.role === "admin" && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        editGreenSpace(space);
-                      }}
-                    >
-                      Editar
-                    </button>
-                  )}
-                </div>
-              ),
-            },
-          ]}
-          onRowClick={(space) => navigate(`/green-spaces/${space.id}`)}
-          getRowId={(space) => space.id}
-          getSearchText={(space) =>
-            `${space.name} ${space.location} ${space.totalAreaM2} ${space.tallTreeCount}`
-          }
-          emptyMessage="No hay areas verdes registradas."
-          searchPlaceholder="Buscar por nombre o ubicacion"
-          onAdd={user?.role === "admin" ? openCreateGreenSpaceModal : undefined}
-          addButtonLabel="Nueva area verde"
-        />
-      </article>
-      {renderGreenSpaceModal()}
-      {renderGreenSpaceDetailsModal()}
-    </section>
+    <GreenSpacesSection
+      greenSpaces={greenSpaces}
+      userRole={user?.role}
+      onResolveAssetUrl={resolveAssetUrl}
+      onRenderAverageStars={renderAverageStars}
+      onNavigateGreenSpace={(id) => navigate(`/green-spaces/${id}`)}
+      onOpenCreateGreenSpaceModal={openCreateGreenSpaceModal}
+      greenSpaceModal={renderGreenSpaceModal()}
+      greenSpaceDetailsModal={renderGreenSpaceDetailsModal()}
+    />
   );
 
   const renderGreenSpaceDetailSection = () => {
@@ -3551,7 +2550,7 @@ function App() {
   const renderProjectDetailSection = () => {
     return (
       <ProjectDetailSection
-        selectedProjectEntry={selectedProjectEntry}
+        selectedProjectEntry={resolvedSelectedProjectEntry}
         selectedProjectId={selectedProjectId}
         projectEntriesCount={projectEntries.length}
         proposalProjectDetails={proposalProjectDetails}
@@ -3568,6 +2567,13 @@ function App() {
         setProjectUpdateDescriptionInput={setProjectUpdateDescriptionInput}
         setProjectUpdateImagesInput={setProjectUpdateImagesInput}
         onBack={() => navigate("/projects")}
+        onOpenProjectActivityDetail={(updateId) =>
+          resolvedSelectedProjectEntry
+            ? navigate(
+                `/projects/${resolvedSelectedProjectEntry.project.id}/updates/${updateId}`,
+              )
+            : navigate("/projects")
+        }
         onUpdateProjectCompletedStatus={updateProjectCompletedStatus}
         onSubmitProjectActivityUpdate={submitProjectActivityUpdate}
         onUploadProjectActivityImages={uploadProjectActivityImages}
@@ -3580,101 +2586,55 @@ function App() {
     );
   };
 
+  const renderProjectActivityDetailSection = () => {
+    return (
+      <ProjectActivityDetailSection
+        selectedProjectEntry={resolvedSelectedProjectEntry}
+        selectedProjectId={selectedProjectId}
+        selectedProjectUpdateId={selectedProjectUpdateId}
+        projectEntriesCount={projectEntries.length}
+        proposalProjectDetails={proposalProjectDetails}
+        proposalProjectLoadingId={proposalProjectLoadingId}
+        userRole={user?.role}
+        isSubmittingProjectUpdate={isSubmittingProjectUpdate}
+        uploadingProjectUpdateImages={uploadingProjectUpdateImages}
+        projectUpdateTitleInput={projectUpdateTitleInput}
+        projectUpdateDescriptionInput={projectUpdateDescriptionInput}
+        projectUpdateImagesInput={projectUpdateImagesInput}
+        setProjectUpdateTitleInput={setProjectUpdateTitleInput}
+        setProjectUpdateDescriptionInput={setProjectUpdateDescriptionInput}
+        setProjectUpdateImagesInput={setProjectUpdateImagesInput}
+        onUploadProjectActivityImages={uploadProjectActivityImages}
+        onUpdateProjectActivityUpdate={updateProjectActivityUpdate}
+        onDeleteProjectActivityUpdate={deleteProjectActivityUpdate}
+        onBackToProject={() => {
+          if (!resolvedSelectedProjectEntry) {
+            navigate("/projects");
+            return;
+          }
+          navigate(`/projects/${resolvedSelectedProjectEntry.project.id}`);
+        }}
+        onBackToProjects={() => navigate("/projects")}
+        resolveAssetUrl={resolveAssetUrl}
+        formatUpdatedAt={formatUpdatedAt}
+      />
+    );
+  };
+
   const getSpaceName = (spaceId: number) => {
     const target = greenSpaces.find((space) => space.id === spaceId);
     return target?.name || `Area #${spaceId}`;
   };
 
   const renderAdminUsersSection = () => {
-    const userColumns: DefaultTableColumn<AdminUser>[] = [
-      {
-        key: "name",
-        label: "Nombre",
-        sortable: true,
-        sortValue: (entry) => entry.name,
-        render: (entry) => entry.name,
-      },
-      {
-        key: "username",
-        label: "Usuario",
-        sortable: true,
-        sortValue: (entry) => entry.username,
-        render: (entry) => `@${entry.username}`,
-      },
-      {
-        key: "email",
-        label: "Correo",
-        sortable: true,
-        sortValue: (entry) => entry.email,
-        render: (entry) => entry.email,
-      },
-      {
-        key: "roleName",
-        label: "Rol",
-        sortable: true,
-        sortValue: (entry) => entry.roleName,
-        render: (entry) => entry.roleName,
-      },
-      {
-        key: "status",
-        label: "Estado",
-        sortable: true,
-        sortValue: (entry) => (entry.isActive ? 1 : 0),
-        render: (entry) => (
-          <span className={`pill ${entry.isActive ? "active" : "inactive"}`}>
-            {entry.isActive ? "Activo" : "Inactivo"}
-          </span>
-        ),
-      },
-      {
-        key: "actions",
-        label: "Acciones",
-        render: (entry) => (
-          <div className="table-actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => openUserDetailsModal(entry)}
-            >
-              Ver detalle
-            </button>
-            {entry.username !== "admin" && (
-              <button type="button" onClick={() => openEditUserModal(entry)}>
-                Editar
-              </button>
-            )}
-          </div>
-        ),
-      },
-    ];
-
     return (
-      <section className="box admin-box">
-        <div className="admin-header">
-          <div>
-            <h2>Administracion de usuarios</h2>
-            <p>Gestiona todas las cuentas de usuario del sistema.</p>
-          </div>
-        </div>
-
-        <article className="principal-panel">
-          <h3>Usuarios del sistema</h3>
-          <DefaultTable
-            columns={userColumns}
-            rows={adminUsers}
-            getRowId={(entry) => entry.id}
-            getSearchText={(entry) =>
-              `${entry.name} ${entry.username} ${entry.email} ${entry.roleName}`
-            }
-            emptyMessage="No hay usuarios registrados."
-            searchPlaceholder="Buscar por nombre, usuario o correo"
-            onAdd={openCreateUserModal}
-            addButtonLabel="Nuevo usuario"
-          />
-        </article>
-        {renderUserModal()}
-        {renderUserDetailsModal()}
-      </section>
+      <AdminUsersSection
+        adminUsers={adminUsers}
+        onOpenCreateUserModal={openCreateUserModal}
+        onOpenEditUserModal={openEditUserModal}
+        userModal={renderUserModal()}
+        userDetailsModal={renderUserDetailsModal()}
+      />
     );
   };
 
@@ -3685,10 +2645,8 @@ function App() {
       return (
         <ProjectsListSection
           projectEntries={projectEntries}
-          proposalProjectDetails={proposalProjectDetails}
           onOpenProjectPage={openProjectDetailPage}
           getSpaceName={getSpaceName}
-          formatUpdatedAt={formatUpdatedAt}
         />
       );
     }
@@ -3836,12 +2794,9 @@ function App() {
       <Reports
         reports={reports}
         greenSpaces={greenSpaces}
-        userId={user?.id}
-        userRole={user?.role}
         reportStateFilter={reportStateFilter}
         setReportStateFilter={setReportStateFilter}
         showReportCreateModal={showReportCreateModal}
-        showReportEditModal={showReportEditModal}
         reportTitleInput={reportTitleInput}
         reportDescriptionInput={reportDescriptionInput}
         reportSpaceIdInput={reportSpaceIdInput}
@@ -3853,20 +2808,12 @@ function App() {
         resolveAssetUrl={resolveAssetUrl}
         onOpenCreateReportModal={openCreateReportModal}
         onCloseCreateReportModal={closeCreateReportModal}
-        onCloseEditReportModal={closeEditReportModal}
         onSaveReport={saveReport}
         onUploadReportImages={uploadReportImages}
         setReportTitleInput={setReportTitleInput}
         setReportDescriptionInput={setReportDescriptionInput}
         setReportSpaceIdInput={setReportSpaceIdInput}
         setEditingReportStateInput={setEditingReportStateInput}
-        onOpenEditReportModal={openEditReportModal}
-        onDeleteReport={(reportId) => {
-          void deleteReport(reportId);
-        }}
-        onCompleteReport={(reportId) => {
-          void completeReport(reportId);
-        }}
         onOpenReportDetail={(reportId) => navigate(`/reports/${reportId}`)}
       />
     );
@@ -3877,11 +2824,28 @@ function App() {
       <Report
         selectedReportId={selectedReportId}
         selectedReport={selectedReport}
+        greenSpaces={greenSpaces}
         currentUserId={user?.id}
         currentUserRole={user?.role}
+        showReportEditModal={showReportEditModal}
+        reportTitleInput={reportTitleInput}
+        reportDescriptionInput={reportDescriptionInput}
+        reportSpaceIdInput={reportSpaceIdInput}
+        reportImagesInput={reportImagesInput}
+        editingReportStateInput={editingReportStateInput}
+        isSubmittingReport={isSubmittingReport}
+        uploadingReportImages={uploadingReportImages}
         onBack={() => navigate("/reports")}
         onOpenEditReportModal={openEditReportModal}
+        onCloseEditReportModal={closeEditReportModal}
+        onSaveReport={saveReport}
+        onUploadReportImages={uploadReportImages}
+        setReportTitleInput={setReportTitleInput}
+        setReportDescriptionInput={setReportDescriptionInput}
+        setReportSpaceIdInput={setReportSpaceIdInput}
+        setEditingReportStateInput={setEditingReportStateInput}
         onDeleteReport={deleteReport}
+        onCompleteReport={completeReport}
         resolveAssetUrl={resolveAssetUrl}
         formatUpdatedAt={formatUpdatedAt}
       />
@@ -3899,7 +2863,6 @@ function App() {
         treeTypeNameInput={treeTypeNameInput}
         treeTypeDescriptionInput={treeTypeDescriptionInput}
         treeTypeImagesInput={treeTypeImagesInput}
-        editingTreeTypeId={editingTreeTypeId}
         isSubmittingTreeType={isSubmittingTreeType}
         uploadingTreeTypeImages={uploadingTreeTypeImages}
         resolveAssetUrl={resolveAssetUrl}
@@ -3908,11 +2871,7 @@ function App() {
         setTreeTypeDescriptionInput={setTreeTypeDescriptionInput}
         setTreeTypeImagesInput={setTreeTypeImagesInput}
         onResetTreeTypeForm={resetTreeTypeForm}
-        onStartEditTreeType={startEditTreeType}
         onSaveTreeType={saveTreeType}
-        onDeleteTreeType={(treeTypeId) => {
-          void deleteTreeType(treeTypeId);
-        }}
         onUploadTreeTypeImages={(event) => {
           void uploadTreeTypeImages(event);
         }}
@@ -3926,8 +2885,24 @@ function App() {
         selectedTreeTypeId={selectedTreeTypeId}
         selectedTreeType={selectedTreeType}
         treesOfType={treeTypeInventoryRows}
+        userRole={user?.role}
         onBack={() => navigate("/tree-types")}
         onOpenTreeDetail={(tree) => navigate(`/trees/${tree.id}`)}
+        treeTypeNameInput={treeTypeNameInput}
+        treeTypeDescriptionInput={treeTypeDescriptionInput}
+        treeTypeImagesInput={treeTypeImagesInput}
+        isSubmittingTreeType={isSubmittingTreeType}
+        uploadingTreeTypeImages={uploadingTreeTypeImages}
+        setTreeTypeNameInput={setTreeTypeNameInput}
+        setTreeTypeDescriptionInput={setTreeTypeDescriptionInput}
+        setTreeTypeImagesInput={setTreeTypeImagesInput}
+        onResetTreeTypeForm={resetTreeTypeForm}
+        onStartEditTreeType={startEditTreeType}
+        onSaveTreeType={saveTreeType}
+        onDeleteTreeType={deleteTreeType}
+        onUploadTreeTypeImages={(event) => {
+          void uploadTreeTypeImages(event);
+        }}
         resolveAssetUrl={resolveAssetUrl}
         formatUpdatedAt={formatUpdatedAt}
       />
@@ -3949,7 +2924,6 @@ function App() {
         treeTypeIdInput={treeTypeIdInput}
         treeSpaceIdInput={treeSpaceIdInput}
         treeImagesInput={treeImagesInput}
-        editingTreeId={editingTreeId}
         isSubmittingTree={isSubmittingTree}
         uploadingTreeImages={uploadingTreeImages}
         treeActionLoadingId={treeActionLoadingId}
@@ -3961,15 +2935,11 @@ function App() {
         setTreeSpaceIdInput={setTreeSpaceIdInput}
         setTreeImagesInput={setTreeImagesInput}
         onResetTreeForm={resetTreeForm}
-        onStartEditTree={startEditTree}
         onOpenTreeDetail={(tree) => navigate(`/trees/${tree.id}`)}
         onUploadTreeImages={(event) => {
           void uploadTreeImages(event);
         }}
         onSaveTree={saveTree}
-        onDeleteTree={(treeId) => {
-          void deleteTree(treeId);
-        }}
         onApproveTree={(treeId) => {
           void approveTree(treeId);
         }}
@@ -3985,6 +2955,28 @@ function App() {
       <TreeDetailSection
         selectedTreeId={selectedTreeId}
         selectedTree={selectedTreeDetail}
+        userRole={user?.role}
+        treeTypes={treeTypes}
+        greenSpaces={greenSpaces}
+        treeNameInput={treeNameInput}
+        treeHealthStatusInput={treeHealthStatusInput}
+        treeTypeIdInput={treeTypeIdInput}
+        treeSpaceIdInput={treeSpaceIdInput}
+        treeImagesInput={treeImagesInput}
+        isSubmittingTree={isSubmittingTree}
+        uploadingTreeImages={uploadingTreeImages}
+        setTreeNameInput={setTreeNameInput}
+        setTreeHealthStatusInput={setTreeHealthStatusInput}
+        setTreeTypeIdInput={setTreeTypeIdInput}
+        setTreeSpaceIdInput={setTreeSpaceIdInput}
+        setTreeImagesInput={setTreeImagesInput}
+        onResetTreeForm={resetTreeForm}
+        onStartEditTree={startEditTree}
+        onUploadTreeImages={(event) => {
+          void uploadTreeImages(event);
+        }}
+        onSaveTree={saveTree}
+        onDeleteTree={deleteTree}
         onBack={() => navigate("/trees")}
         onOpenTrees={() => navigate("/trees")}
         onOpenTreeType={(treeTypeId) => navigate(`/tree-types/${treeTypeId}`)}
@@ -4009,6 +3001,9 @@ function App() {
     }
 
     if (route.startsWith("/projects/")) {
+      if (route.includes("/updates/")) {
+        return renderProjectActivityDetailSection();
+      }
       return renderProjectDetailSection();
     }
 
@@ -4262,111 +3257,29 @@ function App() {
         ☰
       </button>
       <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="brand">
-          <div>
-            <h2>Panel del campus</h2>
-            <p>Accede a areas verdes y tu perfil.</p>
-          </div>
-        </div>
-        {user?.role !== "admin" && (
-          <>
-            <div className="activity-badge">
-              {answeredPolls} encuestas respondidas
-            </div>
-            <div className="activity-badge secondary">
-              {unansweredPolls} encuestas sin responder
-            </div>
-          </>
-        )}
-        <nav className="nav-bar">
-          <button
-            type="button"
-            className={route === "/" ? "active" : ""}
-            onClick={() => navigate("/")}
-          >
-            Principal
-          </button>
-          <button
-            type="button"
-            className={route === "/profile" ? "active" : ""}
-            onClick={() => navigate("/profile")}
-          >
-            Perfil
-          </button>
-          <button
-            type="button"
-            className={isGreenSpacesRoute ? "active" : ""}
-            onClick={() => navigate("/green-spaces")}
-          >
-            Areas verdes
-          </button>
-          <button
-            type="button"
-            className={route === "/proposals" ? "active" : ""}
-            onClick={() => navigate("/proposals")}
-          >
-            Propuestas
-          </button>
-          <button
-            type="button"
-            className={isProjectsRoute ? "active" : ""}
-            onClick={openProjects}
-          >
-            Proyectos
-          </button>
-          <button
-            type="button"
-            className={isReportsRoute ? "active" : ""}
-            onClick={() => navigate("/reports")}
-          >
-            Reportes
-          </button>
-          <button
-            type="button"
-            className={isTreeTypesRoute ? "active" : ""}
-            onClick={() => navigate("/tree-types")}
-          >
-            Tipos de arboles
-          </button>
-          <button
-            type="button"
-            className={isTreesRoute ? "active" : ""}
-            onClick={() => navigate("/trees")}
-          >
-            Arboles
-          </button>
-          {user?.role === "admin" && (
-            <>
-              <button
-                type="button"
-                className={route === "/admin-users" ? "active" : ""}
-                onClick={() => navigate("/admin-users")}
-              >
-                Usuarios
-              </button>
-            </>
-          )}
-        </nav>
-        {user?.role === "admin" && <span className="nav-badge">ADMIN</span>}
-        <div className="sidebar-user-panel">
-          <div className="avatar">
-            {(() => {
-              return (
-                <img
-                  src={resolveAvatarUrl(user?.avatarUrl)}
-                  alt={`${displayName} avatar`}
-                />
-              );
-            })()}
-          </div>
-          <div className="user-info">
-            <div className="user-name">{displayName}</div>
-            <div className="user-role">{user?.role}</div>
-          </div>
-        </div>
-        <button className="logout-button sidebar-logout" onClick={logout}>
-          Cerrar sesión
-        </button>
+        <AppSidebar
+          route={route}
+          isGreenSpacesRoute={isGreenSpacesRoute}
+          isProjectsRoute={isProjectsRoute}
+          isReportsRoute={isReportsRoute}
+          isTreeTypesRoute={isTreeTypesRoute}
+          isTreesRoute={isTreesRoute}
+          answeredPolls={answeredPolls}
+          unansweredPolls={unansweredPolls}
+          displayName={displayName}
+          userRole={user?.role}
+          avatarUrl={resolveAvatarUrl(user?.avatarUrl)}
+          onNavigateHome={() => navigate("/")}
+          onNavigateProfile={() => navigate("/profile")}
+          onNavigateGreenSpaces={() => navigate("/green-spaces")}
+          onNavigateProposals={() => navigate("/proposals")}
+          onNavigateProjects={openProjects}
+          onNavigateReports={() => navigate("/reports")}
+          onNavigateTreeTypes={() => navigate("/tree-types")}
+          onNavigateTrees={() => navigate("/trees")}
+          onNavigateUsers={() => navigate("/admin-users")}
+          onLogout={logout}
+        />
       </aside>
       <main className="main-content">
         <header className="topbar">

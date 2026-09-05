@@ -1,5 +1,6 @@
-import { ChangeEvent, FormEvent } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
+import { TreeTypeFormModal } from "./TreeTypeFormModal";
 import { TreeType } from "../../features/treeTypes/types";
 
 interface TreeTypesSectionProps {
@@ -9,7 +10,6 @@ interface TreeTypesSectionProps {
   treeTypeNameInput: string;
   treeTypeDescriptionInput: string;
   treeTypeImagesInput: string;
-  editingTreeTypeId: number | null;
   isSubmittingTreeType: boolean;
   uploadingTreeTypeImages: boolean;
   resolveAssetUrl: (assetPath: string) => string;
@@ -18,9 +18,7 @@ interface TreeTypesSectionProps {
   setTreeTypeDescriptionInput: (value: string) => void;
   setTreeTypeImagesInput: (value: string) => void;
   onResetTreeTypeForm: () => void;
-  onStartEditTreeType: (treeType: TreeType) => void;
-  onSaveTreeType: (event: FormEvent<HTMLFormElement>) => void;
-  onDeleteTreeType: (treeTypeId: number) => void;
+  onSaveTreeType: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
   onUploadTreeTypeImages: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
@@ -31,7 +29,6 @@ export function TreeTypesSection({
   treeTypeNameInput,
   treeTypeDescriptionInput,
   treeTypeImagesInput,
-  editingTreeTypeId,
   isSubmittingTreeType,
   uploadingTreeTypeImages,
   resolveAssetUrl,
@@ -40,11 +37,20 @@ export function TreeTypesSection({
   setTreeTypeDescriptionInput,
   setTreeTypeImagesInput,
   onResetTreeTypeForm,
-  onStartEditTreeType,
   onSaveTreeType,
-  onDeleteTreeType,
   onUploadTreeTypeImages,
 }: TreeTypesSectionProps) {
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const openCreateModal = () => {
+    onResetTreeTypeForm();
+    setShowCreateModal(true);
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+  };
+
   const treeTypeColumns: DefaultTableColumn<TreeType>[] = [
     {
       key: "thumbnail",
@@ -96,39 +102,6 @@ export function TreeTypesSection({
       sortValue: (treeType) => treeType.updatedAt || "",
       render: (treeType) => formatUpdatedAt(treeType.updatedAt || undefined),
     },
-    {
-      key: "actions",
-      label: "Acciones",
-      render: (treeType) => (
-        <div className="table-actions">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => onOpenTreeTypeDetail(treeType)}
-          >
-            Ver detalle
-          </button>
-          {userRole === "admin" && (
-            <>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => onStartEditTreeType(treeType)}
-              >
-                Editar
-              </button>
-              <button
-                type="button"
-                className="danger"
-                onClick={() => onDeleteTreeType(treeType.id)}
-              >
-                Eliminar
-              </button>
-            </>
-          )}
-        </div>
-      ),
-    },
   ];
 
   return (
@@ -139,6 +112,13 @@ export function TreeTypesSection({
           Referencias de especies para su uso posterior en el inventario real de
           arboles por area verde.
         </p>
+        {userRole === "admin" && (
+          <div className="button-row">
+            <button type="button" onClick={openCreateModal}>
+              Nuevo tipo de arbol
+            </button>
+          </div>
+        )}
         <DefaultTable
           columns={treeTypeColumns}
           rows={treeTypes}
@@ -153,70 +133,22 @@ export function TreeTypesSection({
       </article>
 
       {userRole === "admin" && (
-        <article className="principal-panel">
-          <h3>
-            {editingTreeTypeId ? "Editar tipo de arbol" : "Nuevo tipo de arbol"}
-          </h3>
-          <form className="admin-form" onSubmit={onSaveTreeType}>
-            <label>
-              Nombre
-              <input
-                value={treeTypeNameInput}
-                onChange={(e) => setTreeTypeNameInput(e.target.value)}
-                placeholder="Ejemplo: Araguaney"
-                required
-              />
-            </label>
-            <label>
-              Descripcion
-              <textarea
-                value={treeTypeDescriptionInput}
-                onChange={(e) => setTreeTypeDescriptionInput(e.target.value)}
-                placeholder="Describe las caracteristicas principales de la especie"
-                required
-              />
-            </label>
-            <label>
-              Imagenes referenciales
-              <textarea
-                value={treeTypeImagesInput}
-                onChange={(e) => setTreeTypeImagesInput(e.target.value)}
-                placeholder="Una URL por linea"
-                required
-              />
-            </label>
-            <label>
-              Subir imagenes
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onUploadTreeTypeImages}
-              />
-            </label>
-            <div className="button-row">
-              <button type="submit" disabled={isSubmittingTreeType}>
-                {isSubmittingTreeType
-                  ? "Guardando..."
-                  : editingTreeTypeId
-                    ? "Actualizar"
-                    : "Crear tipo"}
-              </button>
-              {editingTreeTypeId && (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={onResetTreeTypeForm}
-                >
-                  Cancelar edicion
-                </button>
-              )}
-            </div>
-            {uploadingTreeTypeImages && (
-              <p className="small muted">Subiendo imagenes...</p>
-            )}
-          </form>
-        </article>
+        <TreeTypeFormModal
+          isOpen={showCreateModal}
+          isEditing={false}
+          treeTypeNameInput={treeTypeNameInput}
+          treeTypeDescriptionInput={treeTypeDescriptionInput}
+          treeTypeImagesInput={treeTypeImagesInput}
+          isSubmittingTreeType={isSubmittingTreeType}
+          uploadingTreeTypeImages={uploadingTreeTypeImages}
+          setTreeTypeNameInput={setTreeTypeNameInput}
+          setTreeTypeDescriptionInput={setTreeTypeDescriptionInput}
+          setTreeTypeImagesInput={setTreeTypeImagesInput}
+          onUploadTreeTypeImages={onUploadTreeTypeImages}
+          onSaveTreeType={onSaveTreeType}
+          onResetTreeTypeForm={onResetTreeTypeForm}
+          onClose={closeCreateModal}
+        />
       )}
     </section>
   );

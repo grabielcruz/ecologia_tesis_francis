@@ -1,5 +1,8 @@
+import { ChangeEvent, FormEvent, useState } from "react";
+import { AppModal } from "../AppModal";
 import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
 import { ImageCarousel } from "../ImageCarousel";
+import { TreeTypeFormModal } from "./TreeTypeFormModal";
 import { TreeType } from "../../features/treeTypes/types";
 import {
   TreeInventoryItem,
@@ -10,8 +13,22 @@ interface TreeTypeDetailSectionProps {
   selectedTreeTypeId: number | null;
   selectedTreeType: TreeType | null;
   treesOfType: TreeInventoryItem[];
+  userRole?: string;
   onBack: () => void;
   onOpenTreeDetail?: (tree: TreeInventoryItem) => void;
+  treeTypeNameInput: string;
+  treeTypeDescriptionInput: string;
+  treeTypeImagesInput: string;
+  isSubmittingTreeType: boolean;
+  uploadingTreeTypeImages: boolean;
+  setTreeTypeNameInput: (value: string) => void;
+  setTreeTypeDescriptionInput: (value: string) => void;
+  setTreeTypeImagesInput: (value: string) => void;
+  onResetTreeTypeForm: () => void;
+  onStartEditTreeType: (treeType: TreeType) => void;
+  onSaveTreeType: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
+  onDeleteTreeType: (treeTypeId: number) => Promise<boolean>;
+  onUploadTreeTypeImages: (event: ChangeEvent<HTMLInputElement>) => void;
   resolveAssetUrl: (assetPath: string) => string;
   formatUpdatedAt: (value?: string) => string;
 }
@@ -27,11 +44,61 @@ export function TreeTypeDetailSection({
   selectedTreeTypeId,
   selectedTreeType,
   treesOfType,
+  userRole,
   onBack,
   onOpenTreeDetail,
+  treeTypeNameInput,
+  treeTypeDescriptionInput,
+  treeTypeImagesInput,
+  isSubmittingTreeType,
+  uploadingTreeTypeImages,
+  setTreeTypeNameInput,
+  setTreeTypeDescriptionInput,
+  setTreeTypeImagesInput,
+  onResetTreeTypeForm,
+  onStartEditTreeType,
+  onSaveTreeType,
+  onDeleteTreeType,
+  onUploadTreeTypeImages,
   resolveAssetUrl,
   formatUpdatedAt,
 }: TreeTypeDetailSectionProps) {
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const openEditModal = () => {
+    if (!selectedTreeType) return;
+    onStartEditTreeType(selectedTreeType);
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+  };
+
+  const openDeleteModal = () => {
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setShowDeleteModal(false);
+  };
+
+  const confirmDeleteTreeType = async () => {
+    if (!selectedTreeType) return;
+
+    setIsDeleting(true);
+    const deleted = await onDeleteTreeType(selectedTreeType.id);
+    setIsDeleting(false);
+
+    if (deleted) {
+      setShowDeleteModal(false);
+      onBack();
+    }
+  };
+
   if (!selectedTreeTypeId) {
     return (
       <section className="box">
@@ -136,6 +203,16 @@ export function TreeTypeDetailSection({
         <button type="button" className="secondary" onClick={onBack}>
           Volver a tipos de arboles
         </button>
+        {userRole === "admin" && (
+          <>
+            <button type="button" onClick={openEditModal}>
+              Editar tipo
+            </button>
+            <button type="button" className="danger" onClick={openDeleteModal}>
+              Eliminar tipo
+            </button>
+          </>
+        )}
       </div>
 
       <article className="principal-panel">
@@ -167,6 +244,54 @@ export function TreeTypeDetailSection({
           searchPlaceholder="Buscar por nombre, salud o ubicacion"
         />
       </article>
+
+      {userRole === "admin" && (
+        <TreeTypeFormModal
+          isOpen={showEditModal}
+          isEditing={true}
+          treeTypeNameInput={treeTypeNameInput}
+          treeTypeDescriptionInput={treeTypeDescriptionInput}
+          treeTypeImagesInput={treeTypeImagesInput}
+          isSubmittingTreeType={isSubmittingTreeType}
+          uploadingTreeTypeImages={uploadingTreeTypeImages}
+          setTreeTypeNameInput={setTreeTypeNameInput}
+          setTreeTypeDescriptionInput={setTreeTypeDescriptionInput}
+          setTreeTypeImagesInput={setTreeTypeImagesInput}
+          onUploadTreeTypeImages={onUploadTreeTypeImages}
+          onSaveTreeType={onSaveTreeType}
+          onResetTreeTypeForm={onResetTreeTypeForm}
+          onClose={closeEditModal}
+        />
+      )}
+
+      <AppModal
+        isOpen={showDeleteModal}
+        onClose={closeDeleteModal}
+        title="Eliminar tipo de arbol"
+        description="Esta accion eliminara el tipo de arbol seleccionado."
+      >
+        <p>Esta seguro de que desea continuar?</p>
+        <div className="button-row">
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              void confirmDeleteTreeType();
+            }}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Eliminando..." : "Eliminar"}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={closeDeleteModal}
+            disabled={isDeleting}
+          >
+            Cancelar
+          </button>
+        </div>
+      </AppModal>
     </section>
   );
 }

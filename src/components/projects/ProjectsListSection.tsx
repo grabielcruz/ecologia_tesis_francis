@@ -2,48 +2,24 @@ import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
 import {
   ProjectExecutionStatus,
   ProjectListEntry,
-  ProposalProjectDetails,
 } from "../../features/proposals/types";
 
 interface ProjectsListSectionProps {
   projectEntries: ProjectListEntry[];
-  proposalProjectDetails: Record<number, ProposalProjectDetails>;
   onOpenProjectPage: (entry: ProjectListEntry) => void;
   getSpaceName: (spaceId: number) => string;
-  formatUpdatedAt: (value?: string) => string;
 }
 
 export function ProjectsListSection({
   projectEntries,
-  proposalProjectDetails,
   onOpenProjectPage,
   getSpaceName,
-  formatUpdatedAt,
 }: ProjectsListSectionProps) {
   const projectStatusLabel: Record<ProjectExecutionStatus, string> = {
     not_created: "Sin proyecto",
     planned: "Planificado",
     in_progress: "En progreso",
     completed: "Completado",
-  };
-
-  const summarizeText = (value: string, maxLength = 92) => {
-    const normalized = value.trim();
-    if (!normalized) return "Sin descripcion";
-    if (normalized.length <= maxLength) return normalized;
-    return `${normalized.slice(0, maxLength - 1)}...`;
-  };
-
-  const getLastActivityAt = (entry: ProjectListEntry) => {
-    const details = proposalProjectDetails[entry.proposal.id];
-    const latestUpdate = details?.updates?.[0];
-
-    return (
-      entry.latestUpdate?.createdAt ||
-      latestUpdate?.createdAt ||
-      entry.project.updatedAt ||
-      entry.proposal.updatedAt
-    );
   };
 
   const projectColumns: DefaultTableColumn<ProjectListEntry>[] = [
@@ -80,59 +56,6 @@ export function ProjectsListSection({
       sortable: true,
       sortValue: (entry) => entry.proposal.title,
       render: (entry) => entry.proposal.title,
-    },
-    {
-      key: "latestUpdate",
-      label: "Ultimo avance",
-      sortable: true,
-      sortValue: (entry) => getLastActivityAt(entry) || "",
-      render: (entry) => {
-        if (!entry.latestUpdate) {
-          return (
-            <span className="small muted">Sin actividades registradas</span>
-          );
-        }
-
-        const authorName =
-          entry.latestUpdate.createdBy?.name ||
-          entry.latestUpdate.createdBy?.username ||
-          "Administrador";
-
-        return (
-          <div className="project-latest-update">
-            <strong>{entry.latestUpdate.title || "Actividad"}</strong>
-            <p className="small muted">
-              {summarizeText(entry.latestUpdate.description)}
-            </p>
-            <p className="small muted">
-              {authorName} ·{" "}
-              {formatUpdatedAt(entry.latestUpdate.createdAt || undefined)}
-            </p>
-          </div>
-        );
-      },
-    },
-    {
-      key: "lastActivity",
-      label: "Ultima actividad",
-      sortable: true,
-      sortValue: (entry) => getLastActivityAt(entry) || "",
-      render: (entry) => formatUpdatedAt(getLastActivityAt(entry) || undefined),
-    },
-    {
-      key: "actions",
-      label: "Acciones",
-      render: (entry) => (
-        <div className="table-actions">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => onOpenProjectPage(entry)}
-          >
-            Abrir pagina
-          </button>
-        </div>
-      ),
     },
   ];
 

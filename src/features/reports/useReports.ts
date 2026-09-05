@@ -7,7 +7,7 @@ interface GreenSpaceOption {
 }
 
 interface UseReportsParams {
-  token: string;
+  token: string | null;
   route: string;
   greenSpaces: GreenSpaceOption[];
   setError: (message: string | null) => void;
@@ -265,6 +265,9 @@ export function useReports({
       }
       resetReportForm();
       fetchReports(reportStateFilter);
+      if (isEditing && selectedReportId) {
+        fetchReportById(selectedReportId);
+      }
     } catch {
       setError("No se pudo guardar el reporte");
     } finally {

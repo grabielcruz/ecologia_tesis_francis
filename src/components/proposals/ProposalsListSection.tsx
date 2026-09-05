@@ -130,13 +130,6 @@ export function ProposalsListSection({
 
         return (
           <div className="table-actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => onOpenProposalDetailsModal(proposal)}
-            >
-              Ver detalle
-            </button>
             {canManageDraft && (
               <button
                 type="button"
