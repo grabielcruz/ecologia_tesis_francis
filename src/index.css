@@ -1823,6 +1823,29 @@ button.danger:hover {
   border-color: #c6d8ff;
 }
 
+.proposal-vote-threshold-status.not_configured {
+  color: #5f6368;
+  background: #eceff1;
+  border-color: #d8dde1;
+}
+
+.proposal-vote-threshold-status.pending {
+  color: #8d5d16;
+  background: #fff3d8;
+  border-color: #f6d190;
+}
+
+.proposal-vote-threshold-status.reached {
+  color: #0d5e58;
+  background: #d6f0ee;
+  border-color: #b3dfda;
+}
+
+.proposal-threshold-pill {
+  margin-top: 0.1rem;
+  display: inline-flex;
+}
+
 .tree-health.healthy {
   color: #0d5e58;
   background: #d6f0ee;
@@ -1880,6 +1903,23 @@ button.danger:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 0.5rem;
+}
+
+.proposal-voters-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.45rem 0 0.7rem;
+}
+
+.proposal-voter-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  background: #fffefa;
+}
+
+.proposal-voter-card p {
+  margin: 0.15rem 0 0;
 }
 
 .proposal-update-images a {

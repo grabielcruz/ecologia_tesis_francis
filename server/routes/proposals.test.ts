@@ -31,6 +31,7 @@ vi.mock("../models", () => ({
     findOne: vi.fn(),
     create: vi.fn(),
     count: vi.fn(),
+    findAll: vi.fn(),
   },
   ProjectOfProposal: {
     findOne: vi.fn(),
@@ -53,6 +54,7 @@ const makeProposalRow = (
   status: string = "open",
   votingStarts: Date = new Date(Date.now() - 1000 * 60),
   votingEnds: Date = new Date(Date.now() + 1000 * 60),
+  minimumVotesRequired: number | null = 1,
 ) => {
   const values: Record<string, unknown> = {
     proposal_of_green_area_id: 3,
@@ -60,6 +62,7 @@ const makeProposalRow = (
     description: "Plantacion en zona sur",
     status,
     total_votes: 0,
+    minimum_votes_required: minimumVotesRequired,
     voting_starts: votingStarts,
     voting_ends: votingEnds,
     user_id: 2,
@@ -74,6 +77,7 @@ const makeProposalRow = (
       Object.assign(values, payload);
       return null;
     }),
+    destroy: vi.fn(async () => null),
   };
 };
 
@@ -130,6 +134,35 @@ const makeProjectUpdateRow = () => {
   };
 };
 
+const makeVoteRow = (
+  voteId: number,
+  userId: number,
+  username: string,
+  name: string,
+  createdAt: Date,
+) => {
+  const values: Record<string, unknown> = {
+    vote_of_proposal_id: voteId,
+    user_id: userId,
+    created_at: createdAt,
+  };
+
+  return {
+    getDataValue: vi.fn((key: string) => values[key]),
+    get: vi.fn((key: string) => {
+      if (key !== "User") return undefined;
+      return {
+        getDataValue: (nestedKey: string) => {
+          if (nestedKey === "user_id") return userId;
+          if (nestedKey === "username") return username;
+          if (nestedKey === "name") return name;
+          return undefined;
+        },
+      } as User;
+    }),
+  };
+};
+
 describe("proposal routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -140,11 +173,11 @@ describe("proposal routes", () => {
     vi.mocked(ProposalOfGreenArea.findAll).mockResolvedValue([] as never);
   });
 
-  it("returns 401 when token is missing", async () => {
+  it("allows reading proposals when token is missing", async () => {
     const response = await request(app).get("/api/proposals");
 
-    expect(response.status).toBe(401);
-    expect(response.body).toEqual({ error: "Token no proporcionado" });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
   });
 
   it("creates a proposal with valid payload", async () => {
@@ -224,6 +257,28 @@ describe("proposal routes", () => {
     });
   });
 
+  it("rejects voting when proposal has no minimum votes configured", async () => {
+    const proposal = makeProposalRow(
+      "open",
+      new Date(Date.now() - 1000 * 60 * 60),
+      new Date(Date.now() + 1000 * 60 * 60),
+      null,
+    );
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+
+    const response = await request(app)
+      .post("/api/proposals/3/votes")
+      .set("Authorization", "Bearer any-token")
+      .send({});
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      error: "La propuesta no tiene minimo de votos configurado",
+    });
+  });
+
   it("rejects voting when proposal is not open", async () => {
     const proposal = makeProposalRow();
     vi.mocked(proposal.getDataValue).mockImplementation((key: string) => {
@@ -263,6 +318,7 @@ describe("proposal routes", () => {
         decision: "accepted",
         votingStarts: new Date(Date.now() + 1000).toISOString(),
         votingEnds: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+        minimumVotesRequired: 3,
       });
 
     expect(response.status).toBe(200);
@@ -315,6 +371,32 @@ describe("proposal routes", () => {
     });
   });
 
+  it("requires minimum votes when admin accepts proposal", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const proposal = makeProposalRow("draft");
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+
+    const response = await request(app)
+      .patch("/api/proposals/3/decision")
+      .set("Authorization", "Bearer any-token")
+      .send({
+        decision: "accepted",
+        votingStarts: new Date(Date.now() + 1000).toISOString(),
+        votingEnds: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: "El minimo de votos requeridos es invalido",
+    });
+  });
+
   it("creates project on finalize only when users approved by voting", async () => {
     vi.mocked(jwt.verify).mockReturnValue({
       user_id: 1,
@@ -325,6 +407,7 @@ describe("proposal routes", () => {
       "open",
       new Date(Date.now() - 1000 * 60 * 60),
       new Date(Date.now() - 1000),
+      3,
     );
     vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
       proposal as never,
@@ -365,6 +448,7 @@ describe("proposal routes", () => {
       "open",
       new Date(Date.now() - 1000 * 60),
       new Date(Date.now() + 1000 * 60 * 60),
+      2,
     );
     vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
       proposal as never,
@@ -398,12 +482,42 @@ describe("proposal routes", () => {
       "open",
       new Date(Date.now() - 1000 * 60 * 60),
       new Date(Date.now() - 1000),
+      1,
     );
     vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
       proposal as never,
     );
     vi.mocked(ProjectOfProposal.findOne).mockResolvedValue(null as never);
     vi.mocked(VoteOfProposal.count).mockResolvedValue(0 as never);
+
+    const response = await request(app)
+      .post("/api/proposals/3/finalize")
+      .set("Authorization", "Bearer any-token")
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body.proposal.status).toBe("closed");
+    expect(response.body.project).toBeNull();
+    expect(ProjectOfProposal.create).not.toHaveBeenCalled();
+  });
+
+  it("does not create project when votes are below minimum required", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const proposal = makeProposalRow(
+      "open",
+      new Date(Date.now() - 1000 * 60 * 60),
+      new Date(Date.now() - 1000),
+      6,
+    );
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+    vi.mocked(ProjectOfProposal.findOne).mockResolvedValue(null as never);
+    vi.mocked(VoteOfProposal.count).mockResolvedValue(4 as never);
 
     const response = await request(app)
       .post("/api/proposals/3/finalize")
@@ -424,6 +538,8 @@ describe("proposal routes", () => {
     vi.mocked(ProjectOfProposal.findOne).mockResolvedValue(
       makeProjectRow() as never,
     );
+    vi.mocked(VoteOfProposal.findOne).mockResolvedValue(null as never);
+    vi.mocked(VoteOfProposal.findAll).mockResolvedValue([] as never);
     vi.mocked(ProjectUpdateOfProposal.findAll).mockResolvedValue([
       makeProjectUpdateRow(),
     ] as never);
@@ -442,6 +558,48 @@ describe("proposal routes", () => {
       id: 20,
       description: "Se realizo limpieza y poda inicial",
     });
+    expect(response.body.voters).toEqual([]);
+    expect(response.body.currentUserHasVoted).toBe(false);
+  });
+
+  it("returns voters list only for admin on proposal detail", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const proposal = makeProposalRow("open");
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+    vi.mocked(VoteOfProposal.findOne).mockResolvedValue({} as never);
+    vi.mocked(ProjectOfProposal.findOne).mockResolvedValue(null as never);
+    vi.mocked(VoteOfProposal.findAll).mockResolvedValue([
+      makeVoteRow(
+        11,
+        2,
+        "regular.user",
+        "Regular User",
+        new Date("2026-09-03T12:10:00.000Z"),
+      ),
+    ] as never);
+
+    const response = await request(app)
+      .get("/api/proposals/3/project")
+      .set("Authorization", "Bearer any-token");
+
+    expect(response.status).toBe(200);
+    expect(response.body.voters).toHaveLength(1);
+    expect(response.body.voters[0]).toMatchObject({
+      id: 11,
+      userId: 2,
+      voter: {
+        id: 2,
+        username: "regular.user",
+        name: "Regular User",
+      },
+    });
+    expect(response.body.currentUserHasVoted).toBe(true);
   });
 
   it("allows admin to add a project activity update", async () => {
@@ -507,5 +665,46 @@ describe("proposal routes", () => {
     expect(project.update).toHaveBeenCalledWith(
       expect.objectContaining({ completed_status: "in_progress" }),
     );
+  });
+
+  it("allows admin to delete a rejected proposal", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const proposal = makeProposalRow("rejected");
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+
+    const response = await request(app)
+      .delete("/api/proposals/3")
+      .set("Authorization", "Bearer any-token");
+
+    expect(response.status).toBe(204);
+    expect(proposal.destroy).toHaveBeenCalled();
+  });
+
+  it("rejects deletion when proposal is not rejected", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const proposal = makeProposalRow("open");
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+
+    const response = await request(app)
+      .delete("/api/proposals/3")
+      .set("Authorization", "Bearer any-token");
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      error: "Solo se pueden eliminar propuestas rechazadas",
+    });
+    expect(proposal.destroy).not.toHaveBeenCalled();
   });
 });

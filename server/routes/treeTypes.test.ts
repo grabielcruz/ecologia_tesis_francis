@@ -56,11 +56,11 @@ describe("tree type routes", () => {
     vi.mocked(TreeType.findAll).mockResolvedValue([] as never);
   });
 
-  it("returns 401 when token is missing", async () => {
+  it("allows reading tree types when token is missing", async () => {
     const response = await request(app).get("/api/tree-types");
 
-    expect(response.status).toBe(401);
-    expect(response.body).toEqual({ error: "Token no proporcionado" });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
   });
 
   it("returns tree type list for authenticated users", async () => {

@@ -61,6 +61,7 @@ export interface ProposalSeed {
   title: string;
   description: string;
   status: "draft" | "open" | "closed" | "approved" | "rejected";
+  minimum_votes_required?: number | null;
   voting_starts: string | null;
   voting_ends: string | null;
   username: string;
@@ -470,6 +471,7 @@ export const proposalSeeds: ProposalSeed[] = [
     description:
       "Implementar un huerto comunitario para actividades de aprendizaje y alimentacion sostenible.",
     status: "open",
+    minimum_votes_required: 3,
     voting_starts: "2026-09-01T09:00:00.000Z",
     voting_ends: "2026-09-20T18:00:00.000Z",
     username: "regular.user",
@@ -480,6 +482,7 @@ export const proposalSeeds: ProposalSeed[] = [
     description:
       "Plantar especies nativas para recuperar zonas erosionadas del sendero peatonal.",
     status: "open",
+    minimum_votes_required: 3,
     voting_starts: "2026-09-02T10:00:00.000Z",
     voting_ends: "2026-09-25T20:00:00.000Z",
     username: "daniela.t",
@@ -490,6 +493,7 @@ export const proposalSeeds: ProposalSeed[] = [
     description:
       "Instalar riego por goteo en el area central para mejorar uso eficiente de agua.",
     status: "approved",
+    minimum_votes_required: 3,
     voting_starts: "2026-08-01T08:00:00.000Z",
     voting_ends: "2026-08-10T18:00:00.000Z",
     username: "mateo.rios",
@@ -500,6 +504,7 @@ export const proposalSeeds: ProposalSeed[] = [
     description:
       "Agregar bancas de madera y arboles de copa amplia en zonas de descanso estudiantil.",
     status: "approved",
+    minimum_votes_required: 3,
     voting_starts: "2026-08-03T08:00:00.000Z",
     voting_ends: "2026-08-18T18:00:00.000Z",
     username: "laura.campos",
@@ -510,10 +515,88 @@ export const proposalSeeds: ProposalSeed[] = [
     description:
       "Organizar jornadas mensuales para retiro de residuos y clasificacion de reciclables.",
     status: "rejected",
+    minimum_votes_required: null,
     voting_starts: null,
     voting_ends: null,
     username: "regular.user",
     green_space_name: "Bosque Universitario",
+  },
+  {
+    title: "Techos verdes en paradas internas",
+    description:
+      "Instalar cubiertas vegetales ligeras en paradas peatonales para reducir calor y mejorar confort.",
+    status: "draft",
+    minimum_votes_required: null,
+    voting_starts: null,
+    voting_ends: null,
+    username: "daniela.t",
+    green_space_name: "Jardín Central",
+  },
+  {
+    title: "Compostaje colaborativo interfacultades",
+    description:
+      "Crear puntos de compostaje para residuos organicos de cafeterias y jardines del campus.",
+    status: "draft",
+    minimum_votes_required: null,
+    voting_starts: null,
+    voting_ends: null,
+    username: "mateo.rios",
+    green_space_name: "Bosque Universitario",
+  },
+  {
+    title: "Corredor de polinizadores nativos",
+    description:
+      "Sembrar franjas de especies florales nativas para atraer abejas, mariposas y mejorar biodiversidad.",
+    status: "open",
+    minimum_votes_required: 4,
+    voting_starts: "2026-09-05T08:30:00.000Z",
+    voting_ends: "2026-09-28T18:30:00.000Z",
+    username: "laura.campos",
+    green_space_name: "Parque de la Facultad",
+  },
+  {
+    title: "Sendero accesible con drenaje permeable",
+    description:
+      "Renovar tramos del sendero con material permeable y accesibilidad universal para epoca de lluvias.",
+    status: "open",
+    minimum_votes_required: 3,
+    voting_starts: "2026-09-06T09:00:00.000Z",
+    voting_ends: "2026-09-24T19:00:00.000Z",
+    username: "regular.user",
+    green_space_name: "Sendero Verde",
+  },
+  {
+    title: "Censo digital de biodiversidad estacional",
+    description:
+      "Implementar jornadas semestrales de registro de especies con apoyo estudiantil y datos abiertos.",
+    status: "closed",
+    minimum_votes_required: 5,
+    voting_starts: "2026-07-10T08:00:00.000Z",
+    voting_ends: "2026-07-25T17:00:00.000Z",
+    username: "daniela.t",
+    green_space_name: "Área de descanso Estudiantil",
+  },
+  {
+    title: "Microbosque de aprendizaje ambiental",
+    description:
+      "Establecer un microbosque con especies locales para practicas de educacion ambiental y monitoreo.",
+    status: "rejected",
+    minimum_votes_required: null,
+    voting_starts: null,
+    voting_ends: null,
+    username: "mateo.rios",
+    green_space_name: "Jardín Central",
+  },
+  {
+    title: "Sistemas de captacion de agua de lluvia",
+    description:
+      "Recolectar agua de lluvia para riego de viveros y zonas verdes con almacenamiento modular.",
+    status: "approved",
+    minimum_votes_required: 4,
+    voting_starts: "2026-08-11T08:00:00.000Z",
+    voting_ends: "2026-08-29T18:00:00.000Z",
+    username: "laura.campos",
+    green_space_name: "Parque de la Facultad",
   },
 ];
 

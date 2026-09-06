@@ -1,5 +1,6 @@
 interface AppSidebarProps {
   route: string;
+  isAuthenticated: boolean;
   isGreenSpacesRoute: boolean;
   isProjectsRoute: boolean;
   isReportsRoute: boolean;
@@ -19,11 +20,13 @@ interface AppSidebarProps {
   onNavigateTreeTypes: () => void;
   onNavigateTrees: () => void;
   onNavigateUsers: () => void;
+  onLogin: () => void;
   onLogout: () => void;
 }
 
 export function AppSidebar({
   route,
+  isAuthenticated,
   isGreenSpacesRoute,
   isProjectsRoute,
   isReportsRoute,
@@ -43,6 +46,7 @@ export function AppSidebar({
   onNavigateTreeTypes,
   onNavigateTrees,
   onNavigateUsers,
+  onLogin,
   onLogout,
 }: AppSidebarProps) {
   return (
@@ -71,13 +75,15 @@ export function AppSidebar({
         >
           Principal
         </button>
-        <button
-          type="button"
-          className={route === "/profile" ? "active" : ""}
-          onClick={onNavigateProfile}
-        >
-          Perfil
-        </button>
+        {isAuthenticated && (
+          <button
+            type="button"
+            className={route === "/profile" ? "active" : ""}
+            onClick={onNavigateProfile}
+          >
+            Perfil
+          </button>
+        )}
         <button
           type="button"
           className={isGreenSpacesRoute ? "active" : ""}
@@ -87,7 +93,11 @@ export function AppSidebar({
         </button>
         <button
           type="button"
-          className={route === "/proposals" ? "active" : ""}
+          className={
+            route === "/proposals" || route.startsWith("/proposals/")
+              ? "active"
+              : ""
+          }
           onClick={onNavigateProposals}
         >
           Propuestas
@@ -133,16 +143,22 @@ export function AppSidebar({
       {userRole === "admin" && <span className="nav-badge">ADMIN</span>}
       <div className="sidebar-user-panel">
         <div className="avatar">
-          <img src={avatarUrl} alt={`${displayName} avatar`} />
+          <img src={avatarUrl} alt={`${displayName || "Invitado"} avatar`} />
         </div>
         <div className="user-info">
-          <div className="user-name">{displayName}</div>
-          <div className="user-role">{userRole}</div>
+          <div className="user-name">{displayName || "Invitado"}</div>
+          <div className="user-role">{userRole || "guest"}</div>
         </div>
       </div>
-      <button className="logout-button sidebar-logout" onClick={onLogout}>
-        Cerrar sesión
-      </button>
+      {isAuthenticated ? (
+        <button className="logout-button sidebar-logout" onClick={onLogout}>
+          Cerrar sesión
+        </button>
+      ) : (
+        <button className="logout-button sidebar-logout" onClick={onLogin}>
+          Iniciar sesión
+        </button>
+      )}
     </>
   );
 }

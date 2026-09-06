@@ -36,6 +36,30 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   }
 };
 
+const optionalAuthenticate = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    req.user = undefined;
+    return next();
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as {
+      user_id: number;
+      role: string;
+    };
+    req.user = payload;
+    return next();
+  } catch {
+    return res.status(401).json({ error: "Token invalido" });
+  }
+};
+
 const toIsoStringOrNull = (value: unknown) => {
   if (!value) {
     return null;
@@ -55,6 +79,7 @@ const serializeProposal = (proposal: ProposalOfGreenArea) => ({
   description: proposal.getDataValue("description"),
   status: proposal.getDataValue("status"),
   totalVotes: proposal.getDataValue("total_votes"),
+  minimumVotesRequired: proposal.getDataValue("minimum_votes_required"),
   votingStarts: toIsoStringOrNull(proposal.getDataValue("voting_starts")),
   votingEnds: toIsoStringOrNull(proposal.getDataValue("voting_ends")),
   userId: proposal.getDataValue("user_id"),
@@ -92,50 +117,60 @@ const serializeLatestUpdate = (update: ProjectUpdateOfProposal) => {
   };
 };
 
-router.get("/", authenticate, async (_req: AuthRequest, res: Response) => {
-  const projects = await ProjectOfProposal.findAll({
-    order: [
-      ["updated_at", "DESC"],
-      ["project_of_proposal_id", "DESC"],
-    ],
-  });
+router.get(
+  "/",
+  optionalAuthenticate,
+  async (_req: AuthRequest, res: Response) => {
+    const projects = await ProjectOfProposal.findAll({
+      order: [
+        ["updated_at", "DESC"],
+        ["project_of_proposal_id", "DESC"],
+      ],
+    });
 
-  const rows = await Promise.all(
-    projects.map(async (project) => {
-      const proposalId = Number(project.getDataValue("proposal_of_green_area_id"));
-      if (!Number.isFinite(proposalId)) {
-        return null;
-      }
+    const rows = await Promise.all(
+      projects.map(async (project) => {
+        const proposalId = Number(
+          project.getDataValue("proposal_of_green_area_id"),
+        );
+        if (!Number.isFinite(proposalId)) {
+          return null;
+        }
 
-      const proposal = await ProposalOfGreenArea.findByPk(proposalId);
-      if (!proposal) {
-        return null;
-      }
+        const proposal = await ProposalOfGreenArea.findByPk(proposalId);
+        if (!proposal) {
+          return null;
+        }
 
-      const latestUpdate = await ProjectUpdateOfProposal.findOne({
-        where: {
-          project_of_proposal_id: Number(
-            project.getDataValue("project_of_proposal_id"),
-          ),
-        },
-        include: [{ model: User, attributes: ["user_id", "username", "name"] }],
-        order: [
-          ["created_at", "DESC"],
-          ["project_update_of_proposal_id", "DESC"],
-        ],
-      });
+        const latestUpdate = await ProjectUpdateOfProposal.findOne({
+          where: {
+            project_of_proposal_id: Number(
+              project.getDataValue("project_of_proposal_id"),
+            ),
+          },
+          include: [
+            { model: User, attributes: ["user_id", "username", "name"] },
+          ],
+          order: [
+            ["created_at", "DESC"],
+            ["project_update_of_proposal_id", "DESC"],
+          ],
+        });
 
-      return {
-        proposal: serializeProposal(proposal as ProposalOfGreenArea),
-        project: serializeProject(project as ProjectOfProposal),
-        latestUpdate: latestUpdate
-          ? serializeLatestUpdate(latestUpdate as ProjectUpdateOfProposal)
-          : null,
-      };
-    }),
-  );
+        return {
+          proposal: serializeProposal(proposal as ProposalOfGreenArea),
+          project: serializeProject(project as ProjectOfProposal),
+          latestUpdate: latestUpdate
+            ? serializeLatestUpdate(latestUpdate as ProjectUpdateOfProposal)
+            : null,
+        };
+      }),
+    );
 
-  return res.json(rows.filter((row): row is NonNullable<typeof row> => row !== null));
-});
+    return res.json(
+      rows.filter((row): row is NonNullable<typeof row> => row !== null),
+    );
+  },
+);
 
 export default router;

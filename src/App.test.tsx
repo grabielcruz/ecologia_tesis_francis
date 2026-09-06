@@ -27,13 +27,14 @@ describe("App UI", () => {
     window.history.pushState({}, "", "/");
   });
 
-  it("shows login view when user is not authenticated", () => {
+  it("shows guest read-only view when user is not authenticated", () => {
     const fetchMock = vi.fn(() => buildJsonResponse([]));
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
 
-    expect(screen.getByText("Iniciar sesión")).toBeInTheDocument();
+    expect(screen.getAllByText("Iniciar sesión").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Perfil")).not.toBeInTheDocument();
   });
 
   it("redirects to login when an authenticated request returns 401", async () => {
@@ -97,6 +98,7 @@ describe("App UI", () => {
         description: "Abierta para votar",
         status: "open",
         totalVotes: 2,
+        minimumVotesRequired: 6,
         votingStarts: "2026-01-01T00:00:00.000Z",
         votingEnds: "2026-12-31T00:00:00.000Z",
         userId: 2,
@@ -110,6 +112,7 @@ describe("App UI", () => {
         description: "Ya aprobada",
         status: "approved",
         totalVotes: 5,
+        minimumVotesRequired: 4,
         votingStarts: "2026-01-01T00:00:00.000Z",
         votingEnds: "2026-01-02T00:00:00.000Z",
         userId: 2,
@@ -187,6 +190,7 @@ describe("App UI", () => {
         description: "Agregar arboles nativos",
         status: "draft",
         totalVotes: 0,
+        minimumVotesRequired: null,
         votingStarts: null,
         votingEnds: null,
         userId: 2,
@@ -211,6 +215,7 @@ describe("App UI", () => {
             ? {
                 ...proposal,
                 status: "open",
+                minimumVotesRequired: body.minimumVotesRequired,
                 votingStarts: body.votingStarts,
                 votingEnds: body.votingEnds,
               }
@@ -220,6 +225,14 @@ describe("App UI", () => {
         return buildJsonResponse({
           proposal: proposalsData[0],
           project: null,
+        });
+      }
+
+      if (url.includes("/api/proposals/7/project")) {
+        return buildJsonResponse({
+          proposal: proposalsData[0],
+          project: null,
+          updates: [],
         });
       }
 
@@ -244,11 +257,18 @@ describe("App UI", () => {
       expect(screen.getByText("Recuperar zona sombreada")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const proposalRow = screen
+      .getByText("Recuperar zona sombreada")
+      .closest("tr");
+    expect(proposalRow).not.toBeNull();
+    fireEvent.click(proposalRow as HTMLElement);
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "Editar propuesta" }),
+        screen.getByRole("heading", {
+          name: "Detalle de propuesta",
+          level: 2,
+        }),
       ).toBeInTheDocument();
     });
 
@@ -258,17 +278,20 @@ describe("App UI", () => {
     fireEvent.change(screen.getByLabelText("Fin de votacion"), {
       target: { value: "2026-09-10T18:00" },
     });
+    fireEvent.change(screen.getByLabelText("Minimo de votos requeridos"), {
+      target: { value: "6" },
+    });
 
     fireEvent.click(
       screen.getByRole("button", { name: "Guardar y abrir votacion" }),
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Votacion abierta")).toBeInTheDocument();
+      expect(screen.getByText("open")).toBeInTheDocument();
     });
 
     expect(
-      screen.getByRole("button", { name: "Finalizar" }),
+      screen.getByRole("button", { name: "Finalizar votacion" }),
     ).toBeInTheDocument();
   });
 });

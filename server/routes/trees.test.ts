@@ -147,11 +147,11 @@ describe("tree inventory routes", () => {
     vi.mocked(TreeInventory.findAll).mockResolvedValue([] as never);
   });
 
-  it("returns 401 when token is missing", async () => {
+  it("allows reading inventory when token is missing", async () => {
     const response = await request(app).get("/api/trees");
 
-    expect(response.status).toBe(401);
-    expect(response.body).toEqual({ error: "Token no proporcionado" });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
   });
 
   it("returns inventory rows for authenticated users", async () => {

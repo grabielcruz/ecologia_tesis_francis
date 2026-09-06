@@ -46,6 +46,30 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   }
 };
 
+const optionalAuthenticate = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    req.user = undefined;
+    return next();
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as {
+      user_id: number;
+      role: string;
+    };
+    req.user = payload;
+    return next();
+  } catch {
+    return res.status(401).json({ error: "Token invalido" });
+  }
+};
+
 const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ error: "Solo administradores" });
@@ -171,63 +195,65 @@ const serializeTree = (row: TreeInventory) => {
   };
 };
 
-router.get("/", authenticate, async (req: AuthRequest, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({ error: "No autorizado" });
-  }
+router.get(
+  "/",
+  optionalAuthenticate,
+  async (req: AuthRequest, res: Response) => {
+    const rawSpaceId = Number(req.query.spaceId);
+    const rawTypeId = Number(req.query.typeId);
+    const rawStatus = String(req.query.status || "all")
+      .trim()
+      .toLowerCase();
+    const whereClause: Record<string | symbol, unknown> = {};
 
-  const rawSpaceId = Number(req.query.spaceId);
-  const rawTypeId = Number(req.query.typeId);
-  const rawStatus = String(req.query.status || "all")
-    .trim()
-    .toLowerCase();
-  const whereClause: Record<string | symbol, unknown> = {};
-
-  if (req.user.role !== "admin") {
-    whereClause[Op.or] = [
-      { status: "approved" },
-      { submitted_by_user_id: req.user.user_id },
-    ];
-  }
-
-  if (req.user.role === "admin") {
-    if (["pending", "approved", "rejected"].includes(rawStatus)) {
-      whereClause.status = rawStatus;
+    if (!req.user) {
+      whereClause.status = "approved";
+    } else if (req.user.role !== "admin") {
+      whereClause[Op.or] = [
+        { status: "approved" },
+        { submitted_by_user_id: req.user.user_id },
+      ];
     }
-  }
 
-  if (Number.isFinite(rawSpaceId) && rawSpaceId > 0) {
-    whereClause.space_id = rawSpaceId;
-  }
+    if (req.user?.role === "admin") {
+      if (["pending", "approved", "rejected"].includes(rawStatus)) {
+        whereClause.status = rawStatus;
+      }
+    }
 
-  if (Number.isFinite(rawTypeId) && rawTypeId > 0) {
-    whereClause.type_id = rawTypeId;
-  }
+    if (Number.isFinite(rawSpaceId) && rawSpaceId > 0) {
+      whereClause.space_id = rawSpaceId;
+    }
 
-  const rows = await TreeInventory.findAll({
-    where: whereClause,
-    include: [
-      { model: TreeType, attributes: ["type_id", "name"] },
-      { model: GreenSpace, attributes: ["space_id", "name"] },
-      {
-        model: User,
-        as: "SubmittedBy",
-        attributes: ["user_id", "username", "name"],
-      },
-      {
-        model: User,
-        as: "ValidatedBy",
-        attributes: ["user_id", "username", "name"],
-      },
-    ],
-    order: [
-      ["updated_at", "DESC"],
-      ["tree_id", "DESC"],
-    ],
-  });
+    if (Number.isFinite(rawTypeId) && rawTypeId > 0) {
+      whereClause.type_id = rawTypeId;
+    }
 
-  return res.json(rows.map((row) => serializeTree(row as TreeInventory)));
-});
+    const rows = await TreeInventory.findAll({
+      where: whereClause,
+      include: [
+        { model: TreeType, attributes: ["type_id", "name"] },
+        { model: GreenSpace, attributes: ["space_id", "name"] },
+        {
+          model: User,
+          as: "SubmittedBy",
+          attributes: ["user_id", "username", "name"],
+        },
+        {
+          model: User,
+          as: "ValidatedBy",
+          attributes: ["user_id", "username", "name"],
+        },
+      ],
+      order: [
+        ["updated_at", "DESC"],
+        ["tree_id", "DESC"],
+      ],
+    });
+
+    return res.json(rows.map((row) => serializeTree(row as TreeInventory)));
+  },
+);
 
 router.post(
   "/images",
@@ -263,47 +289,55 @@ router.post(
   },
 );
 
-router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({ error: "No autorizado" });
-  }
+router.get(
+  "/:id",
+  optionalAuthenticate,
+  async (req: AuthRequest, res: Response) => {
+    const treeId = Number(req.params.id);
+    if (!Number.isFinite(treeId)) {
+      return res.status(400).json({ error: "Identificador de arbol invalido" });
+    }
 
-  const treeId = Number(req.params.id);
-  if (!Number.isFinite(treeId)) {
-    return res.status(400).json({ error: "Identificador de arbol invalido" });
-  }
+    const row = await TreeInventory.findByPk(treeId, {
+      include: [
+        { model: TreeType, attributes: ["type_id", "name"] },
+        { model: GreenSpace, attributes: ["space_id", "name"] },
+        {
+          model: User,
+          as: "SubmittedBy",
+          attributes: ["user_id", "username", "name"],
+        },
+        {
+          model: User,
+          as: "ValidatedBy",
+          attributes: ["user_id", "username", "name"],
+        },
+      ],
+    });
 
-  const row = await TreeInventory.findByPk(treeId, {
-    include: [
-      { model: TreeType, attributes: ["type_id", "name"] },
-      { model: GreenSpace, attributes: ["space_id", "name"] },
-      {
-        model: User,
-        as: "SubmittedBy",
-        attributes: ["user_id", "username", "name"],
-      },
-      {
-        model: User,
-        as: "ValidatedBy",
-        attributes: ["user_id", "username", "name"],
-      },
-    ],
-  });
+    if (!row) {
+      return res.status(404).json({ error: "Arbol no encontrado" });
+    }
 
-  if (!row) {
-    return res.status(404).json({ error: "Arbol no encontrado" });
-  }
+    const rowStatus = String(row.getDataValue("status") || "approved");
+    const submittedByUserId = Number(row.getDataValue("submitted_by_user_id"));
 
-  if (
-    req.user.role !== "admin" &&
-    String(row.getDataValue("status") || "approved") !== "approved" &&
-    Number(row.getDataValue("submitted_by_user_id")) !== req.user.user_id
-  ) {
-    return res.status(404).json({ error: "Arbol no encontrado" });
-  }
+    if (!req.user && rowStatus !== "approved") {
+      return res.status(404).json({ error: "Arbol no encontrado" });
+    }
 
-  return res.json(serializeTree(row as TreeInventory));
-});
+    if (
+      req.user &&
+      req.user.role !== "admin" &&
+      rowStatus !== "approved" &&
+      submittedByUserId !== req.user.user_id
+    ) {
+      return res.status(404).json({ error: "Arbol no encontrado" });
+    }
+
+    return res.json(serializeTree(row as TreeInventory));
+  },
+);
 
 router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
   if (!req.user) {

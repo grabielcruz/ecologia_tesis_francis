@@ -71,31 +71,33 @@ export function getPageHeaderMeta(
         ? "Mi perfil"
         : route.includes("/projects/") && route.includes("/updates/")
           ? "Detalle de actividad"
-        : route.startsWith("/reports/")
-          ? "Detalle de reporte"
-          : route.startsWith("/projects/")
-            ? "Detalle de proyecto"
-            : route.startsWith("/tree-types/")
-              ? "Detalle de tipo de arbol"
-              : route.startsWith("/trees/")
-                ? "Detalle de arbol"
-                : route === "/proposals"
-                  ? "Propuestas"
-                  : route === "/projects"
-                    ? "Proyectos"
-                    : route === "/reports"
-                      ? "Reportes de areas verdes"
-                      : route === "/tree-types"
-                        ? "Tipos de arboles"
-                        : route === "/trees" || route.startsWith("/trees?")
-                          ? "Arboles"
-                          : route === "/admin-users"
-                            ? "Usuarios"
-                            : route.startsWith("/green-spaces/")
-                              ? "Detalle de area verde"
-                              : route === "/green-spaces"
-                                ? "Areas verdes del campus"
-                                : "Principal";
+          : route.startsWith("/reports/")
+            ? "Detalle de reporte"
+            : route.startsWith("/projects/")
+              ? "Detalle de proyecto"
+              : route.startsWith("/proposals/")
+                ? "Detalle de propuesta"
+                : route.startsWith("/tree-types/")
+                  ? "Detalle de tipo de arbol"
+                  : route.startsWith("/trees/")
+                    ? "Detalle de arbol"
+                    : route === "/proposals"
+                      ? "Propuestas"
+                      : route === "/projects"
+                        ? "Proyectos"
+                        : route === "/reports"
+                          ? "Reportes de areas verdes"
+                          : route === "/tree-types"
+                            ? "Tipos de arboles"
+                            : route === "/trees" || route.startsWith("/trees?")
+                              ? "Arboles"
+                              : route === "/admin-users"
+                                ? "Usuarios"
+                                : route.startsWith("/green-spaces/")
+                                  ? "Detalle de area verde"
+                                  : route === "/green-spaces"
+                                    ? "Areas verdes del campus"
+                                    : "Principal";
 
   const pageSubtitle =
     route === "/"
@@ -104,31 +106,33 @@ export function getPageHeaderMeta(
         ? "Actualiza tus datos personales"
         : route.includes("/projects/") && route.includes("/updates/")
           ? "Consulta y administra una actividad puntual del proyecto"
-        : route.startsWith("/reports/")
-          ? "Consulta la informacion completa del reporte y sus imagenes"
-          : route.startsWith("/projects/")
-            ? "Visualiza datos del proyecto y su historial de actividades"
-            : route.startsWith("/tree-types/")
-              ? "Descripcion completa, imagenes referenciales y arboles registrados por ubicacion"
-              : route.startsWith("/trees/")
-                ? "Informacion completa del arbol, tipo y ubicacion en area verde"
-                : route === "/proposals"
-                  ? "Consulta, valida y vota propuestas de mejora para areas verdes"
-                  : route === "/projects"
-                    ? "Consulta los proyectos generados a partir de propuestas aprobadas"
-                    : route === "/reports"
-                      ? "Registra, actualiza y sigue reportes de quejas o sugerencias"
-                      : route === "/tree-types"
-                        ? "Catalogo oficial de especies y flujo de sugerencias de nuevos tipos"
-                        : route === "/trees" || route.startsWith("/trees?")
-                          ? "Inventario real de arboles por area verde y estado de salud"
-                          : route === "/admin-users"
-                            ? "Gestion integral de usuarios del sistema"
-                            : route.startsWith("/green-spaces/")
-                              ? "Informacion completa, reseñas y sugerencias del espacio"
-                              : route === "/green-spaces"
-                                ? "Registro y consulta de espacios verdes universitarios"
-                                : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
+          : route.startsWith("/reports/")
+            ? "Consulta la informacion completa del reporte y sus imagenes"
+            : route.startsWith("/projects/")
+              ? "Visualiza datos del proyecto y su historial de actividades"
+              : route.startsWith("/proposals/")
+                ? "Revisa votos y ejecuta acciones administrativas de la propuesta"
+                : route.startsWith("/tree-types/")
+                  ? "Descripcion completa, imagenes referenciales y arboles registrados por ubicacion"
+                  : route.startsWith("/trees/")
+                    ? "Informacion completa del arbol, tipo y ubicacion en area verde"
+                    : route === "/proposals"
+                      ? "Consulta, valida y vota propuestas de mejora para areas verdes"
+                      : route === "/projects"
+                        ? "Consulta los proyectos generados a partir de propuestas aprobadas"
+                        : route === "/reports"
+                          ? "Registra, actualiza y sigue reportes de quejas o sugerencias"
+                          : route === "/tree-types"
+                            ? "Catalogo oficial de especies y flujo de sugerencias de nuevos tipos"
+                            : route === "/trees" || route.startsWith("/trees?")
+                              ? "Inventario real de arboles por area verde y estado de salud"
+                              : route === "/admin-users"
+                                ? "Gestion integral de usuarios del sistema"
+                                : route.startsWith("/green-spaces/")
+                                  ? "Informacion completa, reseñas y sugerencias del espacio"
+                                  : route === "/green-spaces"
+                                    ? "Registro y consulta de espacios verdes universitarios"
+                                    : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
 
   return {
     pageTitle,

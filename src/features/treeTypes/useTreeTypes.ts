@@ -17,6 +17,8 @@ export function useTreeTypes({
   setSuccessMessage,
 }: UseTreeTypesParams) {
   const routePath = route.split("?")[0] || route;
+  const getAuthHeaders = () =>
+    token ? { Authorization: `Bearer ${token}` } : undefined;
   const [treeTypes, setTreeTypes] = useState<TreeType[]>([]);
   const [treeTypeNameInput, setTreeTypeNameInput] = useState("");
   const [treeTypeDescriptionInput, setTreeTypeDescriptionInput] = useState("");
@@ -41,11 +43,9 @@ export function useTreeTypes({
   };
 
   const fetchTreeTypes = async () => {
-    if (!token) return;
-
     try {
       const response = await fetch("/api/tree-types", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -206,9 +206,9 @@ export function useTreeTypes({
   };
 
   useEffect(() => {
-    if (!token || !routePath.startsWith("/tree-types")) return;
+    if (!routePath.startsWith("/tree-types")) return;
     fetchTreeTypes();
-  }, [token, routePath]);
+  }, [routePath]);
 
   return {
     treeTypes,

@@ -45,6 +45,30 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   }
 };
 
+const optionalAuthenticate = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    req.user = undefined;
+    return next();
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as {
+      user_id: number;
+      role: string;
+    };
+    req.user = payload;
+    return next();
+  } catch {
+    return res.status(401).json({ error: "Token invalido" });
+  }
+};
+
 const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ error: "Solo administradores" });
@@ -133,16 +157,20 @@ const serializeTreeType = (row: TreeType) => ({
   updatedAt: toIsoStringOrNull(row.getDataValue("updated_at")),
 });
 
-router.get("/", authenticate, async (_req: AuthRequest, res: Response) => {
-  const rows = await TreeType.findAll({
-    order: [
-      ["updated_at", "DESC"],
-      ["type_id", "DESC"],
-    ],
-  });
+router.get(
+  "/",
+  optionalAuthenticate,
+  async (_req: AuthRequest, res: Response) => {
+    const rows = await TreeType.findAll({
+      order: [
+        ["updated_at", "DESC"],
+        ["type_id", "DESC"],
+      ],
+    });
 
-  return res.json(rows.map((row) => serializeTreeType(row as TreeType)));
-});
+    return res.json(rows.map((row) => serializeTreeType(row as TreeType)));
+  },
+);
 
 router.post(
   "/images",

@@ -45,6 +45,30 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   }
 };
 
+const optionalAuthenticate = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    req.user = undefined;
+    return next();
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as {
+      user_id: number;
+      role: string;
+    };
+    req.user = payload;
+    return next();
+  } catch {
+    return res.status(401).json({ error: "Token invalido" });
+  }
+};
+
 const uploadReportImages = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
@@ -126,49 +150,59 @@ const serializeReport = (report: ReportOfGreenArea) => {
   };
 };
 
-router.get("/", authenticate, async (req: AuthRequest, res: Response) => {
-  const requestedState = String(req.query.state || "open").toLowerCase();
-  const whereClause: Record<string, unknown> = {};
-  if (requestedState === "open" || requestedState === "closed") {
-    whereClause.state = requestedState;
-  }
+router.get(
+  "/",
+  optionalAuthenticate,
+  async (req: AuthRequest, res: Response) => {
+    const requestedState = String(req.query.state || "open").toLowerCase();
+    const whereClause: Record<string, unknown> = {};
+    if (requestedState === "open" || requestedState === "closed") {
+      whereClause.state = requestedState;
+    }
 
-  const reports = await ReportOfGreenArea.findAll({
-    where: whereClause,
-    include: [
-      { model: User, attributes: ["user_id", "username", "name"] },
-      { model: GreenSpace, attributes: ["space_id", "name"] },
-    ],
-    order: [
-      ["updated_at", "DESC"],
-      ["report_of_green_area_id", "DESC"],
-    ],
-  });
+    const reports = await ReportOfGreenArea.findAll({
+      where: whereClause,
+      include: [
+        { model: User, attributes: ["user_id", "username", "name"] },
+        { model: GreenSpace, attributes: ["space_id", "name"] },
+      ],
+      order: [
+        ["updated_at", "DESC"],
+        ["report_of_green_area_id", "DESC"],
+      ],
+    });
 
-  return res.json(
-    reports.map((report) => serializeReport(report as ReportOfGreenArea)),
-  );
-});
+    return res.json(
+      reports.map((report) => serializeReport(report as ReportOfGreenArea)),
+    );
+  },
+);
 
-router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
-  const reportId = Number(req.params.id);
-  if (!Number.isFinite(reportId)) {
-    return res.status(400).json({ error: "Identificador de reporte invalido" });
-  }
+router.get(
+  "/:id",
+  optionalAuthenticate,
+  async (req: AuthRequest, res: Response) => {
+    const reportId = Number(req.params.id);
+    if (!Number.isFinite(reportId)) {
+      return res
+        .status(400)
+        .json({ error: "Identificador de reporte invalido" });
+    }
 
-  const report = await ReportOfGreenArea.findByPk(reportId, {
-    include: [
-      { model: User, attributes: ["user_id", "username", "name"] },
-      { model: GreenSpace, attributes: ["space_id", "name"] },
-    ],
-  });
+    const report = await ReportOfGreenArea.findByPk(reportId, {
+      include: [
+        { model: User, attributes: ["user_id", "username", "name"] },
+        { model: GreenSpace, attributes: ["space_id", "name"] },
+      ],
+    });
 
-  if (!report) {
-    return res.status(404).json({ error: "Reporte no encontrado" });
-  }
+    if (!report) {
+      return res.status(404).json({ error: "Reporte no encontrado" });
+    }
 
-  return res.json(serializeReport(report as ReportOfGreenArea));
-});
+    return res.json(serializeReport(report as ReportOfGreenArea));
+  },
+);
 
 router.post(
   "/images",

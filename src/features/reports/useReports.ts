@@ -21,6 +21,9 @@ export function useReports({
   setError,
   setSuccessMessage,
 }: UseReportsParams) {
+  const getAuthHeaders = () =>
+    token ? { Authorization: `Bearer ${token}` } : undefined;
+
   const [reports, setReports] = useState<GreenAreaReport[]>([]);
   const [reportStateFilter, setReportStateFilter] =
     useState<ReportStateFilter>("open");
@@ -51,8 +54,6 @@ export function useReports({
     : null;
 
   const fetchReports = async (stateFilter: ReportStateFilter = "open") => {
-    if (!token) return;
-
     try {
       const params = new URLSearchParams();
       params.set("state", stateFilter);
@@ -61,7 +62,7 @@ export function useReports({
       const response = await fetch(
         `/api/suggestions${query ? `?${query}` : ""}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
         },
       );
 
@@ -80,11 +81,9 @@ export function useReports({
   };
 
   const fetchReportById = async (reportId: number) => {
-    if (!token) return;
-
     try {
       const response = await fetch(`/api/suggestions/${reportId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -337,9 +336,9 @@ export function useReports({
   };
 
   useEffect(() => {
-    if (!token || route !== "/reports") return;
+    if (route !== "/reports") return;
     fetchReports(reportStateFilter);
-  }, [token, route, reportStateFilter]);
+  }, [route, reportStateFilter]);
 
   useEffect(() => {
     if (greenSpaces.length > 0 && reportSpaceIdInput === 0) {
@@ -348,12 +347,12 @@ export function useReports({
   }, [greenSpaces, reportSpaceIdInput]);
 
   useEffect(() => {
-    if (!token || !selectedReportId) {
+    if (!selectedReportId) {
       setReportDetail(null);
       return;
     }
     fetchReportById(selectedReportId);
-  }, [token, selectedReportId]);
+  }, [selectedReportId]);
 
   return {
     reports,

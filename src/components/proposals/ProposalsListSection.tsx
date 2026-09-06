@@ -17,15 +17,10 @@ interface ProposalsListSectionProps {
     value: "all" | "draft" | "open" | "approved" | "closed" | "rejected",
   ) => void;
   proposalProjectStatusByProposalId: Record<number, ProjectExecutionStatus>;
-  proposalActionLoadingId: number | null;
-  userRole?: string;
   getSpaceName: (spaceId: number) => string;
   formatUpdatedAt: (value?: string) => string;
-  onOpenCreateProposalModal: () => void;
-  onOpenProposalDetailsModal: (proposal: Proposal) => void;
-  onOpenProposalManageModal: (proposal: Proposal) => void;
-  onVoteProposal: (proposalId: number) => void;
-  onFinalizeProposal: (proposalId: number) => void;
+  onOpenCreateProposalModal?: () => void;
+  onOpenProposalDetailPage: (proposal: Proposal) => void;
 }
 
 export function ProposalsListSection({
@@ -33,15 +28,10 @@ export function ProposalsListSection({
   proposalStatusFilter,
   setProposalStatusFilter,
   proposalProjectStatusByProposalId,
-  proposalActionLoadingId,
-  userRole,
   getSpaceName,
   formatUpdatedAt,
   onOpenCreateProposalModal,
-  onOpenProposalDetailsModal,
-  onOpenProposalManageModal,
-  onVoteProposal,
-  onFinalizeProposal,
+  onOpenProposalDetailPage,
 }: ProposalsListSectionProps) {
   const statusLabel: Record<Proposal["status"], string> = {
     draft: "Pendiente de validacion",
@@ -56,6 +46,28 @@ export function ProposalsListSection({
     planned: "Planificado",
     in_progress: "En progreso",
     completed: "Completado",
+  };
+
+  const getVoteThresholdStatus = (proposal: Proposal) => {
+    const minimumVotesRequired = proposal.minimumVotesRequired;
+    if (!minimumVotesRequired || minimumVotesRequired <= 0) {
+      return {
+        className: "not_configured",
+        label: "Umbral no definido",
+      } as const;
+    }
+
+    if (proposal.totalVotes >= minimumVotesRequired) {
+      return {
+        className: "reached",
+        label: "Umbral alcanzado",
+      } as const;
+    }
+
+    return {
+      className: "pending",
+      label: "Pendiente de umbral",
+    } as const;
   };
 
   const filteredProposals = proposals.filter((proposal) => {
@@ -94,7 +106,29 @@ export function ProposalsListSection({
       label: "Votos",
       sortable: true,
       sortValue: (proposal) => proposal.totalVotes,
-      render: (proposal) => proposal.totalVotes,
+      render: (proposal) =>
+        proposal.minimumVotesRequired && proposal.minimumVotesRequired > 0
+          ? `${proposal.totalVotes}/${proposal.minimumVotesRequired}`
+          : String(proposal.totalVotes),
+    },
+    {
+      key: "voteThreshold",
+      label: "Aprobacion",
+      sortable: true,
+      sortValue: (proposal) => {
+        const thresholdStatus = getVoteThresholdStatus(proposal);
+        return thresholdStatus.className;
+      },
+      render: (proposal) => {
+        const thresholdStatus = getVoteThresholdStatus(proposal);
+        return (
+          <span
+            className={`pill proposal-vote-threshold-status ${thresholdStatus.className}`}
+          >
+            {thresholdStatus.label}
+          </span>
+        );
+      },
     },
     {
       key: "projectStatus",
@@ -118,48 +152,6 @@ export function ProposalsListSection({
       sortable: true,
       sortValue: (proposal) => proposal.updatedAt || "",
       render: (proposal) => formatUpdatedAt(proposal.updatedAt || undefined),
-    },
-    {
-      key: "actions",
-      label: "Acciones",
-      render: (proposal) => {
-        const canVote = userRole === "regular" && proposal.status === "open";
-        const canManageDraft =
-          userRole === "admin" && proposal.status === "draft";
-        const canFinalize = userRole === "admin" && proposal.status === "open";
-
-        return (
-          <div className="table-actions">
-            {canManageDraft && (
-              <button
-                type="button"
-                onClick={() => onOpenProposalManageModal(proposal)}
-              >
-                Editar
-              </button>
-            )}
-            {canVote && (
-              <button
-                type="button"
-                onClick={() => onVoteProposal(proposal.id)}
-                disabled={proposalActionLoadingId === proposal.id}
-              >
-                Votar
-              </button>
-            )}
-            {canFinalize && (
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => onFinalizeProposal(proposal.id)}
-                disabled={proposalActionLoadingId === proposal.id}
-              >
-                Finalizar
-              </button>
-            )}
-          </div>
-        );
-      },
     },
   ];
 
@@ -217,6 +209,7 @@ export function ProposalsListSection({
           rows={filteredProposals}
           columns={proposalColumns}
           getRowId={(proposal) => proposal.id}
+          onRowClick={onOpenProposalDetailPage}
           getSearchText={(proposal) =>
             `${proposal.title} ${proposal.description} ${proposal.status} ${getSpaceName(proposal.spaceId)}`
           }

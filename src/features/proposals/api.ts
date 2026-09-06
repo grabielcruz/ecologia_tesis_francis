@@ -9,6 +9,7 @@ interface ProposalDecisionPayload {
   decision: "accepted" | "rejected";
   votingStarts?: string;
   votingEnds?: string;
+  minimumVotesRequired?: number;
 }
 
 interface CreateProposalPayload {
@@ -42,14 +43,19 @@ const authHeaders = (token: string) => ({
   Authorization: `Bearer ${token}`,
 });
 
+const optionalAuthHeaders = (token?: string | null) =>
+  token ? authHeaders(token) : undefined;
+
 const authJsonHeaders = (token: string) => ({
   "Content-Type": "application/json",
   Authorization: `Bearer ${token}`,
 });
 
-export const fetchProposalsApi = async (token: string): Promise<Proposal[]> => {
+export const fetchProposalsApi = async (
+  token?: string | null,
+): Promise<Proposal[]> => {
   const response = await fetch("/api/proposals", {
-    headers: authHeaders(token),
+    headers: optionalAuthHeaders(token),
   });
 
   if (!response.ok) {
@@ -61,11 +67,11 @@ export const fetchProposalsApi = async (token: string): Promise<Proposal[]> => {
 };
 
 export const fetchProposalProjectDetailsApi = async (
-  token: string,
+  token: string | null,
   proposalId: number,
 ): Promise<ProposalProjectDetails> => {
   const response = await fetch(`/api/proposals/${proposalId}/project`, {
-    headers: authHeaders(token),
+    headers: optionalAuthHeaders(token),
   });
 
   if (!response.ok) {
@@ -79,11 +85,11 @@ export const fetchProposalProjectDetailsApi = async (
 };
 
 export const fetchProjectDetailsByProjectIdApi = async (
-  token: string,
+  token: string | null,
   projectId: number,
 ): Promise<ProposalProjectDetails> => {
   const response = await fetch(`/api/proposals/projects/${projectId}`, {
-    headers: authHeaders(token),
+    headers: optionalAuthHeaders(token),
   });
 
   if (!response.ok) {
@@ -97,10 +103,10 @@ export const fetchProjectDetailsByProjectIdApi = async (
 };
 
 export const fetchProjectsApi = async (
-  token: string,
+  token?: string | null,
 ): Promise<ProjectListEntry[]> => {
   const response = await fetch("/api/projects", {
-    headers: authHeaders(token),
+    headers: optionalAuthHeaders(token),
   });
 
   if (!response.ok) {
@@ -175,6 +181,20 @@ export const finalizeProposalApi = async (
 
   if (!response.ok) {
     await readResponseError(response, "No se pudo finalizar la propuesta");
+  }
+};
+
+export const deleteProposalApi = async (
+  token: string,
+  proposalId: number,
+): Promise<void> => {
+  const response = await fetch(`/api/proposals/${proposalId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+
+  if (!response.ok) {
+    await readResponseError(response, "No se pudo eliminar la propuesta");
   }
 };
 

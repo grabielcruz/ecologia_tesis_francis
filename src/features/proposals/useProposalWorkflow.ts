@@ -49,15 +49,10 @@ export function useProposalWorkflow({
     number | null
   >(null);
   const [proposalWindows, setProposalWindows] = useState<
-    Record<number, { start: string; end: string }>
+    Record<number, { start: string; end: string; minimumVotesRequired: string }>
   >({});
   const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
   const [showProposalModal, setShowProposalModal] = useState(false);
-  const [showProposalDetailsModal, setShowProposalDetailsModal] =
-    useState(false);
-  const [proposalDetailsId, setProposalDetailsId] = useState<number | null>(
-    null,
-  );
   const [proposalProjectDetails, setProposalProjectDetails] = useState<
     Record<number, ProposalProjectDetails>
   >({});
@@ -76,14 +71,19 @@ export function useProposalWorkflow({
   const [isSubmittingProjectUpdate, setIsSubmittingProjectUpdate] =
     useState(false);
   const [isUpdatingProjectStatus, setIsUpdatingProjectStatus] = useState(false);
-  const [showProposalManageModal, setShowProposalManageModal] = useState(false);
-  const [proposalManageId, setProposalManageId] = useState<number | null>(null);
   const [proposalStatusFilter, setProposalStatusFilter] =
     useState<ProposalStatusFilter>("all");
   const [
     proposalProjectStatusByProposalId,
     setProposalProjectStatusByProposalId,
   ] = useState<Record<number, ProjectExecutionStatus>>({});
+
+  const selectedProposalId = useMemo(() => {
+    if (!route.startsWith("/proposals/")) return null;
+    const pathOnly = route.split("?")[0] || route;
+    const id = Number(pathOnly.split("/")[2]);
+    return Number.isFinite(id) ? id : null;
+  }, [route]);
 
   const selectedProjectId = useMemo(() => {
     if (!route.startsWith("/projects/")) return null;
@@ -106,7 +106,7 @@ export function useProposalWorkflow({
   }, [greenSpaces, proposalSpaceIdInput]);
 
   const fetchProjectStatusesForProposals = async (proposalRows: Proposal[]) => {
-    if (!token || proposalRows.length === 0) {
+    if (proposalRows.length === 0) {
       setProposalProjectStatusByProposalId({});
       return;
     }
@@ -137,8 +137,6 @@ export function useProposalWorkflow({
   };
 
   const fetchProposals = async () => {
-    if (!token) return;
-
     try {
       const proposalRows = await proposalActions.fetchProposals();
       setProposals(proposalRows);
@@ -150,8 +148,6 @@ export function useProposalWorkflow({
   };
 
   const fetchProjects = async () => {
-    if (!token) return;
-
     try {
       const rows = await proposalActions.fetchProjects();
 
@@ -183,8 +179,6 @@ export function useProposalWorkflow({
   };
 
   const fetchProposalProjectDetails = async (proposalId: number) => {
-    if (!token) return;
-
     setProposalProjectLoadingId(proposalId);
     try {
       const data =
@@ -203,11 +197,10 @@ export function useProposalWorkflow({
   };
 
   const fetchProjectDetailsByProjectId = async (projectId: number) => {
-    if (!token) return;
-
     setProposalProjectLoadingId(projectId);
     try {
-      const data = await proposalActions.fetchProjectDetailsByProjectId(projectId);
+      const data =
+        await proposalActions.fetchProjectDetailsByProjectId(projectId);
       setProposalProjectDetails((prev) => ({
         ...prev,
         [data.proposal.id]: data,
@@ -220,6 +213,14 @@ export function useProposalWorkflow({
       setProposalProjectLoadingId(null);
     }
   };
+
+  useEffect(() => {
+    if (!selectedProposalId) {
+      return;
+    }
+
+    void fetchProposalProjectDetails(selectedProposalId);
+  }, [selectedProposalId]);
 
   const uploadProjectActivityImages = async (
     projectId: number,
@@ -424,31 +425,12 @@ export function useProposalWorkflow({
     await fetchProposalProjectDetails(entry.proposal.id);
   };
 
-  const openProposalDetailsModal = async (proposal: Proposal) => {
-    setProposalDetailsId(proposal.id);
-    setShowProposalDetailsModal(true);
+  const openProposalDetailPage = async (proposal: Proposal) => {
     setProjectUpdateTitleInput("");
     setProjectUpdateDescriptionInput("");
     setProjectUpdateImagesInput("");
+    navigate(`/proposals/${proposal.id}`);
     await fetchProposalProjectDetails(proposal.id);
-  };
-
-  const closeProposalDetailsModal = () => {
-    setShowProposalDetailsModal(false);
-    setProposalDetailsId(null);
-    setProjectUpdateTitleInput("");
-    setProjectUpdateDescriptionInput("");
-    setProjectUpdateImagesInput("");
-  };
-
-  const openProposalManageModal = (proposal: Proposal) => {
-    setProposalManageId(proposal.id);
-    setShowProposalManageModal(true);
-  };
-
-  const closeProposalManageModal = () => {
-    setShowProposalManageModal(false);
-    setProposalManageId(null);
   };
 
   const setProposalVotingStart = (proposalId: number, value: string) => {
@@ -457,6 +439,7 @@ export function useProposalWorkflow({
       [proposalId]: {
         start: value,
         end: prev[proposalId]?.end || "",
+        minimumVotesRequired: prev[proposalId]?.minimumVotesRequired || "",
       },
     }));
   };
@@ -467,6 +450,21 @@ export function useProposalWorkflow({
       [proposalId]: {
         start: prev[proposalId]?.start || "",
         end: value,
+        minimumVotesRequired: prev[proposalId]?.minimumVotesRequired || "",
+      },
+    }));
+  };
+
+  const setProposalMinimumVotesRequired = (
+    proposalId: number,
+    value: string,
+  ) => {
+    setProposalWindows((prev) => ({
+      ...prev,
+      [proposalId]: {
+        start: prev[proposalId]?.start || "",
+        end: prev[proposalId]?.end || "",
+        minimumVotesRequired: value,
       },
     }));
   };
@@ -531,17 +529,29 @@ export function useProposalWorkflow({
     if (!token) return;
     setProposalActionLoadingId(proposalId);
     setError(null);
-    const windowInput = proposalWindows[proposalId] || { start: "", end: "" };
+    const windowInput = proposalWindows[proposalId] || {
+      start: "",
+      end: "",
+      minimumVotesRequired: "",
+    };
 
     const decisionPayload: {
       decision: "accepted" | "rejected";
       votingStarts?: string;
       votingEnds?: string;
+      minimumVotesRequired?: number;
     } = { decision };
 
     if (decision === "accepted") {
       decisionPayload.votingStarts = windowInput.start;
       decisionPayload.votingEnds = windowInput.end;
+      const parsedMinimumVotes = Number.parseInt(
+        String(windowInput.minimumVotesRequired || "").trim(),
+        10,
+      );
+      if (Number.isFinite(parsedMinimumVotes)) {
+        decisionPayload.minimumVotesRequired = parsedMinimumVotes;
+      }
     }
 
     try {
@@ -553,6 +563,7 @@ export function useProposalWorkflow({
           : "Propuesta rechazada.",
       );
       await fetchProposals();
+      await fetchProposalProjectDetails(proposalId);
     } catch (error) {
       setError(getErrorMessage(error, "No se pudo actualizar la propuesta"));
     } finally {
@@ -569,8 +580,26 @@ export function useProposalWorkflow({
 
       setSuccessMessage("Proceso de votacion finalizado para la propuesta.");
       await fetchProposals();
+      await fetchProposalProjectDetails(proposalId);
     } catch (error) {
       setError(getErrorMessage(error, "No se pudo finalizar la propuesta"));
+    } finally {
+      setProposalActionLoadingId(null);
+    }
+  };
+
+  const deleteProposal = async (proposalId: number) => {
+    if (!token) return;
+
+    setProposalActionLoadingId(proposalId);
+    setError(null);
+    try {
+      await proposalActions.deleteProposal(proposalId);
+      setSuccessMessage("Propuesta eliminada correctamente.");
+      await fetchProposals();
+      navigate("/proposals", true);
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudo eliminar la propuesta"));
     } finally {
       setProposalActionLoadingId(null);
     }
@@ -586,8 +615,6 @@ export function useProposalWorkflow({
     setProposalWindows({});
     setIsSubmittingProposal(false);
     setShowProposalModal(false);
-    setShowProposalDetailsModal(false);
-    setProposalDetailsId(null);
     setProposalProjectDetails({});
     setProposalProjectLoadingId(null);
     setProjectUpdateTitleInput("");
@@ -597,8 +624,6 @@ export function useProposalWorkflow({
     setUploadingProjectUpdateImages(false);
     setIsSubmittingProjectUpdate(false);
     setIsUpdatingProjectStatus(false);
-    setShowProposalManageModal(false);
-    setProposalManageId(null);
     setProposalStatusFilter("all");
     setProposalProjectStatusByProposalId({});
   };
@@ -613,8 +638,6 @@ export function useProposalWorkflow({
     proposalWindows,
     isSubmittingProposal,
     showProposalModal,
-    showProposalDetailsModal,
-    proposalDetailsId,
     proposalProjectDetails,
     proposalProjectLoadingId,
     projectUpdateTitleInput,
@@ -624,10 +647,9 @@ export function useProposalWorkflow({
     uploadingProjectUpdateImages,
     isSubmittingProjectUpdate,
     isUpdatingProjectStatus,
-    showProposalManageModal,
-    proposalManageId,
     proposalStatusFilter,
     proposalProjectStatusByProposalId,
+    selectedProposalId,
     selectedProjectId,
     selectedProjectEntry,
     setProposalTitleInput,
@@ -652,16 +674,15 @@ export function useProposalWorkflow({
     openCreateProposalModal,
     closeCreateProposalModal,
     openProjectDetailPage,
-    openProposalDetailsModal,
-    closeProposalDetailsModal,
-    openProposalManageModal,
-    closeProposalManageModal,
+    openProposalDetailPage,
     setProposalVotingStart,
     setProposalVotingEnd,
+    setProposalMinimumVotesRequired,
     submitProposal,
     voteProposal,
     decideProposal,
     finalizeProposal,
+    deleteProposal,
     resetProposalState,
   };
 }

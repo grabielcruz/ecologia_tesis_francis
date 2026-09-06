@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
   createProjectActivityUpdateApi,
   createProposalApi,
+  deleteProposalApi,
   deleteProjectActivityUpdateApi,
   decideProposalApi,
   fetchProjectDetailsByProjectIdApi,
@@ -27,12 +28,12 @@ const requireToken = (token: string | null) => {
 export const useProposalActions = (token: string | null) =>
   useMemo(
     () => ({
-      fetchProposals: () => fetchProposalsApi(requireToken(token)),
-      fetchProjects: () => fetchProjectsApi(requireToken(token)),
+      fetchProposals: () => fetchProposalsApi(token),
+      fetchProjects: () => fetchProjectsApi(token),
       fetchProposalProjectDetails: (proposalId: number) =>
-        fetchProposalProjectDetailsApi(requireToken(token), proposalId),
+        fetchProposalProjectDetailsApi(token, proposalId),
       fetchProjectDetailsByProjectId: (projectId: number) =>
-        fetchProjectDetailsByProjectIdApi(requireToken(token), projectId),
+        fetchProjectDetailsByProjectIdApi(token, projectId),
       createProposal: (payload: {
         title: string;
         description: string;
@@ -46,10 +47,13 @@ export const useProposalActions = (token: string | null) =>
           decision: "accepted" | "rejected";
           votingStarts?: string;
           votingEnds?: string;
+          minimumVotesRequired?: number;
         },
       ) => decideProposalApi(requireToken(token), proposalId, payload),
       finalizeProposal: (proposalId: number) =>
         finalizeProposalApi(requireToken(token), proposalId),
+      deleteProposal: (proposalId: number) =>
+        deleteProposalApi(requireToken(token), proposalId),
       uploadProjectActivityImages: (projectId: number, files: FileList) =>
         uploadProjectActivityImagesApi(requireToken(token), projectId, files),
       createProjectActivityUpdate: (
@@ -69,7 +73,11 @@ export const useProposalActions = (token: string | null) =>
           payload,
         ),
       deleteProjectActivityUpdate: (projectId: number, updateId: number) =>
-        deleteProjectActivityUpdateApi(requireToken(token), projectId, updateId),
+        deleteProjectActivityUpdateApi(
+          requireToken(token),
+          projectId,
+          updateId,
+        ),
       updateProjectCompletedStatus: (
         projectId: number,
         completedStatus: ProjectCompletionStatus,

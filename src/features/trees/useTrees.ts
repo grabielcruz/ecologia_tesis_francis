@@ -26,6 +26,9 @@ export function useTrees({
   setError,
   setSuccessMessage,
 }: UseTreesParams) {
+  const getAuthHeaders = () =>
+    token ? { Authorization: `Bearer ${token}` } : undefined;
+
   const [trees, setTrees] = useState<TreeInventoryItem[]>([]);
   const [treeNameInput, setTreeNameInput] = useState("");
   const [treeHealthStatusInput, setTreeHealthStatusInput] =
@@ -58,8 +61,6 @@ export function useTrees({
       .filter((line) => line.length > 0);
 
   const fetchTrees = async () => {
-    if (!token) return;
-
     try {
       const params = new URLSearchParams();
       if (hasSpaceFilter) {
@@ -68,7 +69,7 @@ export function useTrees({
 
       const query = params.toString();
       const response = await fetch(`/api/trees${query ? `?${query}` : ""}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -314,9 +315,9 @@ export function useTrees({
   };
 
   useEffect(() => {
-    if (!token || routePath !== "/trees") return;
+    if (routePath !== "/trees") return;
     fetchTrees();
-  }, [token, route, routePath, hasSpaceFilter, selectedSpaceFilterId]);
+  }, [route, routePath, hasSpaceFilter, selectedSpaceFilterId]);
 
   useEffect(() => {
     if (greenSpaces.length > 0 && treeSpaceIdInput === 0) {

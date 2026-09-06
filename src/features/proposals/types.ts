@@ -4,6 +4,7 @@ export interface Proposal {
   description: string;
   status: "draft" | "open" | "closed" | "approved" | "rejected";
   totalVotes: number;
+  minimumVotesRequired: number | null;
   votingStarts: string | null;
   votingEnds: string | null;
   userId: number;
@@ -39,10 +40,23 @@ export interface ProposalProjectUpdate {
   updatedAt: string | null;
 }
 
+export interface ProposalVoter {
+  id: number;
+  userId: number;
+  createdAt: string | null;
+  voter: {
+    id: number;
+    username: string;
+    name: string;
+  } | null;
+}
+
 export interface ProposalProjectDetails {
   proposal: Proposal;
   project: ProposalProject | null;
   updates: ProposalProjectUpdate[];
+  voters?: ProposalVoter[];
+  currentUserHasVoted?: boolean;
 }
 
 export interface ProjectLatestUpdateSummary {

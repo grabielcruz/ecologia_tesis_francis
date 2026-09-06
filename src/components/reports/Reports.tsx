@@ -26,7 +26,7 @@ interface ReportsProps {
   uploadingReportImages: boolean;
   formatUpdatedAt: (value?: string) => string;
   resolveAssetUrl: (assetPath: string) => string;
-  onOpenCreateReportModal: () => void;
+  onOpenCreateReportModal?: () => void;
   onCloseCreateReportModal: () => void;
   onSaveReport: (event: FormEvent<HTMLFormElement>) => void;
   onUploadReportImages: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -128,11 +128,13 @@ export function Reports({
         <p>
           Registra una nueva queja o sugerencia desde el boton de nuevo reporte.
         </p>
-        <div className="button-row">
-          <button type="button" onClick={onOpenCreateReportModal}>
-            Nuevo reporte
-          </button>
-        </div>
+        {onOpenCreateReportModal && (
+          <div className="button-row">
+            <button type="button" onClick={onOpenCreateReportModal}>
+              Nuevo reporte
+            </button>
+          </div>
+        )}
       </article>
 
       <article className="principal-panel">

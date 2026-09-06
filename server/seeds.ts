@@ -220,6 +220,7 @@ export async function seedDatabase() {
       description: proposalSeed.description,
       status: proposalSeed.status,
       total_votes: 0,
+      minimum_votes_required: proposalSeed.minimum_votes_required ?? null,
       voting_starts: votingStarts,
       voting_ends: votingEnds,
       user_id: userId,

@@ -498,6 +498,11 @@ ProposalOfGreenArea.init(
       allowNull: false,
       defaultValue: 0,
     },
+    minimum_votes_required: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
     voting_starts: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -836,9 +841,42 @@ const enforceFixedRoles = async () => {
   }
 };
 
+const ensureProposalMinimumVotesColumn = async () => {
+  const queryInterface = sequelize.getQueryInterface();
+  const table = await queryInterface.describeTable("ProposalOfGreenArea");
+
+  if (!table.minimum_votes_required) {
+    await queryInterface.addColumn(
+      "ProposalOfGreenArea",
+      "minimum_votes_required",
+      {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
+    );
+  }
+};
+
+const cleanupLegacyProposalData = async () => {
+  await sequelize.query(`
+    UPDATE ProposalOfGreenArea
+    SET
+      status = 'closed',
+      voting_starts = NULL,
+      voting_ends = NULL,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE
+      status IN ('open', 'approved')
+      AND (minimum_votes_required IS NULL OR minimum_votes_required <= 0)
+  `);
+};
+
 export const initializeDatabase = async () => {
   try {
     await sequelize.sync();
+    await ensureProposalMinimumVotesColumn();
+    await cleanupLegacyProposalData();
     await enforceFixedRoles();
   } catch (err) {
     console.error("Database sync failed:", err);

@@ -52,6 +52,30 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   }
 };
 
+const optionalAuthenticate = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    req.user = undefined;
+    return next();
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as {
+      user_id: number;
+      role: string;
+    };
+    req.user = payload;
+    return next();
+  } catch {
+    return res.status(401).json({ error: "Token invalido" });
+  }
+};
+
 const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ error: "Solo administradores" });
@@ -125,6 +149,7 @@ const serializeProposal = (proposal: ProposalOfGreenArea) => ({
   description: proposal.getDataValue("description"),
   status: proposal.getDataValue("status"),
   totalVotes: proposal.getDataValue("total_votes"),
+  minimumVotesRequired: proposal.getDataValue("minimum_votes_required"),
   votingStarts: toIsoStringOrNull(proposal.getDataValue("voting_starts")),
   votingEnds: toIsoStringOrNull(proposal.getDataValue("voting_ends")),
   userId: proposal.getDataValue("user_id"),
@@ -165,6 +190,23 @@ const serializeProjectUpdate = (update: ProjectUpdateOfProposal) => {
   };
 };
 
+const serializeProposalVote = (vote: VoteOfProposal) => {
+  const voter = vote.get("User") as User | undefined;
+
+  return {
+    id: vote.getDataValue("vote_of_proposal_id"),
+    userId: vote.getDataValue("user_id"),
+    createdAt: toIsoStringOrNull(vote.getDataValue("created_at")),
+    voter: voter
+      ? {
+          id: voter.getDataValue("user_id"),
+          username: String(voter.getDataValue("username") || ""),
+          name: String(voter.getDataValue("name") || ""),
+        }
+      : null,
+  };
+};
+
 const finalizeOpenProposal = async (proposal: ProposalOfGreenArea) => {
   const proposalId = Number(proposal.getDataValue("proposal_of_green_area_id"));
   const status = String(proposal.getDataValue("status") || "");
@@ -193,13 +235,22 @@ const finalizeOpenProposal = async (proposal: ProposalOfGreenArea) => {
     where: { proposal_of_green_area_id: proposalId },
   });
 
+  const minimumVotesRequiredRaw = proposal.getDataValue(
+    "minimum_votes_required",
+  );
+  const minimumVotesRequired = Number(minimumVotesRequiredRaw);
+  const isMinimumConfigured =
+    Number.isFinite(minimumVotesRequired) && minimumVotesRequired > 0;
+  const isApprovedByVotes =
+    isMinimumConfigured && totalVotes >= minimumVotesRequired;
+
   await proposal.update({
     total_votes: totalVotes,
-    status: totalVotes > 0 ? "approved" : "closed",
+    status: isApprovedByVotes ? "approved" : "closed",
     updated_at: new Date(),
   });
 
-  if (totalVotes <= 0) {
+  if (!isApprovedByVotes) {
     return {
       proposal,
       project: null,
@@ -222,7 +273,7 @@ const finalizeOpenProposal = async (proposal: ProposalOfGreenArea) => {
   };
 };
 
-router.get("/", authenticate, async (_req, res) => {
+router.get("/", optionalAuthenticate, async (_req, res) => {
   const authReq = _req as AuthRequest;
   const whereClause = authReq.user?.role === "admin" ? {} : { status: "open" };
 
@@ -270,6 +321,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
     description,
     status: "draft",
     total_votes: 0,
+    minimum_votes_required: null,
     voting_starts: null,
     voting_ends: null,
     user_id: req.user.user_id,
@@ -312,6 +364,19 @@ router.post(
     const now = new Date();
     const votingStartsRaw = proposal.getDataValue("voting_starts");
     const votingEndsRaw = proposal.getDataValue("voting_ends");
+    const minimumVotesRequiredRaw = Number(
+      proposal.getDataValue("minimum_votes_required"),
+    );
+
+    if (
+      !Number.isInteger(minimumVotesRequiredRaw) ||
+      minimumVotesRequiredRaw <= 0
+    ) {
+      return res.status(409).json({
+        error: "La propuesta no tiene minimo de votos configurado",
+      });
+    }
+
     if (!votingStartsRaw || !votingEndsRaw) {
       return res
         .status(409)
@@ -393,6 +458,7 @@ router.patch(
 
     const votingStartsRaw = String(req.body?.votingStarts || "").trim();
     const votingEndsRaw = String(req.body?.votingEnds || "").trim();
+    const minimumVotesRequiredRaw = Number(req.body?.minimumVotesRequired);
 
     const proposal = await ProposalOfGreenArea.findByPk(proposalId);
     if (!proposal) {
@@ -417,6 +483,7 @@ router.patch(
     if (decision === "rejected") {
       await proposal.update({
         status: "rejected",
+        minimum_votes_required: null,
         voting_starts: null,
         voting_ends: null,
         updated_at: new Date(),
@@ -440,8 +507,18 @@ router.patch(
       });
     }
 
+    if (
+      !Number.isInteger(minimumVotesRequiredRaw) ||
+      minimumVotesRequiredRaw <= 0
+    ) {
+      return res.status(400).json({
+        error: "El minimo de votos requeridos es invalido",
+      });
+    }
+
     await proposal.update({
       status: "open",
+      minimum_votes_required: minimumVotesRequiredRaw,
       voting_starts: votingStarts,
       voting_ends: votingEnds,
       updated_at: new Date(),
@@ -500,9 +577,10 @@ router.post(
   },
 );
 
-router.get(
-  "/:id/project",
+router.delete(
+  "/:id",
   authenticate,
+  requireAdmin,
   async (req: AuthRequest, res: Response) => {
     const proposalId = Number(req.params.id);
     if (!Number.isFinite(proposalId)) {
@@ -516,6 +594,58 @@ router.get(
       return res.status(404).json({ error: "Propuesta no encontrada" });
     }
 
+    const status = String(proposal.getDataValue("status") || "");
+    if (status !== "rejected") {
+      return res.status(409).json({
+        error: "Solo se pueden eliminar propuestas rechazadas",
+      });
+    }
+
+    await proposal.destroy();
+    return res.status(204).send();
+  },
+);
+
+router.get(
+  "/:id/project",
+  optionalAuthenticate,
+  async (req: AuthRequest, res: Response) => {
+    const proposalId = Number(req.params.id);
+    if (!Number.isFinite(proposalId)) {
+      return res
+        .status(400)
+        .json({ error: "Identificador de propuesta invalido" });
+    }
+
+    const proposal = await ProposalOfGreenArea.findByPk(proposalId);
+    if (!proposal) {
+      return res.status(404).json({ error: "Propuesta no encontrada" });
+    }
+
+    const voters =
+      req.user?.role === "admin"
+        ? await VoteOfProposal.findAll({
+            where: { proposal_of_green_area_id: proposalId },
+            include: [
+              { model: User, attributes: ["user_id", "username", "name"] },
+            ],
+            order: [
+              ["created_at", "ASC"],
+              ["vote_of_proposal_id", "ASC"],
+            ],
+          })
+        : [];
+    const currentUserHasVoted = req.user
+      ? Boolean(
+          await VoteOfProposal.findOne({
+            where: {
+              proposal_of_green_area_id: proposalId,
+              user_id: req.user.user_id,
+            },
+          }),
+        )
+      : false;
+
     const project = await ProjectOfProposal.findOne({
       where: { proposal_of_green_area_id: proposalId },
     });
@@ -525,6 +655,10 @@ router.get(
         proposal: serializeProposal(proposal),
         project: null,
         updates: [],
+        voters: voters.map((entry) =>
+          serializeProposalVote(entry as VoteOfProposal),
+        ),
+        currentUserHasVoted,
       });
     }
 
@@ -544,13 +678,17 @@ router.get(
       updates: updates.map((entry) =>
         serializeProjectUpdate(entry as ProjectUpdateOfProposal),
       ),
+      voters: voters.map((entry) =>
+        serializeProposalVote(entry as VoteOfProposal),
+      ),
+      currentUserHasVoted,
     });
   },
 );
 
 router.get(
   "/projects/:projectId",
-  authenticate,
+  optionalAuthenticate,
   async (req: AuthRequest, res: Response) => {
     const projectId = Number(req.params.projectId);
     if (!Number.isFinite(projectId)) {
@@ -564,7 +702,9 @@ router.get(
       return res.status(404).json({ error: "Proyecto no encontrado" });
     }
 
-    const proposalId = Number(project.getDataValue("proposal_of_green_area_id"));
+    const proposalId = Number(
+      project.getDataValue("proposal_of_green_area_id"),
+    );
     if (!Number.isFinite(proposalId)) {
       return res.status(409).json({ error: "Proyecto sin propuesta valida" });
     }

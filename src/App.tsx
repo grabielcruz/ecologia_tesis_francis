@@ -13,9 +13,8 @@ import { ProfilePage } from "./components/profile/ProfilePage";
 import { ProjectActivityDetailSection } from "./components/projects/ProjectActivityDetailSection";
 import { ProjectDetailSection } from "./components/projects/ProjectDetailSection";
 import { ProjectsListSection } from "./components/projects/ProjectsListSection";
-import { ProposalDetailsModal } from "./components/proposals/ProposalDetailsModal";
+import { ProposalDetailSection } from "./components/proposals/ProposalDetailSection";
 import { ProposalCreateModal } from "./components/proposals/ProposalCreateModal";
-import { ProposalManageModal } from "./components/proposals/ProposalManageModal";
 import { ProposalsListSection } from "./components/proposals/ProposalsListSection";
 import { Report } from "./components/reports/Report";
 import { Reports } from "./components/reports/Reports";
@@ -421,8 +420,6 @@ function App() {
     proposalWindows,
     isSubmittingProposal,
     showProposalModal,
-    showProposalDetailsModal,
-    proposalDetailsId,
     proposalProjectDetails,
     proposalProjectLoadingId,
     projectUpdateTitleInput,
@@ -432,10 +429,9 @@ function App() {
     uploadingProjectUpdateImages,
     isSubmittingProjectUpdate,
     isUpdatingProjectStatus,
-    showProposalManageModal,
-    proposalManageId,
     proposalStatusFilter,
     proposalProjectStatusByProposalId,
+    selectedProposalId,
     selectedProjectId,
     selectedProjectEntry,
     setProposalTitleInput,
@@ -460,16 +456,15 @@ function App() {
     openCreateProposalModal,
     closeCreateProposalModal,
     openProjectDetailPage,
-    openProposalDetailsModal,
-    closeProposalDetailsModal,
-    openProposalManageModal,
-    closeProposalManageModal,
+    openProposalDetailPage,
     setProposalVotingStart,
     setProposalVotingEnd,
+    setProposalMinimumVotesRequired,
     submitProposal,
     voteProposal,
     decideProposal,
     finalizeProposal,
+    deleteProposal,
     resetProposalState,
   } = useProposalWorkflow({
     token,
@@ -559,14 +554,15 @@ function App() {
       return;
     }
 
-    if (!token) {
+    if (
+      !token &&
+      (route === "/profile" || route === "/admin-users" || route === "/surveys")
+    ) {
       navigate("/login", true);
     }
   }, [authReady, route, token]);
 
   useEffect(() => {
-    if (!token) return;
-
     // Survey module was removed from backend; keep only active modules loading.
     if (route === "/surveys") {
       navigate("/", true);
@@ -577,7 +573,7 @@ function App() {
     fetchProposals();
     fetchProjects();
 
-    if (user?.role === "admin" && route === "/admin-users") {
+    if (token && user?.role === "admin" && route === "/admin-users") {
       fetchAdminRoles();
       fetchAdminUsers();
     }
@@ -813,6 +809,9 @@ function App() {
     navigate("/login");
   };
 
+  const isAuthenticated = Boolean(token);
+  const isGuest = !isAuthenticated;
+
   const displayName = user ? `${user.name}` : "";
 
   const formatUpdatedAt = (value?: string | Date) => {
@@ -933,7 +932,7 @@ function App() {
   const { pageTitle, pageSubtitle } = getPageHeaderMeta(route, displayName);
 
   useEffect(() => {
-    if (!token || !route.startsWith("/projects/") || !selectedProjectId) {
+    if (!route.startsWith("/projects/") || !selectedProjectId) {
       return;
     }
 
@@ -964,7 +963,7 @@ function App() {
   ]);
 
   useEffect(() => {
-    if (!token || !route.startsWith("/tree-types/")) {
+    if (!route.startsWith("/tree-types/")) {
       setTreeTypeInventoryRows([]);
       return;
     }
@@ -979,9 +978,11 @@ function App() {
         const response = await fetch(
           `/api/trees?typeId=${selectedTreeTypeId}`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: token
+              ? {
+                  Authorization: `Bearer ${token}`,
+                }
+              : undefined,
           },
         );
 
@@ -1003,7 +1004,7 @@ function App() {
   }, [token, route, selectedTreeTypeId]);
 
   useEffect(() => {
-    if (!token || !route.startsWith("/trees/")) {
+    if (!route.startsWith("/trees/")) {
       setSelectedTreeDetail(null);
       return;
     }
@@ -1022,9 +1023,11 @@ function App() {
     const fetchTreeDetail = async () => {
       try {
         const response = await fetch(`/api/trees/${selectedTreeId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : undefined,
         });
 
         if (!response.ok) {
@@ -2253,87 +2256,62 @@ function App() {
     );
   };
 
-  const renderProposalDetailsModal = () => {
-    if (!showProposalDetailsModal) return null;
-
+  const renderProposalDetailSection = () => {
     const proposal =
-      projectEntries.find((entry) => entry.proposal.id === proposalDetailsId)
-        ?.proposal || proposals.find((entry) => entry.id === proposalDetailsId);
-    if (!proposal) return null;
+      proposals.find((entry) => entry.id === selectedProposalId) || null;
 
-    const projectDetails = proposalProjectDetails[proposal.id];
+    const projectDetails = selectedProposalId
+      ? proposalProjectDetails[selectedProposalId]
+      : undefined;
     const project = projectDetails?.project;
-    const isProjectLoading = proposalProjectLoadingId === proposal.id;
-    const selectedProjectStatus = project
-      ? projectStatusDrafts[project.id] || project.completedStatus
-      : "planned";
+    const isProjectLoading = proposalProjectLoadingId === selectedProposalId;
+
+    const votingWindow = selectedProposalId
+      ? proposalWindows[selectedProposalId] || {
+          start: "",
+          end: "",
+          minimumVotesRequired: proposal?.minimumVotesRequired
+            ? String(proposal.minimumVotesRequired)
+            : "",
+        }
+      : { start: "", end: "", minimumVotesRequired: "" };
 
     return (
-      <ProposalDetailsModal
-        isOpen={showProposalDetailsModal}
+      <ProposalDetailSection
+        selectedProposalId={selectedProposalId}
         proposal={proposal}
         projectDetails={projectDetails}
         isProjectLoading={isProjectLoading}
-        selectedProjectStatus={selectedProjectStatus}
         userRole={user?.role}
-        isUpdatingProjectStatus={isUpdatingProjectStatus}
-        isSubmittingProjectUpdate={isSubmittingProjectUpdate}
-        uploadingProjectUpdateImages={uploadingProjectUpdateImages}
-        projectUpdateTitleInput={projectUpdateTitleInput}
-        projectUpdateDescriptionInput={projectUpdateDescriptionInput}
-        projectUpdateImagesInput={projectUpdateImagesInput}
-        setProjectUpdateTitleInput={setProjectUpdateTitleInput}
-        setProjectUpdateDescriptionInput={setProjectUpdateDescriptionInput}
-        setProjectUpdateImagesInput={setProjectUpdateImagesInput}
-        setSelectedProjectStatus={(value) => {
-          const project = projectDetails?.project;
-          if (!project) return;
-          setProjectStatusDrafts((prev) => ({
-            ...prev,
-            [project.id]: value,
-          }));
-        }}
-        onUpdateProjectCompletedStatus={updateProjectCompletedStatus}
-        onSubmitProjectActivityUpdate={submitProjectActivityUpdate}
-        onUploadProjectActivityImages={uploadProjectActivityImages}
-        resolveAssetUrl={resolveAssetUrl}
-        formatUpdatedAt={formatUpdatedAt}
-        onClose={closeProposalDetailsModal}
-      />
-    );
-  };
-
-  const renderProposalManageModal = () => {
-    const proposal = proposals.find((entry) => entry.id === proposalManageId);
-    const votingWindow = proposal
-      ? proposalWindows[proposal.id] || { start: "", end: "" }
-      : { start: "", end: "" };
-
-    return (
-      <ProposalManageModal
-        isOpen={showProposalManageModal}
-        proposal={proposal || null}
+        proposalActionLoadingId={proposalActionLoadingId}
         votingStart={votingWindow.start}
         votingEnd={votingWindow.end}
+        minimumVotesRequired={votingWindow.minimumVotesRequired}
         onChangeVotingStart={(value) => {
-          if (!proposal) return;
-          setProposalVotingStart(proposal.id, value);
+          if (!selectedProposalId) return;
+          setProposalVotingStart(selectedProposalId, value);
         }}
         onChangeVotingEnd={(value) => {
-          if (!proposal) return;
-          setProposalVotingEnd(proposal.id, value);
+          if (!selectedProposalId) return;
+          setProposalVotingEnd(selectedProposalId, value);
         }}
-        onAccept={async () => {
-          if (!proposal) return;
-          await decideProposal(proposal.id, "accepted");
-          closeProposalManageModal();
+        onChangeMinimumVotesRequired={(value) => {
+          if (!selectedProposalId) return;
+          setProposalMinimumVotesRequired(selectedProposalId, value);
         }}
-        onReject={async () => {
-          if (!proposal) return;
-          await decideProposal(proposal.id, "rejected");
-          closeProposalManageModal();
+        onVoteProposal={voteProposal}
+        onAcceptProposal={(proposalId) => {
+          void decideProposal(proposalId, "accepted");
         }}
-        onClose={closeProposalManageModal}
+        onRejectProposal={(proposalId) => {
+          void decideProposal(proposalId, "rejected");
+        }}
+        onFinalizeProposal={finalizeProposal}
+        onDeleteRejectedProposal={(proposalId) => {
+          void deleteProposal(proposalId);
+        }}
+        onOpenProject={(projectId) => navigate(`/projects/${projectId}`)}
+        onBack={() => navigate("/proposals")}
       />
     );
   };
@@ -2475,54 +2453,73 @@ function App() {
                 </span>
               </div>
             </div>
-            <p className="muted">Tu calificacion</p>
-            <div
-              className="star-strip"
-              role="radiogroup"
-              aria-label="Calificacion de estrellas"
-            >
-              {[1, 2, 3, 4, 5].map((value) => {
-                const filled = value <= current;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    className={`star-button ${filled ? "filled" : ""}`}
-                    aria-label={`${value} estrellas`}
-                    onClick={() =>
+            {isGuest ? (
+              <div className="button-row">
+                <p className="muted">
+                  Inicia sesion para calificar y dejar comentarios.
+                </p>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => navigate("/login")}
+                >
+                  Iniciar sesión
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="muted">Tu calificacion</p>
+                <div
+                  className="star-strip"
+                  role="radiogroup"
+                  aria-label="Calificacion de estrellas"
+                >
+                  {[1, 2, 3, 4, 5].map((value) => {
+                    const filled = value <= current;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`star-button ${filled ? "filled" : ""}`}
+                        aria-label={`${value} estrellas`}
+                        onClick={() =>
+                          updateGreenSpaceReviewDraft(selectedGreenSpace.id, {
+                            rating: current === value ? 0 : value,
+                          })
+                        }
+                      >
+                        ★
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="muted">
+                  Seleccion actual: {current} estrella{current === 1 ? "" : "s"}
+                </p>
+                <label>
+                  Comentarios y sugerencias
+                  <textarea
+                    value={reviewDrafts[selectedGreenSpace.id]?.comment ?? ""}
+                    onChange={(e) =>
                       updateGreenSpaceReviewDraft(selectedGreenSpace.id, {
-                        rating: current === value ? 0 : value,
+                        comment: e.target.value,
                       })
                     }
+                    placeholder="Escribe tu opinion o sugerencia para mejorar este espacio verde"
+                  />
+                </label>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      submitGreenSpaceReview(selectedGreenSpace.id)
+                    }
                   >
-                    ★
+                    Guardar reseña
                   </button>
-                );
-              })}
-            </div>
-            <p className="muted">
-              Seleccion actual: {current} estrella{current === 1 ? "" : "s"}
-            </p>
-            <label>
-              Comentarios y sugerencias
-              <textarea
-                value={reviewDrafts[selectedGreenSpace.id]?.comment ?? ""}
-                onChange={(e) =>
-                  updateGreenSpaceReviewDraft(selectedGreenSpace.id, {
-                    comment: e.target.value,
-                  })
-                }
-                placeholder="Escribe tu opinion o sugerencia para mejorar este espacio verde"
-              />
-            </label>
-            <div className="button-row">
-              <button
-                type="button"
-                onClick={() => submitGreenSpaceReview(selectedGreenSpace.id)}
-              >
-                Guardar reseña
-              </button>
-            </div>
+                </div>
+              </>
+            )}
             {(selectedGreenSpace.recentReviews || []).length > 0 && (
               <div className="recent-reviews">
                 <h5>Ultimas opiniones</h5>
@@ -2658,19 +2655,14 @@ function App() {
           proposalStatusFilter={proposalStatusFilter}
           setProposalStatusFilter={setProposalStatusFilter}
           proposalProjectStatusByProposalId={proposalProjectStatusByProposalId}
-          proposalActionLoadingId={proposalActionLoadingId}
-          userRole={user?.role}
           getSpaceName={getSpaceName}
           formatUpdatedAt={formatUpdatedAt}
-          onOpenCreateProposalModal={openCreateProposalModal}
-          onOpenProposalDetailsModal={openProposalDetailsModal}
-          onOpenProposalManageModal={openProposalManageModal}
-          onVoteProposal={voteProposal}
-          onFinalizeProposal={finalizeProposal}
+          onOpenCreateProposalModal={
+            isAuthenticated ? openCreateProposalModal : undefined
+          }
+          onOpenProposalDetailPage={openProposalDetailPage}
         />
         {renderProposalCreateModal()}
-        {renderProposalDetailsModal()}
-        {renderProposalManageModal()}
       </>
     );
   };
@@ -2806,7 +2798,9 @@ function App() {
         uploadingReportImages={uploadingReportImages}
         formatUpdatedAt={formatUpdatedAt}
         resolveAssetUrl={resolveAssetUrl}
-        onOpenCreateReportModal={openCreateReportModal}
+        onOpenCreateReportModal={
+          isAuthenticated ? openCreateReportModal : undefined
+        }
         onCloseCreateReportModal={closeCreateReportModal}
         onSaveReport={saveReport}
         onUploadReportImages={uploadReportImages}
@@ -3005,6 +2999,10 @@ function App() {
         return renderProjectActivityDetailSection();
       }
       return renderProjectDetailSection();
+    }
+
+    if (route.startsWith("/proposals/")) {
+      return renderProposalDetailSection();
     }
 
     if (route.startsWith("/reports/")) {
@@ -3259,6 +3257,7 @@ function App() {
       <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
         <AppSidebar
           route={route}
+          isAuthenticated={isAuthenticated}
           isGreenSpacesRoute={isGreenSpacesRoute}
           isProjectsRoute={isProjectsRoute}
           isReportsRoute={isReportsRoute}
@@ -3278,6 +3277,7 @@ function App() {
           onNavigateTreeTypes={() => navigate("/tree-types")}
           onNavigateTrees={() => navigate("/trees")}
           onNavigateUsers={() => navigate("/admin-users")}
+          onLogin={() => navigate("/login")}
           onLogout={logout}
         />
       </aside>
@@ -3287,6 +3287,15 @@ function App() {
             <h1>{pageTitle}</h1>
             <p>{pageSubtitle}</p>
           </div>
+          {!isAuthenticated && (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => navigate("/login")}
+            >
+              Iniciar sesión
+            </button>
+          )}
         </header>
         {renderMainSection()}
         {renderProfileEditModal()}
