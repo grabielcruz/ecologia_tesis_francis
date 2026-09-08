@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import fs from "fs";
 import path from "path";
 
@@ -297,15 +299,17 @@ const readCommonTreeNames = () => {
 
   try {
     const content = fs.readFileSync(filename, "utf8");
-    const matches = content.match(
-      /Araguaney|Apamate|Flamboy[a-zA-Z\u00c0-\u017f]*|Mango|Ucaro|\u00dacar[a-zA-Z\u00c0-\u017f]*|Camoruco|Nispero|N\u00edspero/gi,
-    );
+    // Extract tree names from the content using a regular expression
+    const matches =
+      content.match(
+        /Araguaney|Apamate|Flamboy[a-zA-Z\u00c0-\u017f]*|Mango|Ucaro|\u00dacar[a-zA-Z\u00c0-\u017f]*|Camoruco|Nispero|N\u00edspero/gi,
+      ) ?? [];
 
     const names = Array.from(
-      new Set(
-        (matches || [])
-          .map((item) => normalizeTreeName(item))
-          .filter((item) => item.length > 0),
+      new Set<string>(
+        matches
+          .map((item: string) => normalizeTreeName(item))
+          .filter((item: string) => item.length > 0),
       ),
     );
 
@@ -348,10 +352,10 @@ const treeImagePool = [
   "https://images.unsplash.com/photo-1492496913980-501348b61469?auto=format&fit=crop&w=1200&q=80",
 ];
 
-const commonTreeNames = readCommonTreeNames();
+const commonTreeNames: string[] = readCommonTreeNames();
 
 export const treeTypeSeeds: TreeTypeSeed[] = commonTreeNames.map(
-  (name, index) => ({
+  (name: string, index: number): TreeTypeSeed => ({
     name,
     description:
       treeDescriptionByName[name] ||

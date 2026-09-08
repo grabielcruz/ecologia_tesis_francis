@@ -98,6 +98,9 @@ interface AdminUser {
 type SortDirection = "asc" | "desc";
 
 function App() {
+  const MOBILE_BREAKPOINT_PX = 1024;
+  const isMobileViewport = () => window.innerWidth <= MOBILE_BREAKPOINT_PX;
+
   const getErrorMessage = (error: unknown, fallback: string) =>
     error instanceof Error && error.message ? error.message : fallback;
 
@@ -206,7 +209,7 @@ function App() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isMobileViewport());
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
@@ -215,6 +218,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [adminPage, setAdminPage] = useState(1);
   const isHandlingUnauthorizedRef = useRef(false);
+  const previousPathnameRef = useRef(window.location.pathname);
 
   useEffect(() => {
     if (!successMessage) {
@@ -408,6 +412,10 @@ function App() {
       }
     }
     setRoute(path);
+
+    if (isMobileViewport()) {
+      setSidebarOpen(false);
+    }
   };
 
   const {
@@ -561,6 +569,27 @@ function App() {
       navigate("/login", true);
     }
   }, [authReady, route, token]);
+
+  useEffect(() => {
+    const currentPathname = route.split("?")[0] || route;
+    if (previousPathnameRef.current !== currentPathname) {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
+    previousPathnameRef.current = currentPathname;
+
+    if (isMobileViewport()) {
+      setSidebarOpen(false);
+    }
+  }, [route]);
+
+  useEffect(() => {
+    const shouldLockBodyScroll = isMobileViewport() && sidebarOpen;
+    document.body.classList.toggle("sidebar-mobile-open", shouldLockBodyScroll);
+
+    return () => {
+      document.body.classList.remove("sidebar-mobile-open");
+    };
+  }, [sidebarOpen]);
 
   useEffect(() => {
     // Survey module was removed from backend; keep only active modules loading.
@@ -3251,10 +3280,23 @@ function App() {
         className="mobile-menu-button"
         onClick={() => setSidebarOpen((open) => !open)}
         aria-expanded={sidebarOpen}
+        aria-controls="app-sidebar"
+        aria-label={sidebarOpen ? "Cerrar menu" : "Abrir menu"}
       >
         ☰
       </button>
-      <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Cerrar menu lateral"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <aside
+        id="app-sidebar"
+        className={`sidebar ${sidebarOpen ? "open" : "closed"}`}
+      >
         <AppSidebar
           route={route}
           isAuthenticated={isAuthenticated}
