@@ -18,6 +18,7 @@ import { ProposalCreateModal } from "./components/proposals/ProposalCreateModal"
 import { ProposalsListSection } from "./components/proposals/ProposalsListSection";
 import { Report } from "./components/reports/Report";
 import { Reports } from "./components/reports/Reports";
+import { AiChatWidget } from "./components/chatbot/AiChatWidget";
 import { TreeTypeDetailSection } from "./components/treeTypes/TreeTypeDetailSection";
 import { TreeTypesSection } from "./components/treeTypes/TreeTypesSection";
 import { TreeDetailSection } from "./components/trees/TreeDetailSection";
@@ -3343,6 +3344,7 @@ function App() {
         {renderProfileEditModal()}
         {renderPasswordModal()}
       </main>
+      <AiChatWidget token={token} isAuthenticated={isAuthenticated} />
     </div>
   );
 }
