@@ -4,6 +4,7 @@ interface AppSidebarProps {
   isGreenSpacesRoute: boolean;
   isProjectsRoute: boolean;
   isReportsRoute: boolean;
+  isGreenMetricsRoute: boolean;
   isTreeTypesRoute: boolean;
   isTreesRoute: boolean;
   answeredPolls: number;
@@ -17,6 +18,7 @@ interface AppSidebarProps {
   onNavigateProposals: () => void;
   onNavigateProjects: () => void;
   onNavigateReports: () => void;
+  onNavigateGreenMetrics: () => void;
   onNavigateTreeTypes: () => void;
   onNavigateTrees: () => void;
   onNavigateUsers: () => void;
@@ -30,6 +32,7 @@ export function AppSidebar({
   isGreenSpacesRoute,
   isProjectsRoute,
   isReportsRoute,
+  isGreenMetricsRoute,
   isTreeTypesRoute,
   isTreesRoute,
   answeredPolls,
@@ -43,6 +46,7 @@ export function AppSidebar({
   onNavigateProposals,
   onNavigateProjects,
   onNavigateReports,
+  onNavigateGreenMetrics,
   onNavigateTreeTypes,
   onNavigateTrees,
   onNavigateUsers,
@@ -115,6 +119,13 @@ export function AppSidebar({
           onClick={onNavigateReports}
         >
           Reportes
+        </button>
+        <button
+          type="button"
+          className={isGreenMetricsRoute ? "active" : ""}
+          onClick={onNavigateGreenMetrics}
+        >
+          Metricas GreenMetric
         </button>
         <button
           type="button"

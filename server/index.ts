@@ -12,6 +12,7 @@ import projectsRoutes from "./routes/projects";
 import treeTypeRoutes from "./routes/treeTypes";
 import treeRoutes from "./routes/trees";
 import aiChatRoutes from "./routes/aiChat";
+import greenMetricsRoutes from "./routes/greenMetrics";
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
@@ -35,6 +36,7 @@ app.use("/api/projects", projectsRoutes);
 app.use("/api/tree-types", treeTypeRoutes);
 app.use("/api/trees", treeRoutes);
 app.use("/api/ai-chat", aiChatRoutes);
+app.use("/api/green-metrics", greenMetricsRoutes);
 
 initializeDatabase()
   .then(() => {

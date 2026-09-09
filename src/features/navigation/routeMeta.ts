@@ -2,6 +2,7 @@ export interface RouteFlags {
   isGreenSpacesRoute: boolean;
   isProjectsRoute: boolean;
   isReportsRoute: boolean;
+  isGreenMetricsRoute: boolean;
   isTreeTypesRoute: boolean;
   isTreesRoute: boolean;
 }
@@ -23,6 +24,8 @@ export function getRouteFlags(route: string): RouteFlags {
       route === "/green-spaces" || route.startsWith("/green-spaces/"),
     isProjectsRoute: route === "/projects" || route.startsWith("/projects/"),
     isReportsRoute: route === "/reports" || route.startsWith("/reports/"),
+    isGreenMetricsRoute:
+      route === "/green-metrics" || route.startsWith("/green-metrics/"),
     isTreeTypesRoute:
       route === "/tree-types" || route.startsWith("/tree-types/"),
     isTreesRoute:
@@ -87,6 +90,8 @@ export function getPageHeaderMeta(
                         ? "Proyectos"
                         : route === "/reports"
                           ? "Reportes de areas verdes"
+                        : route === "/green-metrics"
+                          ? "Metricas GreenMetric"
                           : route === "/tree-types"
                             ? "Tipos de arboles"
                             : route === "/trees" || route.startsWith("/trees?")
@@ -122,6 +127,8 @@ export function getPageHeaderMeta(
                         ? "Consulta los proyectos generados a partir de propuestas aprobadas"
                         : route === "/reports"
                           ? "Registra, actualiza y sigue reportes de quejas o sugerencias"
+                        : route === "/green-metrics"
+                          ? "Carga datos por trimestre y revisa el historico de indicadores de sostenibilidad"
                           : route === "/tree-types"
                             ? "Catalogo oficial de especies y flujo de sugerencias de nuevos tipos"
                             : route === "/trees" || route.startsWith("/trees?")

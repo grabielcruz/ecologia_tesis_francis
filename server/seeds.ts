@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import {
+  GreenMetricQuarterlyRecord,
   GreenSpace,
   GreenSpaceReview,
   ProjectOfProposal,
@@ -14,6 +15,7 @@ import {
   sequelize,
 } from "./models";
 import {
+  greenMetricQuarterlySeeds,
   greenSpaceSeeds,
   greenSpaceReviewSeeds,
   projectOfProposalSeeds,
@@ -193,6 +195,64 @@ export async function seedDatabase() {
     });
   }
 
+  for (const quarterlySeed of greenMetricQuarterlySeeds) {
+    const userId = userIdByUsername[quarterlySeed.username];
+    if (!userId) {
+      throw new Error(
+        `User not found for quarterly metric seed: ${quarterlySeed.username}`,
+      );
+    }
+
+    const quarter = quarterlySeed.quarter;
+    const year = quarterlySeed.year;
+    const startMonthIndex = (quarter - 1) * 3;
+    const periodStart = new Date(Date.UTC(year, startMonthIndex, 1));
+    const periodEnd = new Date(
+      Date.UTC(year, startMonthIndex + 3, 0, 23, 59, 59),
+    );
+
+    const totalArea = quarterlySeed.total_campus_area_m2;
+    const greenArea = quarterlySeed.green_area_m2;
+    const denseArea = quarterlySeed.dense_vegetation_area_m2;
+    const rainArea = quarterlySeed.rainwater_absorption_area_m2;
+    const sustainabilityBudget = quarterlySeed.sustainability_budget;
+    const conservationBudget = quarterlySeed.conservation_operation_budget;
+    const totalBudget = sustainabilityBudget + conservationBudget;
+
+    const metric1 = totalArea > 0 ? (greenArea / totalArea) * 100 : 0;
+    const metric2 =
+      quarterlySeed.campus_population > 0
+        ? greenArea / quarterlySeed.campus_population
+        : 0;
+    const metric3 = totalArea > 0 ? (denseArea / totalArea) * 100 : 0;
+    const metric4 = totalArea > 0 ? (rainArea / totalArea) * 100 : 0;
+    const metric5 = totalBudget > 0 ? (sustainabilityBudget / totalBudget) * 100 : 0;
+    const metric6 = totalBudget > 0 ? (conservationBudget / totalBudget) * 100 : 0;
+
+    await GreenMetricQuarterlyRecord.create({
+      year,
+      quarter,
+      period_start: periodStart,
+      period_end: periodEnd,
+      total_campus_area_m2: totalArea,
+      green_area_m2: greenArea,
+      campus_population: quarterlySeed.campus_population,
+      dense_vegetation_area_m2: denseArea,
+      rainwater_absorption_area_m2: rainArea,
+      sustainability_budget: sustainabilityBudget,
+      conservation_operation_budget: conservationBudget,
+      metric_1_green_area_ratio: metric1,
+      metric_2_green_area_per_capita: metric2,
+      metric_3_dense_vegetation_ratio: metric3,
+      metric_4_rainwater_absorption_ratio: metric4,
+      metric_5_sustainability_budget_share: metric5,
+      metric_6_conservation_operation_share: metric6,
+      created_by_user_id: userId,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+  }
+
   for (const proposalSeed of proposalSeeds) {
     const userId = userIdByUsername[proposalSeed.username];
     if (!userId) {
@@ -333,7 +393,7 @@ export async function seedDatabase() {
   }
 
   console.log(
-    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
+    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${greenMetricQuarterlySeeds.length} quarterly metric records, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
   );
 }
 

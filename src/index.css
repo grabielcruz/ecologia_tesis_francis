@@ -1689,6 +1689,60 @@ button.danger:hover {
   margin: 0.28rem 0;
 }
 
+.green-metrics-box {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.green-metrics-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.55rem;
+}
+
+.green-metric-history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.65rem;
+}
+
+.metric-history-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 0.7rem;
+}
+
+.metric-history-card h4 {
+  margin: 0;
+  font-size: 0.97rem;
+}
+
+.metric-history-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.55rem 0 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.metric-history-card li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid #e7efee;
+  border-radius: 10px;
+  padding: 0.42rem 0.55rem;
+  background: #fbfefd;
+  font-size: 0.88rem;
+}
+
+.metric-history-card li strong {
+  color: #1f3f43;
+  text-align: right;
+}
+
 .summary-link-button {
   width: 100%;
   margin-top: 0;

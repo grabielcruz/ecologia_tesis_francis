@@ -93,6 +93,19 @@ export interface ProjectUpdateOfProposalSeed {
   created_at: string;
 }
 
+export interface GreenMetricQuarterlySeed {
+  year: number;
+  quarter: 1 | 2 | 3 | 4;
+  total_campus_area_m2: number;
+  green_area_m2: number;
+  campus_population: number;
+  dense_vegetation_area_m2: number;
+  rainwater_absorption_area_m2: number;
+  sustainability_budget: number;
+  conservation_operation_budget: number;
+  username: string;
+}
+
 export const roleSeeds: RoleSeed[] = [
   {
     role_name: "admin",
@@ -466,6 +479,57 @@ export const reportOfGreenAreaSeeds: ReportOfGreenAreaSeed[] = [
     username: "admin",
     green_space_name: "Parque de la Facultad",
     created_at: "2026-08-28T18:20:00.000Z",
+  },
+];
+
+export const greenMetricQuarterlySeeds: GreenMetricQuarterlySeed[] = [
+  {
+    year: 2025,
+    quarter: 4,
+    total_campus_area_m2: 25000,
+    green_area_m2: 7300,
+    campus_population: 5600,
+    dense_vegetation_area_m2: 3600,
+    rainwater_absorption_area_m2: 4300,
+    sustainability_budget: 98000,
+    conservation_operation_budget: 65000,
+    username: "admin",
+  },
+  {
+    year: 2026,
+    quarter: 1,
+    total_campus_area_m2: 25000,
+    green_area_m2: 7600,
+    campus_population: 5750,
+    dense_vegetation_area_m2: 3800,
+    rainwater_absorption_area_m2: 4500,
+    sustainability_budget: 104000,
+    conservation_operation_budget: 67000,
+    username: "admin",
+  },
+  {
+    year: 2026,
+    quarter: 2,
+    total_campus_area_m2: 25000,
+    green_area_m2: 8100,
+    campus_population: 5980,
+    dense_vegetation_area_m2: 4100,
+    rainwater_absorption_area_m2: 4900,
+    sustainability_budget: 112000,
+    conservation_operation_budget: 70000,
+    username: "admin",
+  },
+  {
+    year: 2026,
+    quarter: 3,
+    total_campus_area_m2: 25000,
+    green_area_m2: 8350,
+    campus_population: 6120,
+    dense_vegetation_area_m2: 4350,
+    rainwater_absorption_area_m2: 5200,
+    sustainability_budget: 120000,
+    conservation_operation_budget: 73000,
+    username: "admin",
   },
 ];
 

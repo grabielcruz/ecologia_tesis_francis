@@ -18,6 +18,7 @@ import { ProposalCreateModal } from "./components/proposals/ProposalCreateModal"
 import { ProposalsListSection } from "./components/proposals/ProposalsListSection";
 import { Report } from "./components/reports/Report";
 import { Reports } from "./components/reports/Reports";
+import { GreenMetricsSection } from "./components/greenMetrics/GreenMetricsSection";
 import { AiChatWidget } from "./components/chatbot/AiChatWidget";
 import { TreeTypeDetailSection } from "./components/treeTypes/TreeTypeDetailSection";
 import { TreeTypesSection } from "./components/treeTypes/TreeTypesSection";
@@ -27,6 +28,7 @@ import { AdminUserFormModal } from "./components/users/AdminUserFormModal";
 import { AdminUsersSection } from "./components/users/AdminUsersSection";
 import { UserDetailsModal } from "./components/users/UserDetailsModal";
 import { useProposalWorkflow } from "./features/proposals/useProposalWorkflow";
+import { useGreenMetrics } from "./features/greenMetrics/useGreenMetrics";
 import { useReports } from "./features/reports/useReports";
 import {
   getPageHeaderMeta,
@@ -339,6 +341,21 @@ function App() {
     token,
     route,
     greenSpaces,
+    setError,
+    setSuccessMessage,
+  });
+  const {
+    records: greenMetricRecords,
+    latestRecord: latestGreenMetricRecord,
+    isSubmitting: isSubmittingGreenMetric,
+    isLoading: isLoadingGreenMetrics,
+    formInput: greenMetricFormInput,
+    setFormValue: setGreenMetricFormValue,
+    saveQuarterlyRecord,
+  } = useGreenMetrics({
+    token,
+    route,
+    userRole: user?.role,
     setError,
     setSuccessMessage,
   });
@@ -926,6 +943,7 @@ function App() {
     isGreenSpacesRoute,
     isProjectsRoute,
     isReportsRoute,
+    isGreenMetricsRoute,
     isTreeTypesRoute,
     isTreesRoute,
   } = getRouteFlags(route);
@@ -2843,6 +2861,21 @@ function App() {
     );
   };
 
+  const renderGreenMetricsSection = () => {
+    return (
+      <GreenMetricsSection
+        records={greenMetricRecords}
+        latestRecord={latestGreenMetricRecord}
+        formInput={greenMetricFormInput}
+        isSubmitting={isSubmittingGreenMetric}
+        isLoading={isLoadingGreenMetrics}
+        userRole={user?.role}
+        onSetFormValue={setGreenMetricFormValue}
+        onSave={saveQuarterlyRecord}
+      />
+    );
+  };
+
   const renderReportDetailSection = () => {
     return (
       <Report
@@ -3061,6 +3094,10 @@ function App() {
 
     if (route === "/reports") {
       return renderReportsSection();
+    }
+
+    if (route === "/green-metrics") {
+      return renderGreenMetricsSection();
     }
 
     if (route === "/tree-types") {
@@ -3304,6 +3341,7 @@ function App() {
           isGreenSpacesRoute={isGreenSpacesRoute}
           isProjectsRoute={isProjectsRoute}
           isReportsRoute={isReportsRoute}
+          isGreenMetricsRoute={isGreenMetricsRoute}
           isTreeTypesRoute={isTreeTypesRoute}
           isTreesRoute={isTreesRoute}
           answeredPolls={answeredPolls}
@@ -3317,6 +3355,7 @@ function App() {
           onNavigateProposals={() => navigate("/proposals")}
           onNavigateProjects={openProjects}
           onNavigateReports={() => navigate("/reports")}
+          onNavigateGreenMetrics={() => navigate("/green-metrics")}
           onNavigateTreeTypes={() => navigate("/tree-types")}
           onNavigateTrees={() => navigate("/trees")}
           onNavigateUsers={() => navigate("/admin-users")}

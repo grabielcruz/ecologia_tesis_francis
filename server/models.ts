@@ -472,6 +472,129 @@ ReportOfGreenArea.init(
   },
 );
 
+export class GreenMetricQuarterlyRecord extends Model {}
+GreenMetricQuarterlyRecord.init(
+  {
+    record_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    year: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    quarter: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    period_start: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    period_end: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    total_campus_area_m2: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    green_area_m2: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    campus_population: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    dense_vegetation_area_m2: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    rainwater_absorption_area_m2: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    sustainability_budget: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    conservation_operation_budget: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    metric_1_green_area_ratio: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    metric_2_green_area_per_capita: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    metric_3_dense_vegetation_ratio: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    metric_4_rainwater_absorption_ratio: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    metric_5_sustainability_budget_share: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    metric_6_conservation_operation_share: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    created_by_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "GreenMetricQuarterlyRecord",
+    tableName: "GreenMetricQuarterlyRecord",
+    freezeTableName: true,
+    timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ["year", "quarter"],
+      },
+    ],
+  },
+);
+
 export class ProposalOfGreenArea extends Model {}
 ProposalOfGreenArea.init(
   {
@@ -707,6 +830,12 @@ User.belongsTo(Role, { foreignKey: "role_id" });
 
 User.hasMany(ReportOfGreenArea, { foreignKey: "user_id" });
 ReportOfGreenArea.belongsTo(User, { foreignKey: "user_id" });
+
+User.hasMany(GreenMetricQuarterlyRecord, { foreignKey: "created_by_user_id" });
+GreenMetricQuarterlyRecord.belongsTo(User, {
+  foreignKey: "created_by_user_id",
+  as: "CreatedBy",
+});
 
 GreenSpace.hasMany(ReportOfGreenArea, { foreignKey: "space_id" });
 ReportOfGreenArea.belongsTo(GreenSpace, { foreignKey: "space_id" });
