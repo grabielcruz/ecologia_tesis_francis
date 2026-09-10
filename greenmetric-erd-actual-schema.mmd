@@ -57,7 +57,46 @@ erDiagram
         string name
         enum health_status "healthy|regular|sick|dead"
         int space_id FK
-        int type_id FK
+        int type_id FK "nullable"
+        enum status "pending|approved|rejected"
+        int submitted_by_user_id FK
+        int validated_by_user_id FK "nullable"
+        text images
+        datetime created_at
+        datetime updated_at
+    }
+
+    TreeTypeSuggestion {
+        int tree_type_suggestion_id PK
+        string name
+        text description
+        text reference_images
+        enum status "pending|approved|rejected"
+        int suggested_by_user_id FK
+        int approved_by_user_id FK "nullable"
+        int tree_type_id FK "nullable"
+        string admin_notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    GreenMetricRecord {
+        int record_id PK
+        datetime calculation_date
+        float total_campus_area_m2
+        float green_area_m2
+        int campus_population
+        float dense_vegetation_area_m2
+        float rainwater_absorption_area_m2
+        float sustainability_budget
+        float conservation_operation_budget
+        float metric_1_green_area_ratio
+        float metric_2_green_area_per_capita
+        float metric_3_dense_vegetation_ratio
+        float metric_4_rainwater_absorption_ratio
+        float metric_5_sustainability_budget_share
+        float metric_6_conservation_operation_share
+        int created_by_user_id FK
         datetime created_at
         datetime updated_at
     }
@@ -80,6 +119,7 @@ erDiagram
         text description
         enum status "draft|open|closed|approved|rejected"
         int total_votes
+        int minimum_votes_required "nullable"
         datetime voting_starts "nullable"
         datetime voting_ends "nullable"
         int user_id FK
@@ -129,6 +169,8 @@ erDiagram
     User ||--o{ ProposalOfGreenArea : proposes
     GreenSpace ||--o{ ProposalOfGreenArea : has
 
+    User ||--o{ GreenMetricRecord : records
+
     ProposalOfGreenArea ||--o{ VoteOfProposal : receives
     User ||--o{ VoteOfProposal : casts
 
@@ -139,3 +181,9 @@ erDiagram
 
     GreenSpace ||--o{ TreeInventory : contains
     TreeType ||--o{ TreeInventory : classifies
+    User ||--o{ TreeInventory : submits
+    User ||--o{ TreeInventory : validates
+
+    User ||--o{ TreeTypeSuggestion : suggests
+    User ||--o{ TreeTypeSuggestion : reviews
+    TreeType ||--o{ TreeTypeSuggestion : links

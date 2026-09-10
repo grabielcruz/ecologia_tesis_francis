@@ -48,7 +48,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    return res.status(401).json({ error: "Token inválido" });
   }
 };
 
@@ -72,7 +72,8 @@ const optionalAuthenticate = (
     req.user = payload;
     return next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    req.user = undefined;
+    return next();
   }
 };
 
@@ -99,7 +100,7 @@ const uploadProjectUpdateImages = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Solo se permiten imagenes") as any, false);
+      return cb(new Error("Solo se permiten imágenes") as any, false);
     }
     cb(null, true);
   },
@@ -304,16 +305,16 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
   if (!title || !description) {
     return res
       .status(400)
-      .json({ error: "Titulo y descripcion son obligatorios" });
+      .json({ error: "Título y descripción son obligatorios" });
   }
 
   if (!Number.isFinite(spaceId)) {
-    return res.status(400).json({ error: "Area verde invalida" });
+    return res.status(400).json({ error: "Área verde inválida" });
   }
 
   const greenSpace = await GreenSpace.findByPk(spaceId);
   if (!greenSpace) {
-    return res.status(404).json({ error: "Area verde no encontrada" });
+    return res.status(404).json({ error: "Área verde no encontrada" });
   }
 
   const proposal = await ProposalOfGreenArea.create({
@@ -346,7 +347,7 @@ router.post(
     if (!Number.isFinite(proposalId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de propuesta invalido" });
+        .json({ error: "Identificador de propuesta inválido" });
     }
 
     const proposal = await ProposalOfGreenArea.findByPk(proposalId);
@@ -358,7 +359,7 @@ router.post(
     if (status !== "open") {
       return res
         .status(409)
-        .json({ error: "La propuesta no esta habilitada para votacion" });
+        .json({ error: "La propuesta no está habilitada para votación" });
     }
 
     const now = new Date();
@@ -373,14 +374,14 @@ router.post(
       minimumVotesRequiredRaw <= 0
     ) {
       return res.status(409).json({
-        error: "La propuesta no tiene minimo de votos configurado",
+        error: "La propuesta no tiene mínimo de votos configurado",
       });
     }
 
     if (!votingStartsRaw || !votingEndsRaw) {
       return res
         .status(409)
-        .json({ error: "La propuesta aun no fue validada para votacion" });
+        .json({ error: "La propuesta aún no fue validada para votación" });
     }
 
     const votingStarts = new Date(String(votingStartsRaw));
@@ -392,13 +393,13 @@ router.post(
     ) {
       return res
         .status(409)
-        .json({ error: "La ventana de votacion esta cerrada" });
+        .json({ error: "La ventana de votación está cerrada" });
     }
 
     if (now < votingStarts) {
       return res
         .status(409)
-        .json({ error: "La ventana de votacion esta cerrada" });
+        .json({ error: "La ventana de votación está cerrada" });
     }
 
     const existingVote = await VoteOfProposal.findOne({
@@ -446,14 +447,14 @@ router.patch(
     if (!Number.isFinite(proposalId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de propuesta invalido" });
+        .json({ error: "Identificador de propuesta inválido" });
     }
 
     const decision = String(req.body?.decision || "")
       .trim()
       .toLowerCase();
     if (decision !== "accepted" && decision !== "rejected") {
-      return res.status(400).json({ error: "Decision invalida" });
+      return res.status(400).json({ error: "Decisión inválida" });
     }
 
     const votingStartsRaw = String(req.body?.votingStarts || "").trim();
@@ -503,7 +504,7 @@ router.patch(
       votingStarts >= votingEnds
     ) {
       return res.status(400).json({
-        error: "La ventana de votacion es invalida",
+        error: "La ventana de votación es inválida",
       });
     }
 
@@ -512,7 +513,7 @@ router.patch(
       minimumVotesRequiredRaw <= 0
     ) {
       return res.status(400).json({
-        error: "El minimo de votos requeridos es invalido",
+        error: "El mínimo de votos requeridos es inválido",
       });
     }
 
@@ -540,7 +541,7 @@ router.post(
     if (!Number.isFinite(proposalId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de propuesta invalido" });
+        .json({ error: "Identificador de propuesta inválido" });
     }
 
     const proposal = await ProposalOfGreenArea.findByPk(proposalId);
@@ -552,13 +553,13 @@ router.post(
     if (status === "rejected") {
       return res
         .status(409)
-        .json({ error: "La propuesta fue rechazada por administracion" });
+        .json({ error: "La propuesta fue rechazada por administración" });
     }
 
     if (status !== "open") {
       return res
         .status(409)
-        .json({ error: "La propuesta no esta habilitada para finalizar" });
+        .json({ error: "La propuesta no está habilitada para finalizar" });
     }
 
     const finalizedResult = await finalizeOpenProposal(proposal);
@@ -586,7 +587,7 @@ router.delete(
     if (!Number.isFinite(proposalId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de propuesta invalido" });
+        .json({ error: "Identificador de propuesta inválido" });
     }
 
     const proposal = await ProposalOfGreenArea.findByPk(proposalId);
@@ -614,7 +615,7 @@ router.get(
     if (!Number.isFinite(proposalId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de propuesta invalido" });
+        .json({ error: "Identificador de propuesta inválido" });
     }
 
     const proposal = await ProposalOfGreenArea.findByPk(proposalId);
@@ -694,7 +695,7 @@ router.get(
     if (!Number.isFinite(projectId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de proyecto invalido" });
+        .json({ error: "Identificador de proyecto inválido" });
     }
 
     const project = await ProjectOfProposal.findByPk(projectId);
@@ -706,7 +707,7 @@ router.get(
       project.getDataValue("proposal_of_green_area_id"),
     );
     if (!Number.isFinite(proposalId)) {
-      return res.status(409).json({ error: "Proyecto sin propuesta valida" });
+      return res.status(409).json({ error: "Proyecto sin propuesta válida" });
     }
 
     const proposal = await ProposalOfGreenArea.findByPk(proposalId);
@@ -741,7 +742,7 @@ router.post(
   async (_req: AuthRequest, res: Response) => {
     const files = (_req.files as Express.Multer.File[]) || [];
     if (!files.length) {
-      return res.status(400).json({ error: "No se recibieron imagenes" });
+      return res.status(400).json({ error: "No se recibieron imágenes" });
     }
 
     try {
@@ -763,7 +764,7 @@ router.post(
     } catch {
       return res
         .status(500)
-        .json({ error: "No se pudieron subir las imagenes" });
+        .json({ error: "No se pudieron subir las imágenes" });
     }
   },
 );
@@ -777,7 +778,7 @@ router.post(
     if (!Number.isFinite(projectId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de proyecto invalido" });
+        .json({ error: "Identificador de proyecto inválido" });
     }
 
     if (!req.user) {
@@ -796,7 +797,7 @@ router.post(
     if (!description) {
       return res
         .status(400)
-        .json({ error: "La descripcion de actividad es obligatoria" });
+        .json({ error: "La descripción de actividad es obligatoria" });
     }
 
     const created = await ProjectUpdateOfProposal.create({
@@ -835,7 +836,7 @@ router.put(
     const updateId = Number(req.params.updateId);
 
     if (!Number.isFinite(projectId) || !Number.isFinite(updateId)) {
-      return res.status(400).json({ error: "Identificadores invalidos" });
+      return res.status(400).json({ error: "Identificadores inválidos" });
     }
 
     const projectUpdate = await ProjectUpdateOfProposal.findByPk(updateId);
@@ -866,7 +867,7 @@ router.put(
       if (!description) {
         return res
           .status(400)
-          .json({ error: "La descripcion de actividad es obligatoria" });
+          .json({ error: "La descripción de actividad es obligatoria" });
       }
       payload.description = description;
     }
@@ -900,7 +901,7 @@ router.delete(
     const updateId = Number(req.params.updateId);
 
     if (!Number.isFinite(projectId) || !Number.isFinite(updateId)) {
-      return res.status(400).json({ error: "Identificadores invalidos" });
+      return res.status(400).json({ error: "Identificadores inválidos" });
     }
 
     const projectUpdate = await ProjectUpdateOfProposal.findByPk(updateId);
@@ -932,7 +933,7 @@ router.patch(
     if (!Number.isFinite(projectId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de proyecto invalido" });
+        .json({ error: "Identificador de proyecto inválido" });
     }
 
     const completedStatus = String(req.body?.completedStatus || "")
@@ -944,7 +945,7 @@ router.patch(
       completedStatus !== "in_progress" &&
       completedStatus !== "completed"
     ) {
-      return res.status(400).json({ error: "Estado de proyecto invalido" });
+      return res.status(400).json({ error: "Estado de proyecto inválido" });
     }
 
     const project = await ProjectOfProposal.findByPk(projectId);

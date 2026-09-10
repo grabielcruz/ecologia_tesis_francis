@@ -20,6 +20,23 @@ const buildJsonResponse = (
     json: () => Promise.resolve(payload),
   } as Response);
 
+const toBase64Url = (value: unknown) =>
+  btoa(JSON.stringify(value))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+
+const buildMockJwt = (expSecondsFromNow = 3600) => {
+  const header = toBase64Url({ alg: "HS256", typ: "JWT" });
+  const payload = toBase64Url({
+    user_id: 1,
+    role: "regular",
+    exp: Math.floor(Date.now() / 1000) + expSecondsFromNow,
+  });
+
+  return `${header}.${payload}.signature`;
+};
+
 describe("App UI", () => {
   beforeEach(() => {
     cleanup();
@@ -38,7 +55,7 @@ describe("App UI", () => {
   });
 
   it("redirects to login when an authenticated request returns 401", async () => {
-    localStorage.setItem("token", "expired-token");
+    localStorage.setItem("token", buildMockJwt(3600));
     localStorage.setItem(
       "user",
       JSON.stringify({
@@ -67,7 +84,7 @@ describe("App UI", () => {
   });
 
   it("navigates from proposal summary counter to filtered proposals list", async () => {
-    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("token", buildMockJwt(3600));
     localStorage.setItem(
       "user",
       JSON.stringify({
@@ -159,7 +176,7 @@ describe("App UI", () => {
   });
 
   it("allows admin to validate a draft proposal with voting window", async () => {
-    localStorage.setItem("token", "admin-token");
+    localStorage.setItem("token", buildMockJwt(3600));
     localStorage.setItem(
       "user",
       JSON.stringify({

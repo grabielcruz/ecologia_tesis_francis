@@ -3,7 +3,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import jwt from "jsonwebtoken";
 import greenMetricsRoutes from "./greenMetrics";
-import { GreenMetricQuarterlyRecord } from "../models";
+import { GreenMetricRecord } from "../models";
 
 vi.mock("jsonwebtoken", () => ({
   default: {
@@ -12,7 +12,7 @@ vi.mock("jsonwebtoken", () => ({
 }));
 
 vi.mock("../models", () => ({
-  GreenMetricQuarterlyRecord: {
+  GreenMetricRecord: {
     findAll: vi.fn(),
     findOne: vi.fn(),
     findByPk: vi.fn(),
@@ -28,10 +28,7 @@ app.use("/api/green-metrics", greenMetricsRoutes);
 const makeRecordRow = (overrides?: Record<string, unknown>) => {
   const values: Record<string, unknown> = {
     record_id: 7,
-    year: 2026,
-    quarter: 2,
-    period_start: "2026-04-01T00:00:00.000Z",
-    period_end: "2026-06-30T23:59:59.000Z",
+    calculation_date: "2026-05-15T00:00:00.000Z",
     total_campus_area_m2: 25000,
     green_area_m2: 8200,
     campus_population: 6100,
@@ -80,11 +77,11 @@ describe("green metrics routes", () => {
       user_id: 2,
       role: "regular",
     } as never);
-    vi.mocked(GreenMetricQuarterlyRecord.findAll).mockResolvedValue([] as never);
+    vi.mocked(GreenMetricRecord.findAll).mockResolvedValue([] as never);
   });
 
-  it("lists quarterly records", async () => {
-    vi.mocked(GreenMetricQuarterlyRecord.findAll).mockResolvedValue([
+  it("lists records", async () => {
+    vi.mocked(GreenMetricRecord.findAll).mockResolvedValue([
       makeRecordRow(),
     ] as never);
 
@@ -93,8 +90,7 @@ describe("green metrics routes", () => {
     expect(response.status).toBe(200);
     expect(response.body).toHaveLength(1);
     expect(response.body[0]).toMatchObject({
-      year: 2026,
-      quarter: 2,
+      calculationDate: "2026-05-15T00:00:00.000Z",
     });
   });
 
@@ -103,25 +99,24 @@ describe("green metrics routes", () => {
       .post("/api/green-metrics")
       .set("Authorization", "Bearer any-token")
       .send({
-        year: 2026,
-        quarter: 2,
+        calculationDate: "2026-05-15",
       });
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ error: "Solo administradores" });
   });
 
-  it("creates a quarterly record with computed metrics for admin", async () => {
+  it("creates a date-based record with computed metrics for admin", async () => {
     vi.mocked(jwt.verify).mockReturnValue({
       user_id: 1,
       role: "admin",
     } as never);
 
-    vi.mocked(GreenMetricQuarterlyRecord.findOne).mockResolvedValue(null as never);
-    vi.mocked(GreenMetricQuarterlyRecord.create).mockResolvedValue(
+    vi.mocked(GreenMetricRecord.findOne).mockResolvedValue(null as never);
+    vi.mocked(GreenMetricRecord.create).mockResolvedValue(
       makeRecordRow() as never,
     );
-    vi.mocked(GreenMetricQuarterlyRecord.findByPk).mockResolvedValue(
+    vi.mocked(GreenMetricRecord.findByPk).mockResolvedValue(
       makeRecordRow() as never,
     );
 
@@ -129,8 +124,7 @@ describe("green metrics routes", () => {
       .post("/api/green-metrics")
       .set("Authorization", "Bearer any-token")
       .send({
-        year: 2026,
-        quarter: 2,
+        calculationDate: "2026-05-15",
         totalCampusAreaM2: 25000,
         greenAreaM2: 10000,
         campusPopulation: 5000,
@@ -141,25 +135,24 @@ describe("green metrics routes", () => {
       });
 
     expect(response.status).toBe(201);
-    expect(GreenMetricQuarterlyRecord.create).toHaveBeenCalledWith(
+    expect(GreenMetricRecord.create).toHaveBeenCalledWith(
       expect.objectContaining({
+        calculation_date: new Date("2026-05-15T00:00:00.000Z"),
         metric_1_green_area_ratio: 40,
         metric_2_green_area_per_capita: 2,
       }),
     );
   });
 
-  it("updates existing quarter when record already exists", async () => {
+  it("updates existing record when date already exists", async () => {
     vi.mocked(jwt.verify).mockReturnValue({
       user_id: 1,
       role: "admin",
     } as never);
 
     const existing = makeRecordRow();
-    vi.mocked(GreenMetricQuarterlyRecord.findOne).mockResolvedValue(
-      existing as never,
-    );
-    vi.mocked(GreenMetricQuarterlyRecord.findByPk).mockResolvedValue(
+    vi.mocked(GreenMetricRecord.findOne).mockResolvedValue(existing as never);
+    vi.mocked(GreenMetricRecord.findByPk).mockResolvedValue(
       makeRecordRow() as never,
     );
 
@@ -167,8 +160,7 @@ describe("green metrics routes", () => {
       .post("/api/green-metrics")
       .set("Authorization", "Bearer any-token")
       .send({
-        year: 2026,
-        quarter: 2,
+        calculationDate: "2026-05-15",
         totalCampusAreaM2: 25000,
         greenAreaM2: 9500,
         campusPopulation: 4800,
@@ -180,5 +172,22 @@ describe("green metrics routes", () => {
 
     expect(response.status).toBe(200);
     expect(existing.update).toHaveBeenCalled();
+  });
+
+  it("validates calculation date", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const response = await request(app)
+      .post("/api/green-metrics")
+      .set("Authorization", "Bearer any-token")
+      .send({
+        calculationDate: "invalid-date",
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: "Fecha de cálculo inválida" });
   });
 });

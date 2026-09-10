@@ -40,21 +40,21 @@ export function ProposalCreateModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Nueva propuesta"
-      description="Registra una propuesta de mejora para un area verde."
+      description="Registra una propuesta de mejora para un área verde."
     >
       <form className="admin-form" onSubmit={onSubmit}>
         <div className="field-row">
           <label>
-            Titulo
+            Título
             <input
               value={proposalTitleInput}
               onChange={(e) => setProposalTitleInput(e.target.value)}
-              placeholder="Ej: Reforestacion del sendero norte"
+              placeholder="Ej: Reforestación del sendero norte"
               required
             />
           </label>
           <label>
-            Area verde
+            Área verde
             <select
               value={String(proposalSpaceIdInput)}
               onChange={(e) => setProposalSpaceIdInput(Number(e.target.value))}
@@ -69,7 +69,7 @@ export function ProposalCreateModal({
           </label>
         </div>
         <label>
-          Descripcion
+          Descripción
           <textarea
             value={proposalDescriptionInput}
             onChange={(e) => setProposalDescriptionInput(e.target.value)}

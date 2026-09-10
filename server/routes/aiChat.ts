@@ -47,7 +47,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    return res.status(401).json({ error: "Token inválido" });
   }
 };
 
@@ -136,11 +136,11 @@ const buildFallbackReply = (
     .join(", ");
   return [
     "No pude conectarme con Gemini en este momento.",
-    "Resumen rapido de la plataforma:",
+    "Resumen rápido de la plataforma:",
     `Usuarios: ${appDataContext.totals.users}`,
-    `Areas verdes: ${appDataContext.totals.greenSpaces}`,
-    `Arboles: ${appDataContext.totals.trees}`,
-    `Tipos de arbol: ${appDataContext.totals.treeTypes}`,
+    `Áreas verdes: ${appDataContext.totals.greenSpaces}`,
+    `Árboles: ${appDataContext.totals.trees}`,
+    `Tipos de árbol: ${appDataContext.totals.treeTypes}`,
     `Reportes: ${appDataContext.totals.reports}`,
     `Propuestas: ${appDataContext.totals.proposals}`,
     `Proyectos: ${appDataContext.totals.projects}`,
@@ -161,7 +161,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
 
   if (!GEMINI_API_KEY) {
     return res.status(500).json({
-      error: "La variable GEMINI_API_KEY no esta configurada en el servidor.",
+      error: "La variable GEMINI_API_KEY no está configurada en el servidor.",
     });
   }
 
@@ -173,7 +173,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
         role: "user",
         parts: [
           {
-            text: `Contexto de datos actualizados de la aplicacion (JSON):\n${JSON.stringify(
+            text: `Contexto de datos actualizados de la aplicación (JSON):\n${JSON.stringify(
               appDataContext,
               null,
               2,
@@ -199,7 +199,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
       systemInstruction: {
         parts: [
           {
-            text: "Eres un asistente de una plataforma de ecologia universitaria. Responde SIEMPRE en espanol claro. Si preguntan por datos de la app, usa el contexto JSON dado y di cuando algo no este disponible. No inventes metricas.",
+            text: "Eres un asistente de una plataforma de ecología universitaria. Responde SIEMPRE en español claro. Si preguntan por datos de la app, usa el contexto JSON dado y di cuando algo no esté disponible. No inventes métricas.",
           },
         ],
       },

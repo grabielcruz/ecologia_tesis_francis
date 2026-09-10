@@ -93,9 +93,8 @@ export interface ProjectUpdateOfProposalSeed {
   created_at: string;
 }
 
-export interface GreenMetricQuarterlySeed {
-  year: number;
-  quarter: 1 | 2 | 3 | 4;
+export interface GreenMetricRecordSeed {
+  calculation_date: string;
   total_campus_area_m2: number;
   green_area_m2: number;
   campus_population: number;
@@ -482,10 +481,9 @@ export const reportOfGreenAreaSeeds: ReportOfGreenAreaSeed[] = [
   },
 ];
 
-export const greenMetricQuarterlySeeds: GreenMetricQuarterlySeed[] = [
+export const greenMetricRecordSeeds: GreenMetricRecordSeed[] = [
   {
-    year: 2025,
-    quarter: 4,
+    calculation_date: "2025-11-15T00:00:00.000Z",
     total_campus_area_m2: 25000,
     green_area_m2: 7300,
     campus_population: 5600,
@@ -496,8 +494,7 @@ export const greenMetricQuarterlySeeds: GreenMetricQuarterlySeed[] = [
     username: "admin",
   },
   {
-    year: 2026,
-    quarter: 1,
+    calculation_date: "2026-02-15T00:00:00.000Z",
     total_campus_area_m2: 25000,
     green_area_m2: 7600,
     campus_population: 5750,
@@ -508,8 +505,7 @@ export const greenMetricQuarterlySeeds: GreenMetricQuarterlySeed[] = [
     username: "admin",
   },
   {
-    year: 2026,
-    quarter: 2,
+    calculation_date: "2026-05-15T00:00:00.000Z",
     total_campus_area_m2: 25000,
     green_area_m2: 8100,
     campus_population: 5980,
@@ -520,8 +516,7 @@ export const greenMetricQuarterlySeeds: GreenMetricQuarterlySeed[] = [
     username: "admin",
   },
   {
-    year: 2026,
-    quarter: 3,
+    calculation_date: "2026-08-15T00:00:00.000Z",
     total_campus_area_m2: 25000,
     green_area_m2: 8350,
     campus_population: 6120,

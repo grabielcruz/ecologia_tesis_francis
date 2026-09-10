@@ -27,7 +27,7 @@ export function UserDetailsModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Detalle de usuario"
-      description="Informacion completa del registro seleccionado."
+      description="Información completa del registro seleccionado."
     >
       <div className="admin-form">
         <div className="details-grid">

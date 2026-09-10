@@ -107,6 +107,27 @@ function App() {
   const getErrorMessage = (error: unknown, fallback: string) =>
     error instanceof Error && error.message ? error.message : fallback;
 
+  const parseJwtPayload = (jwtToken: string): { exp?: number } | null => {
+    const segments = jwtToken.split(".");
+    if (segments.length !== 3) return null;
+
+    try {
+      const base64 = segments[1].replace(/-/g, "+").replace(/_/g, "/");
+      const paddedBase64 = base64.padEnd(
+        base64.length + ((4 - (base64.length % 4)) % 4),
+        "=",
+      );
+      const payload = JSON.parse(window.atob(paddedBase64));
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      return payload as { exp?: number };
+    } catch {
+      return null;
+    }
+  };
+
   const resolveAvatarUrl = (avatarUrl?: string | null) => {
     if (!avatarUrl) return "/default-avatar.svg";
     if (
@@ -351,7 +372,7 @@ function App() {
     isLoading: isLoadingGreenMetrics,
     formInput: greenMetricFormInput,
     setFormValue: setGreenMetricFormValue,
-    saveQuarterlyRecord,
+    saveRecord,
   } = useGreenMetrics({
     token,
     route,
@@ -531,7 +552,7 @@ function App() {
           localStorage.removeItem("user");
           setToken(null);
           setUser(null);
-          setError("Tu sesion expiro. Inicia sesion nuevamente.");
+          setError("Tu sesión expiró. Inicia sesión nuevamente.");
           navigate("/login", true);
           window.setTimeout(() => {
             isHandlingUnauthorizedRef.current = false;
@@ -551,14 +572,29 @@ function App() {
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      const storedAnswers = localStorage.getItem(
-        `pollAnswers-${parsedUser.username}`,
-      );
-      if (storedAnswers) {
-        setPollAnswers(JSON.parse(storedAnswers));
+      const tokenPayload = parseJwtPayload(storedToken);
+      const tokenIsExpired =
+        typeof tokenPayload?.exp === "number" &&
+        tokenPayload.exp * 1000 <= Date.now();
+
+      if (!tokenPayload || tokenIsExpired) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      } else {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setToken(storedToken);
+          setUser(parsedUser);
+          const storedAnswers = localStorage.getItem(
+            `pollAnswers-${parsedUser.username}`,
+          );
+          if (storedAnswers) {
+            setPollAnswers(JSON.parse(storedAnswers));
+          }
+        } catch {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
       }
     }
 
@@ -641,14 +677,14 @@ function App() {
       const res = await fetch("/api/green-spaces");
       if (!res.ok) {
         setGreenSpaces([]);
-        setError("No se pudieron cargar las areas verdes");
+        setError("No se pudieron cargar las áreas verdes");
         return;
       }
       const data = await res.json();
       setGreenSpaces(Array.isArray(data) ? data : []);
     } catch {
       setGreenSpaces([]);
-      setError("No se pudieron cargar las areas verdes");
+      setError("No se pudieron cargar las áreas verdes");
     }
   };
 
@@ -658,7 +694,7 @@ function App() {
       if (!res.ok) {
         setSurveys([]);
         setUserPage(1);
-        setError("El modulo de encuestas aun no esta disponible");
+        setError("El módulo de encuestas aún no está disponible");
         return;
       }
       const data = await res.json();
@@ -741,7 +777,7 @@ function App() {
         setSurveys([]);
         setTotalPages(1);
         setError(
-          "El modulo de encuestas de administrador aun no esta disponible",
+          "El módulo de encuestas de administrador aún no está disponible",
         );
         return;
       }
@@ -1036,7 +1072,7 @@ function App() {
 
         if (!response.ok) {
           setTreeTypeInventoryRows([]);
-          setError("No se pudo cargar el inventario de este tipo de arbol");
+          setError("No se pudo cargar el inventario de este tipo de árbol");
           return;
         }
 
@@ -1044,7 +1080,7 @@ function App() {
         setTreeTypeInventoryRows(Array.isArray(data) ? data : []);
       } catch {
         setTreeTypeInventoryRows([]);
-        setError("No se pudo cargar el inventario de este tipo de arbol");
+        setError("No se pudo cargar el inventario de este tipo de árbol");
       }
     };
 
@@ -1084,14 +1120,14 @@ function App() {
             return;
           }
 
-          setError("No se pudo cargar el detalle del arbol");
+          setError("No se pudo cargar el detalle del árbol");
           return;
         }
 
         const data = await response.json();
         setSelectedTreeDetail(data as TreeInventoryItem);
       } catch {
-        setError("No se pudo cargar el detalle del arbol");
+        setError("No se pudo cargar el detalle del árbol");
       }
     };
 
@@ -1344,7 +1380,7 @@ function App() {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     if (!token) {
-      setError("Solo administradores pueden subir imagenes");
+      setError("Solo administradores pueden subir imágenes");
       return;
     }
 
@@ -1363,7 +1399,7 @@ function App() {
       });
 
       if (!response.ok) {
-        setError("No se pudieron subir las imagenes");
+        setError("No se pudieron subir las imágenes");
         return;
       }
 
@@ -1384,7 +1420,7 @@ function App() {
       }
       event.target.value = "";
     } catch {
-      setError("No se pudieron subir las imagenes");
+      setError("No se pudieron subir las imágenes");
     } finally {
       setUploadingSpaceImages(false);
     }
@@ -1393,7 +1429,7 @@ function App() {
   const saveGreenSpace = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token) {
-      setError("Solo administradores pueden registrar areas verdes");
+      setError("Solo administradores pueden registrar áreas verdes");
       return;
     }
 
@@ -1430,7 +1466,7 @@ function App() {
       });
 
       if (!response.ok) {
-        setError("No se pudo guardar el area verde");
+        setError("No se pudo guardar el área verde");
         return;
       }
 
@@ -1439,12 +1475,12 @@ function App() {
       fetchGreenSpaces();
       setSuccessMessage(
         editingGreenSpace
-          ? "Area verde actualizada correctamente."
-          : "Area verde registrada correctamente.",
+          ? "Área verde actualizada correctamente."
+          : "Área verde registrada correctamente.",
       );
       setError(null);
     } catch {
-      setError("No se pudo guardar el area verde");
+      setError("No se pudo guardar el área verde");
     }
   };
 
@@ -1460,7 +1496,7 @@ function App() {
 
   const deleteGreenSpace = async (id: number) => {
     if (!token) {
-      setError("Solo administradores pueden eliminar areas verdes");
+      setError("Solo administradores pueden eliminar áreas verdes");
       return;
     }
 
@@ -1473,7 +1509,7 @@ function App() {
       });
 
       if (!response.ok) {
-        setError("No se pudo eliminar el area verde");
+        setError("No se pudo eliminar el área verde");
         return;
       }
 
@@ -1481,10 +1517,10 @@ function App() {
         resetGreenSpaceForm();
       }
       fetchGreenSpaces();
-      setSuccessMessage("Area verde eliminada correctamente.");
+      setSuccessMessage("Área verde eliminada correctamente.");
       setError(null);
     } catch {
-      setError("No se pudo eliminar el area verde");
+      setError("No se pudo eliminar el área verde");
     }
   };
 
@@ -1504,7 +1540,7 @@ function App() {
 
   const submitGreenSpaceReview = async (greenSpaceId: number) => {
     if (!token) {
-      setError("Debes iniciar sesion para enviar una reseña");
+      setError("Debes iniciar sesión para enviar una reseña");
       return;
     }
 
@@ -2871,7 +2907,7 @@ function App() {
         isLoading={isLoadingGreenMetrics}
         userRole={user?.role}
         onSetFormValue={setGreenMetricFormValue}
-        onSave={saveQuarterlyRecord}
+        onSave={saveRecord}
       />
     );
   };

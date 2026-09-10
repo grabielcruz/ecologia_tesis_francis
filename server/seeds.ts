@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import {
-  GreenMetricQuarterlyRecord,
+  GreenMetricRecord,
   GreenSpace,
   GreenSpaceReview,
   ProjectOfProposal,
@@ -15,7 +15,7 @@ import {
   sequelize,
 } from "./models";
 import {
-  greenMetricQuarterlySeeds,
+  greenMetricRecordSeeds,
   greenSpaceSeeds,
   greenSpaceReviewSeeds,
   projectOfProposalSeeds,
@@ -195,48 +195,39 @@ export async function seedDatabase() {
     });
   }
 
-  for (const quarterlySeed of greenMetricQuarterlySeeds) {
-    const userId = userIdByUsername[quarterlySeed.username];
+  for (const metricSeed of greenMetricRecordSeeds) {
+    const userId = userIdByUsername[metricSeed.username];
     if (!userId) {
       throw new Error(
-        `User not found for quarterly metric seed: ${quarterlySeed.username}`,
+        `User not found for green metric seed: ${metricSeed.username}`,
       );
     }
 
-    const quarter = quarterlySeed.quarter;
-    const year = quarterlySeed.year;
-    const startMonthIndex = (quarter - 1) * 3;
-    const periodStart = new Date(Date.UTC(year, startMonthIndex, 1));
-    const periodEnd = new Date(
-      Date.UTC(year, startMonthIndex + 3, 0, 23, 59, 59),
-    );
-
-    const totalArea = quarterlySeed.total_campus_area_m2;
-    const greenArea = quarterlySeed.green_area_m2;
-    const denseArea = quarterlySeed.dense_vegetation_area_m2;
-    const rainArea = quarterlySeed.rainwater_absorption_area_m2;
-    const sustainabilityBudget = quarterlySeed.sustainability_budget;
-    const conservationBudget = quarterlySeed.conservation_operation_budget;
+    const totalArea = metricSeed.total_campus_area_m2;
+    const greenArea = metricSeed.green_area_m2;
+    const denseArea = metricSeed.dense_vegetation_area_m2;
+    const rainArea = metricSeed.rainwater_absorption_area_m2;
+    const sustainabilityBudget = metricSeed.sustainability_budget;
+    const conservationBudget = metricSeed.conservation_operation_budget;
     const totalBudget = sustainabilityBudget + conservationBudget;
 
     const metric1 = totalArea > 0 ? (greenArea / totalArea) * 100 : 0;
     const metric2 =
-      quarterlySeed.campus_population > 0
-        ? greenArea / quarterlySeed.campus_population
+      metricSeed.campus_population > 0
+        ? greenArea / metricSeed.campus_population
         : 0;
     const metric3 = totalArea > 0 ? (denseArea / totalArea) * 100 : 0;
     const metric4 = totalArea > 0 ? (rainArea / totalArea) * 100 : 0;
-    const metric5 = totalBudget > 0 ? (sustainabilityBudget / totalBudget) * 100 : 0;
-    const metric6 = totalBudget > 0 ? (conservationBudget / totalBudget) * 100 : 0;
+    const metric5 =
+      totalBudget > 0 ? (sustainabilityBudget / totalBudget) * 100 : 0;
+    const metric6 =
+      totalBudget > 0 ? (conservationBudget / totalBudget) * 100 : 0;
 
-    await GreenMetricQuarterlyRecord.create({
-      year,
-      quarter,
-      period_start: periodStart,
-      period_end: periodEnd,
+    await GreenMetricRecord.create({
+      calculation_date: new Date(metricSeed.calculation_date),
       total_campus_area_m2: totalArea,
       green_area_m2: greenArea,
-      campus_population: quarterlySeed.campus_population,
+      campus_population: metricSeed.campus_population,
       dense_vegetation_area_m2: denseArea,
       rainwater_absorption_area_m2: rainArea,
       sustainability_budget: sustainabilityBudget,
@@ -393,7 +384,7 @@ export async function seedDatabase() {
   }
 
   console.log(
-    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${greenMetricQuarterlySeeds.length} quarterly metric records, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
+    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${greenMetricRecordSeeds.length} green metric records, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
   );
 }
 

@@ -34,11 +34,11 @@ export function ProposalsListSection({
   onOpenProposalDetailPage,
 }: ProposalsListSectionProps) {
   const statusLabel: Record<Proposal["status"], string> = {
-    draft: "Pendiente de validacion",
-    open: "Votacion abierta",
-    closed: "Cerrada sin aprobacion",
-    approved: "Aprobada por votacion",
-    rejected: "Rechazada por administracion",
+    draft: "Pendiente de validación",
+    open: "Votación abierta",
+    closed: "Cerrada sin aprobación",
+    approved: "Aprobada por votación",
+    rejected: "Rechazada por administración",
   };
 
   const projectStatusLabel: Record<ProjectExecutionStatus, string> = {
@@ -78,14 +78,14 @@ export function ProposalsListSection({
   const proposalColumns: DefaultTableColumn<Proposal>[] = [
     {
       key: "title",
-      label: "Titulo",
+      label: "Título",
       sortable: true,
       sortValue: (proposal) => proposal.title,
       render: (proposal) => proposal.title,
     },
     {
       key: "space",
-      label: "Area",
+      label: "Área",
       sortable: true,
       sortValue: (proposal) => getSpaceName(proposal.spaceId),
       render: (proposal) => getSpaceName(proposal.spaceId),
@@ -113,7 +113,7 @@ export function ProposalsListSection({
     },
     {
       key: "voteThreshold",
-      label: "Aprobacion",
+      label: "Aprobación",
       sortable: true,
       sortValue: (proposal) => {
         const thresholdStatus = getVoteThresholdStatus(proposal);
@@ -161,8 +161,8 @@ export function ProposalsListSection({
         <div>
           <h2>Propuestas de mejora</h2>
           <p>
-            Los usuarios registran propuestas para areas verdes y se aprueban
-            mediante votacion.
+            Los usuarios registran propuestas para áreas verdes y se aprueban
+            mediante votación.
           </p>
         </div>
       </div>
@@ -184,7 +184,7 @@ export function ProposalsListSection({
             }
             onClick={() => setProposalStatusFilter("open")}
           >
-            Votacion abierta
+            Votación abierta
           </button>
           <button
             type="button"
@@ -214,7 +214,7 @@ export function ProposalsListSection({
             `${proposal.title} ${proposal.description} ${proposal.status} ${getSpaceName(proposal.spaceId)}`
           }
           emptyMessage="No hay propuestas visibles por el momento."
-          searchPlaceholder="Buscar por titulo, descripcion o estado"
+          searchPlaceholder="Buscar por título, descripción o estado"
           onAdd={onOpenCreateProposalModal}
           addButtonLabel="Nueva propuesta"
         />

@@ -96,7 +96,8 @@ export function Report({
   const reportImages = selectedReport.images || [];
   const isCreator = currentUserId === selectedReport.userId;
   const canEdit = isCreator && selectedReport.state === "open";
-  const canComplete = currentUserRole === "admin" && selectedReport.state === "open";
+  const canComplete =
+    currentUserRole === "admin" && selectedReport.state === "open";
   const canDelete =
     currentUserRole === "admin" && selectedReport.state === "closed";
 
@@ -222,7 +223,7 @@ export function Report({
           setShowCompleteModal(false);
         }}
         title="Marcar reporte como completado"
-        description="Esta accion cambiara el estado del reporte a cerrado."
+        description="Esta acción cambiará el estado del reporte a cerrado."
       >
         <p>Desea marcar este reporte como completado?</p>
         <div className="button-row">
@@ -253,9 +254,9 @@ export function Report({
           setShowDeleteModal(false);
         }}
         title="Eliminar reporte"
-        description="Esta accion eliminara el reporte seleccionado."
+        description="Esta acción eliminará el reporte seleccionado."
       >
-        <p>Esta seguro de que desea continuar?</p>
+        <p>¿Está seguro de que desea continuar?</p>
         <div className="button-row">
           <button
             type="button"

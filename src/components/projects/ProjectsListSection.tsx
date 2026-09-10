@@ -32,7 +32,7 @@ export function ProjectsListSection({
     },
     {
       key: "space",
-      label: "Area",
+      label: "Área",
       sortable: true,
       sortValue: (entry) => getSpaceName(entry.project.spaceId),
       render: (entry) => getSpaceName(entry.project.spaceId),
@@ -64,7 +64,7 @@ export function ProjectsListSection({
       <div className="admin-header">
         <div>
           <h2>Proyectos</h2>
-          <p>Proyectos creados desde propuestas aprobadas por votacion.</p>
+          <p>Proyectos creados desde propuestas aprobadas por votación.</p>
         </div>
       </div>
 
@@ -79,7 +79,7 @@ export function ProjectsListSection({
             `${entry.project.title} ${entry.project.description} ${entry.project.completedStatus} ${entry.proposal.title} ${entry.proposal.description} ${entry.latestUpdate?.title || ""} ${entry.latestUpdate?.description || ""} ${getSpaceName(entry.project.spaceId)}`
           }
           emptyMessage="No hay proyectos visibles por el momento."
-          searchPlaceholder="Buscar por proyecto, propuesta, area o estado"
+          searchPlaceholder="Buscar por proyecto, propuesta, área o estado"
         />
       </article>
     </section>

@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { seedDatabase } from "./seeds";
 import {
-  GreenMetricQuarterlyRecord,
+  GreenMetricRecord,
   GreenSpace,
   GreenSpaceReview,
   ProjectOfProposal,
@@ -17,7 +17,7 @@ import {
   sequelize,
 } from "./models";
 import {
-  greenMetricQuarterlySeeds,
+  greenMetricRecordSeeds,
   greenSpaceReviewSeeds,
   greenSpaceSeeds,
   projectOfProposalSeeds,
@@ -77,9 +77,7 @@ describe("seedDatabase", () => {
     );
     vi.spyOn(TreeInventory, "create").mockResolvedValue({} as never);
     vi.spyOn(ReportOfGreenArea, "create").mockResolvedValue({} as never);
-    vi.spyOn(GreenMetricQuarterlyRecord, "create").mockResolvedValue(
-      {} as never,
-    );
+    vi.spyOn(GreenMetricRecord, "create").mockResolvedValue({} as never);
 
     vi.spyOn(ProposalOfGreenArea, "create").mockImplementation(
       async (payload?: Record<string, unknown>) =>
@@ -127,8 +125,8 @@ describe("seedDatabase", () => {
     expect(ReportOfGreenArea.create).toHaveBeenCalledTimes(
       reportOfGreenAreaSeeds.length,
     );
-    expect(GreenMetricQuarterlyRecord.create).toHaveBeenCalledTimes(
-      greenMetricQuarterlySeeds.length,
+    expect(GreenMetricRecord.create).toHaveBeenCalledTimes(
+      greenMetricRecordSeeds.length,
     );
     expect(ProposalOfGreenArea.create).toHaveBeenCalledTimes(
       proposalSeeds.length,

@@ -25,7 +25,7 @@ export function GreenSpaceDetailsModal({
     <AppModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Detalle de area verde"
+      title="Detalle de área verde"
       description={greenSpace.name}
     >
       <div className="admin-form">
@@ -35,15 +35,15 @@ export function GreenSpaceDetailsModal({
             <strong>{greenSpace.name}</strong>
           </div>
           <div className="details-item">
-            <span>Ubicacion</span>
+            <span>Ubicación</span>
             <strong>{greenSpace.location}</strong>
           </div>
           <div className="details-item">
-            <span>Area total</span>
+            <span>Área total</span>
             <strong>{greenSpace.totalAreaM2} m2</strong>
           </div>
           <div className="details-item">
-            <span>Arboles altos</span>
+            <span>Árboles altos</span>
             <strong>{greenSpace.tallTreeCount}</strong>
           </div>
         </div>

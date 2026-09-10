@@ -68,28 +68,28 @@ export function GreenSpacesSection({
     },
     {
       key: "location",
-      label: "Ubicacion",
+      label: "Ubicación",
       sortable: true,
       sortValue: (space) => space.location,
       render: (space) => space.location,
     },
     {
       key: "area",
-      label: "Area",
+      label: "Área",
       sortable: true,
       sortValue: (space) => space.totalAreaM2,
       render: (space) => `${space.totalAreaM2} m2`,
     },
     {
       key: "trees",
-      label: "Arboles",
+      label: "Árboles",
       sortable: true,
       sortValue: (space) => space.tallTreeCount,
       render: (space) => space.tallTreeCount,
     },
     {
       key: "rating",
-      label: "Valoracion",
+      label: "Valoración",
       sortable: true,
       sortValue: (space) => Number(space.reviewSummary?.averageRating ?? 0),
       render: (space) => (
@@ -108,13 +108,13 @@ export function GreenSpacesSection({
     <section className="box admin-box">
       <div className="admin-header">
         <div>
-          <h2>Administracion de areas verdes</h2>
+          <h2>Administración de áreas verdes</h2>
           <p>Gestiona los espacios verdes del campus.</p>
         </div>
       </div>
 
       <article className="principal-panel">
-        <h3>Areas verdes del campus</h3>
+        <h3>Áreas verdes del campus</h3>
         <DefaultTable
           rows={greenSpaces}
           columns={greenSpaceColumns}
@@ -123,10 +123,10 @@ export function GreenSpacesSection({
           getSearchText={(space) =>
             `${space.name} ${space.location} ${space.totalAreaM2} ${space.tallTreeCount}`
           }
-          emptyMessage="No hay areas verdes registradas."
-          searchPlaceholder="Buscar por nombre o ubicacion"
+          emptyMessage="No hay áreas verdes registradas."
+          searchPlaceholder="Buscar por nombre o ubicación"
           onAdd={userRole === "admin" ? onOpenCreateGreenSpaceModal : undefined}
-          addButtonLabel="Nueva area verde"
+          addButtonLabel="Nueva área verde"
         />
       </article>
       {greenSpaceModal}

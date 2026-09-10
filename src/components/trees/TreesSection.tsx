@@ -123,7 +123,7 @@ export function TreesSection({
     },
     {
       key: "name",
-      label: "Arbol",
+      label: "Árbol",
       sortable: true,
       sortValue: (tree) => tree.name,
       render: (tree) => tree.name,
@@ -141,7 +141,7 @@ export function TreesSection({
     },
     {
       key: "status",
-      label: "Validacion",
+      label: "Validación",
       sortable: true,
       sortValue: (tree) => tree.status,
       render: (tree) => (
@@ -159,7 +159,7 @@ export function TreesSection({
     },
     {
       key: "space",
-      label: "Area verde",
+      label: "Área verde",
       sortable: true,
       sortValue: (tree) => tree.greenSpace?.name || "",
       render: (tree) => tree.greenSpace?.name || "-",
@@ -209,17 +209,17 @@ export function TreesSection({
   return (
     <section className="box reports-box">
       <article className="principal-panel">
-        <h3>Inventario de arboles</h3>
+        <h3>Inventario de árboles</h3>
         <p>
-          Registro de arboles reales presentes en las areas verdes, vinculados a
+          Registro de árboles reales presentes en las áreas verdes, vinculados a
           tipos oficiales.
         </p>
         {(userRole === "admin" || userRole === "regular") && (
           <div className="button-row">
             <button type="button" onClick={openCreateModal}>
               {userRole === "regular"
-                ? "Registrar arbol para validacion"
-                : "Registrar arbol"}
+                ? "Registrar árbol para validación"
+                : "Registrar árbol"}
             </button>
           </div>
         )}
@@ -230,12 +230,12 @@ export function TreesSection({
               className="secondary"
               onClick={onOpenGreenSpaces}
             >
-              Areas verdes
+              Áreas verdes
             </button>
             <span className="small muted">/</span>
-            <span className="small muted">Arboles filtrados</span>
+            <span className="small muted">Árboles filtrados</span>
             <p className="small muted">
-              Mostrando arboles del area:{" "}
+              Mostrando árboles del área:{" "}
               <strong>{selectedSpaceFilterName}</strong>
             </p>
             <button
@@ -255,8 +255,8 @@ export function TreesSection({
           getSearchText={(tree) =>
             `${tree.name} ${tree.healthStatus} ${tree.treeType?.name || ""} ${tree.greenSpace?.name || ""}`
           }
-          emptyMessage="No hay arboles registrados por el momento."
-          searchPlaceholder="Buscar por nombre, tipo, salud o area"
+          emptyMessage="No hay árboles registrados por el momento."
+          searchPlaceholder="Buscar por nombre, tipo, salud o área"
         />
       </article>
 

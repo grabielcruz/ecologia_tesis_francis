@@ -63,14 +63,14 @@ export function ReportForm({
       title={isEditing ? "Editar reporte" : "Registrar reporte"}
       description={
         isEditing
-          ? "Actualiza la informacion del reporte mientras este abierto."
-          : "Crea una queja o sugerencia para un area verde."
+          ? "Actualiza la información del reporte mientras esté abierto."
+          : "Crea una queja o sugerencia para un área verde."
       }
     >
       <form className="admin-form" onSubmit={onSubmit}>
         <div className="field-row">
           <label>
-            Titulo
+            Título
             <input
               value={reportTitleInput}
               onChange={(e) => setReportTitleInput(e.target.value)}
@@ -79,7 +79,7 @@ export function ReportForm({
             />
           </label>
           <label>
-            Area verde
+            Área verde
             <select
               value={reportSpaceIdInput}
               onChange={(e) => setReportSpaceIdInput(Number(e.target.value))}
@@ -95,7 +95,7 @@ export function ReportForm({
         </div>
 
         <label>
-          Descripcion
+          Descripción
           <textarea
             value={reportDescriptionInput}
             onChange={(e) => setReportDescriptionInput(e.target.value)}
@@ -120,7 +120,7 @@ export function ReportForm({
         )}
 
         <label>
-          Imagenes
+          Imágenes
           <input
             type="file"
             accept="image/*"

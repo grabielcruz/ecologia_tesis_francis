@@ -49,7 +49,7 @@ export function ProposalDetailSection({
   if (!proposal || !selectedProposalId) {
     return (
       <section className="box">
-        <p>La propuesta solicitada no existe o no esta disponible.</p>
+        <p>La propuesta solicitada no existe o no está disponible.</p>
         <button type="button" onClick={onBack}>
           Volver a propuestas
         </button>
@@ -112,7 +112,7 @@ export function ProposalDetailSection({
       <article className="principal-panel">
         <div className="details-grid">
           <div className="details-item full-width">
-            <span>Descripcion</span>
+            <span>Descripción</span>
             <strong>{proposal.description}</strong>
           </div>
           <div className="details-item">
@@ -124,7 +124,7 @@ export function ProposalDetailSection({
             <strong>{proposal.totalVotes}</strong>
           </div>
           <div className="details-item">
-            <span>Minimo para aprobar</span>
+            <span>Mínimo para aprobar</span>
             <strong>
               {proposal.minimumVotesRequired &&
               proposal.minimumVotesRequired > 0
@@ -133,7 +133,7 @@ export function ProposalDetailSection({
             </strong>
           </div>
           <div className="details-item">
-            <span>Progreso de votacion</span>
+            <span>Progreso de votación</span>
             <strong>
               {proposal.minimumVotesRequired &&
               proposal.minimumVotesRequired > 0
@@ -142,7 +142,7 @@ export function ProposalDetailSection({
             </strong>
           </div>
           <div className="details-item full-width">
-            <span>Estado de aprobacion por votos</span>
+            <span>Estado de aprobación por votos</span>
             <strong>
               <span
                 className={`pill proposal-vote-threshold-status ${voteThresholdStatus.className} proposal-threshold-pill`}
@@ -172,7 +172,7 @@ export function ProposalDetailSection({
             <h4>Acciones administrativas</h4>
             <div className="field-row">
               <label>
-                Minimo de votos requeridos
+                Mínimo de votos requeridos
                 <input
                   type="number"
                   min={1}
@@ -185,7 +185,7 @@ export function ProposalDetailSection({
             </div>
             <div className="field-row">
               <label>
-                Inicio de votacion
+                Inicio de votación
                 <input
                   type="datetime-local"
                   value={votingStart}
@@ -193,7 +193,7 @@ export function ProposalDetailSection({
                 />
               </label>
               <label>
-                Fin de votacion
+                Fin de votación
                 <input
                   type="datetime-local"
                   value={votingEnd}
@@ -207,7 +207,7 @@ export function ProposalDetailSection({
                 onClick={() => onAcceptProposal(proposal.id)}
                 disabled={proposalActionLoadingId === proposal.id}
               >
-                Guardar y abrir votacion
+                Guardar y abrir votación
               </button>
               <button
                 type="button"
@@ -229,7 +229,7 @@ export function ProposalDetailSection({
               onClick={() => onFinalizeProposal(proposal.id)}
               disabled={proposalActionLoadingId === proposal.id}
             >
-              Finalizar votacion
+              Finalizar votación
             </button>
           </div>
         )}
@@ -251,7 +251,7 @@ export function ProposalDetailSection({
           <>
             <h4>Usuarios que votaron</h4>
             {voters.length === 0 ? (
-              <p className="muted">Aun no hay votos registrados.</p>
+              <p className="muted">Aún no hay votos registrados.</p>
             ) : (
               <div className="proposal-voters-list">
                 {voters.map((vote) => (
@@ -280,8 +280,8 @@ export function ProposalDetailSection({
         )}
         {!isProjectLoading && !project && (
           <p className="muted">
-            Esta propuesta aun no tiene proyecto generado. Debe quedar aprobada
-            por votacion y finalizarse para crear el proyecto.
+            Esta propuesta aún no tiene proyecto generado. Debe quedar aprobada
+            por votación y finalizarse para crear el proyecto.
           </p>
         )}
 

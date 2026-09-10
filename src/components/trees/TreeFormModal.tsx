@@ -87,30 +87,30 @@ export function TreeFormModal({
     <AppModal
       isOpen={isOpen}
       onClose={handleClose}
-      title={isEditing ? "Editar arbol" : "Registrar arbol"}
+      title={isEditing ? "Editar árbol" : "Registrar árbol"}
       description={
         isEditing
-          ? "Actualiza la informacion del arbol seleccionado."
+          ? "Actualiza la información del árbol seleccionado."
           : userRole === "regular"
-            ? "Registra un arbol para validacion administrativa."
-            : "Registra un nuevo arbol en el inventario."
+            ? "Registra un árbol para validación administrativa."
+            : "Registra un nuevo árbol en el inventario."
       }
     >
       <form className="admin-form" onSubmit={handleSubmit}>
         {!isEditing && userRole === "admin" && (
           <p className="small muted">
-            Puedes registrar arboles sin tipo y asignar el tipo al editar.
+            Puedes registrar árboles sin tipo y asignar el tipo al editar.
           </p>
         )}
         <label>
-          Nombre del arbol
+          Nombre del árbol
           <input
             value={treeNameInput}
             onChange={(e) => setTreeNameInput(e.target.value)}
             placeholder={
               userRole === "regular"
-                ? "Ejemplo: Arbol nuevo"
-                : "Ejemplo: Arbol JC-10"
+                ? "Ejemplo: Árbol nuevo"
+                : "Ejemplo: Árbol JC-10"
             }
             required
           />
@@ -133,7 +133,7 @@ export function TreeFormModal({
 
         {isEditing && (
           <label>
-            Tipo de arbol
+            Tipo de árbol
             <select
               value={String(treeTypeIdInput)}
               onChange={(e) => setTreeTypeIdInput(Number(e.target.value))}
@@ -149,7 +149,7 @@ export function TreeFormModal({
         )}
 
         <label>
-          Area verde
+          Área verde
           <select
             value={String(treeSpaceIdInput)}
             onChange={(e) => setTreeSpaceIdInput(Number(e.target.value))}
@@ -163,7 +163,7 @@ export function TreeFormModal({
         </label>
 
         <label>
-          Galeria de imagenes (una URL por linea)
+          Galería de imágenes (una URL por línea)
           <textarea
             value={treeImagesInput}
             onChange={(e) => setTreeImagesInput(e.target.value)}
@@ -191,7 +191,7 @@ export function TreeFormModal({
         )}
 
         <label>
-          Subir imagenes para la galeria
+          Subir imágenes para la galería
           <input
             type="file"
             accept="image/*"
@@ -201,7 +201,7 @@ export function TreeFormModal({
           />
         </label>
         {uploadingTreeImages && (
-          <p className="small muted">Subiendo imagenes...</p>
+          <p className="small muted">Subiendo imágenes...</p>
         )}
 
         <div className="button-row">
@@ -215,7 +215,7 @@ export function TreeFormModal({
               : isEditing
                 ? "Actualizar"
                 : userRole === "regular"
-                  ? "Enviar para validacion"
+                  ? "Enviar para validación"
                   : "Registrar"}
           </button>
           <button type="button" className="secondary" onClick={handleClose}>

@@ -49,7 +49,10 @@ describe("greenSpaces routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(GreenSpace.findAll).mockResolvedValue([] as never);
-    vi.mocked(jwt.verify).mockReturnValue({ user_id: 1, role: "admin" } as never);
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
   });
 
   it("returns 401 when token is missing", async () => {
@@ -60,7 +63,10 @@ describe("greenSpaces routes", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    vi.mocked(jwt.verify).mockReturnValue({ user_id: 7, role: "regular" } as never);
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 7,
+      role: "regular",
+    } as never);
 
     const response = await request(app)
       .post("/api/green-spaces")
@@ -78,11 +84,15 @@ describe("greenSpaces routes", () => {
       .send({ location: "Campus", images: ["https://example.com/a.jpg"] });
 
     expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: "Nombre y ubicacion son obligatorios" });
+    expect(response.body).toEqual({
+      error: "Nombre y ubicación son obligatorios",
+    });
   });
 
   it("creates a green space for valid admin payload", async () => {
-    vi.mocked(GreenSpace.create).mockResolvedValue(makeGreenSpaceRow() as never);
+    vi.mocked(GreenSpace.create).mockResolvedValue(
+      makeGreenSpaceRow() as never,
+    );
 
     const response = await request(app)
       .post("/api/green-spaces")

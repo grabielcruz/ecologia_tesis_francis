@@ -275,7 +275,7 @@ describe("proposal routes", () => {
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({
-      error: "La propuesta no tiene minimo de votos configurado",
+      error: "La propuesta no tiene mínimo de votos configurado",
     });
   });
 
@@ -296,7 +296,7 @@ describe("proposal routes", () => {
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({
-      error: "La propuesta no esta habilitada para votacion",
+      error: "La propuesta no está habilitada para votación",
     });
   });
 
@@ -367,7 +367,7 @@ describe("proposal routes", () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
-      error: "La ventana de votacion es invalida",
+      error: "La ventana de votación es inválida",
     });
   });
 
@@ -393,7 +393,7 @@ describe("proposal routes", () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
-      error: "El minimo de votos requeridos es invalido",
+      error: "El mínimo de votos requeridos es inválido",
     });
   });
 

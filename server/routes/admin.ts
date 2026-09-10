@@ -35,7 +35,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    return res.status(401).json({ error: "Token inválido" });
   }
 };
 
@@ -53,11 +53,13 @@ const FIXED_ROLE_NAMES = new Set(["admin", "regular"]);
 router.get("/roles", async (_req, res) => {
   const roles = await Role.findAll({ order: [["role_id", "ASC"]] });
   res.json(
-    roles.map((role) => ({
-      id: role.getDataValue("role_id"),
-      name: role.getDataValue("role_name"),
-      description: role.getDataValue("description"),
-    })).filter((role) => FIXED_ROLE_NAMES.has(String(role.name))),
+    roles
+      .map((role) => ({
+        id: role.getDataValue("role_id"),
+        name: role.getDataValue("role_name"),
+        description: role.getDataValue("description"),
+      }))
+      .filter((role) => FIXED_ROLE_NAMES.has(String(role.name))),
   );
 });
 
@@ -89,14 +91,17 @@ router.post("/users", async (req, res) => {
   const email = String(req.body?.email || "").trim();
   const password = String(req.body?.password || "");
   const roleId = Number(req.body?.roleId);
-  const isActive = req.body?.isActive === undefined ? true : Boolean(req.body?.isActive);
+  const isActive =
+    req.body?.isActive === undefined ? true : Boolean(req.body?.isActive);
 
   if (!name || !username || !email || !password) {
-    return res.status(400).json({ error: "Nombre, usuario, correo y contrasena son obligatorios" });
+    return res
+      .status(400)
+      .json({ error: "Nombre, usuario, correo y contraseña son obligatorios" });
   }
 
   if (!Number.isFinite(roleId)) {
-    return res.status(400).json({ error: "Rol invalido" });
+    return res.status(400).json({ error: "Rol inválido" });
   }
 
   const role = await Role.findByPk(roleId);
@@ -105,7 +110,9 @@ router.post("/users", async (req, res) => {
   }
 
   if (!FIXED_ROLE_NAMES.has(String(role.getDataValue("role_name") || ""))) {
-    return res.status(400).json({ error: "Solo se permiten roles fijos: admin y regular" });
+    return res
+      .status(400)
+      .json({ error: "Solo se permiten roles fijos: admin y regular" });
   }
 
   const byUsername = await User.findOne({ where: { username } });
@@ -144,7 +151,7 @@ router.post("/users", async (req, res) => {
 router.put("/users/:id", async (req, res) => {
   const userId = Number(req.params.id);
   if (!Number.isFinite(userId)) {
-    return res.status(400).json({ error: "Identificador de usuario invalido" });
+    return res.status(400).json({ error: "Identificador de usuario inválido" });
   }
 
   const user = await User.findByPk(userId);
@@ -153,10 +160,14 @@ router.put("/users/:id", async (req, res) => {
   }
 
   const name = String(req.body?.name || user.getDataValue("name")).trim();
-  const username = String(req.body?.username || user.getDataValue("username")).trim();
+  const username = String(
+    req.body?.username || user.getDataValue("username"),
+  ).trim();
   const email = String(req.body?.email || user.getDataValue("email")).trim();
   const roleId = Number(
-    req.body?.roleId === undefined ? user.getDataValue("role_id") : req.body?.roleId,
+    req.body?.roleId === undefined
+      ? user.getDataValue("role_id")
+      : req.body?.roleId,
   );
   const isActive =
     req.body?.isActive === undefined
@@ -165,11 +176,13 @@ router.put("/users/:id", async (req, res) => {
   const password = String(req.body?.password || "").trim();
 
   if (!name || !username || !email) {
-    return res.status(400).json({ error: "Nombre, usuario y correo son obligatorios" });
+    return res
+      .status(400)
+      .json({ error: "Nombre, usuario y correo son obligatorios" });
   }
 
   if (!Number.isFinite(roleId)) {
-    return res.status(400).json({ error: "Rol invalido" });
+    return res.status(400).json({ error: "Rol inválido" });
   }
 
   const role = await Role.findByPk(roleId);
@@ -183,11 +196,17 @@ router.put("/users/:id", async (req, res) => {
     String(currentRole?.getDataValue("role_name") || "") === "admin" &&
     roleId !== Number(user.getDataValue("role_id"))
   ) {
-    return res.status(409).json({ error: "No se puede cambiar el rol del usuario administrador original" });
+    return res
+      .status(409)
+      .json({
+        error: "No se puede cambiar el rol del usuario administrador original",
+      });
   }
 
   if (!FIXED_ROLE_NAMES.has(String(role.getDataValue("role_name") || ""))) {
-    return res.status(400).json({ error: "Solo se permiten roles fijos: admin y regular" });
+    return res
+      .status(400)
+      .json({ error: "Solo se permiten roles fijos: admin y regular" });
   }
 
   const byUsername = await User.findOne({ where: { username } });
@@ -228,11 +247,13 @@ router.put("/users/:id", async (req, res) => {
 router.delete("/users/:id", async (req: AuthRequest, res) => {
   const userId = Number(req.params.id);
   if (!Number.isFinite(userId)) {
-    return res.status(400).json({ error: "Identificador de usuario invalido" });
+    return res.status(400).json({ error: "Identificador de usuario inválido" });
   }
 
   if (req.user?.user_id === userId) {
-    return res.status(409).json({ error: "No puedes eliminar tu propio usuario" });
+    return res
+      .status(409)
+      .json({ error: "No puedes eliminar tu propio usuario" });
   }
 
   const user = await User.findByPk(userId);
@@ -245,15 +266,20 @@ router.delete("/users/:id", async (req: AuthRequest, res) => {
     String(user.getDataValue("username") || "") === "admin" &&
     String(userRole?.getDataValue("role_name") || "") === "admin"
   ) {
-    return res.status(409).json({ error: "No se puede eliminar el usuario administrador original" });
+    return res
+      .status(409)
+      .json({
+        error: "No se puede eliminar el usuario administrador original",
+      });
   }
 
-  const [reviewCount, reportCount, proposalCount, voteCount] = await Promise.all([
-    GreenSpaceReview.count({ where: { user_id: userId } }),
-    ReportOfGreenArea.count({ where: { user_id: userId } }),
-    ProposalOfGreenArea.count({ where: { user_id: userId } }),
-    VoteOfProposal.count({ where: { user_id: userId } }),
-  ]);
+  const [reviewCount, reportCount, proposalCount, voteCount] =
+    await Promise.all([
+      GreenSpaceReview.count({ where: { user_id: userId } }),
+      ReportOfGreenArea.count({ where: { user_id: userId } }),
+      ProposalOfGreenArea.count({ where: { user_id: userId } }),
+      VoteOfProposal.count({ where: { user_id: userId } }),
+    ]);
 
   const totalLinkedRecords =
     reviewCount + reportCount + proposalCount + voteCount;

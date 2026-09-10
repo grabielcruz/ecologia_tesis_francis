@@ -41,7 +41,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    return res.status(401).json({ error: "Token inválido" });
   }
 };
 
@@ -65,7 +65,8 @@ const optionalAuthenticate = (
     req.user = payload;
     return next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    req.user = undefined;
+    return next();
   }
 };
 
@@ -74,7 +75,7 @@ const uploadReportImages = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Solo se permiten imagenes") as any, false);
+      return cb(new Error("Solo se permiten imágenes") as any, false);
     }
     cb(null, true);
   },
@@ -186,7 +187,7 @@ router.get(
     if (!Number.isFinite(reportId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de reporte invalido" });
+        .json({ error: "Identificador de reporte inválido" });
     }
 
     const report = await ReportOfGreenArea.findByPk(reportId, {
@@ -211,7 +212,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     const files = (req.files as Express.Multer.File[]) || [];
     if (!files.length) {
-      return res.status(400).json({ error: "No se recibieron imagenes" });
+      return res.status(400).json({ error: "No se recibieron imágenes" });
     }
 
     try {
@@ -233,7 +234,7 @@ router.post(
     } catch {
       return res
         .status(500)
-        .json({ error: "No se pudieron subir las imagenes" });
+        .json({ error: "No se pudieron subir las imágenes" });
     }
   },
 );
@@ -251,16 +252,16 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
   if (!title || !description) {
     return res
       .status(400)
-      .json({ error: "Titulo y descripcion son obligatorios" });
+      .json({ error: "Título y descripción son obligatorios" });
   }
 
   if (!Number.isFinite(spaceId) || spaceId <= 0) {
-    return res.status(400).json({ error: "Area verde invalida" });
+    return res.status(400).json({ error: "Área verde inválida" });
   }
 
   const space = await GreenSpace.findByPk(spaceId);
   if (!space) {
-    return res.status(404).json({ error: "Area verde no encontrada" });
+    return res.status(404).json({ error: "Área verde no encontrada" });
   }
 
   const created = await ReportOfGreenArea.create({
@@ -301,7 +302,7 @@ router.put("/:id", authenticate, async (req: AuthRequest, res: Response) => {
 
   const reportId = Number(req.params.id);
   if (!Number.isFinite(reportId)) {
-    return res.status(400).json({ error: "Identificador de reporte invalido" });
+    return res.status(400).json({ error: "Identificador de reporte inválido" });
   }
 
   const report = await ReportOfGreenArea.findByPk(reportId);
@@ -330,7 +331,7 @@ router.put("/:id", authenticate, async (req: AuthRequest, res: Response) => {
   if (!title || !description) {
     return res
       .status(400)
-      .json({ error: "Titulo y descripcion son obligatorios" });
+      .json({ error: "Título y descripción son obligatorios" });
   }
 
   await report.update({
@@ -371,7 +372,7 @@ router.patch(
     if (!Number.isFinite(reportId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de reporte invalido" });
+        .json({ error: "Identificador de reporte inválido" });
     }
 
     const report = await ReportOfGreenArea.findByPk(reportId);
@@ -381,7 +382,7 @@ router.patch(
 
     const currentState = normalizeState(report.getDataValue("state"));
     if (currentState === "closed") {
-      return res.status(409).json({ error: "El reporte ya esta cerrado" });
+      return res.status(409).json({ error: "El reporte ya está cerrado" });
     }
 
     await report.update({
@@ -415,7 +416,7 @@ router.delete("/:id", authenticate, async (req: AuthRequest, res: Response) => {
 
   const reportId = Number(req.params.id);
   if (!Number.isFinite(reportId)) {
-    return res.status(400).json({ error: "Identificador de reporte invalido" });
+    return res.status(400).json({ error: "Identificador de reporte inválido" });
   }
 
   const report = await ReportOfGreenArea.findByPk(reportId);

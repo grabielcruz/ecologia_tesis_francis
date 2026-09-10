@@ -59,7 +59,7 @@ export function AdminUserFormModal({
       description={
         editingUserId
           ? "Actualiza datos del usuario o elimina si no tiene registros relacionados."
-          : "Completa la informacion para crear un nuevo usuario del sistema."
+          : "Completa la información para crear un nuevo usuario del sistema."
       }
     >
       <form className="admin-form" onSubmit={onSubmit}>
@@ -93,7 +93,7 @@ export function AdminUserFormModal({
             />
           </label>
           <label>
-            Contrasena {editingUserId ? "(opcional)" : ""}
+            Contraseña {editingUserId ? "(opcional)" : ""}
             <input
               type="password"
               value={userPasswordInput}

@@ -147,7 +147,7 @@ export function useReports({
     const files = event.target.files;
     if (!files || files.length === 0) return;
     if (!token) {
-      setError("Debes iniciar sesion para subir imagenes");
+      setError("Debes iniciar sesión para subir imágenes");
       return;
     }
 
@@ -166,7 +166,7 @@ export function useReports({
       });
 
       if (!response.ok) {
-        setError("No se pudieron subir las imagenes del reporte");
+        setError("No se pudieron subir las imágenes del reporte");
         return;
       }
 
@@ -187,7 +187,7 @@ export function useReports({
       }
       event.target.value = "";
     } catch {
-      setError("No se pudieron subir las imagenes del reporte");
+      setError("No se pudieron subir las imágenes del reporte");
     } finally {
       setUploadingReportImages(false);
     }
@@ -196,17 +196,17 @@ export function useReports({
   const saveReport = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token) {
-      setError("Debes iniciar sesion para registrar un reporte");
+      setError("Debes iniciar sesión para registrar un reporte");
       return;
     }
 
     if (!reportTitleInput.trim() || !reportDescriptionInput.trim()) {
-      setError("Completa titulo y descripcion del reporte");
+      setError("Completa título y descripción del reporte");
       return;
     }
 
     if (!Number.isFinite(reportSpaceIdInput) || reportSpaceIdInput <= 0) {
-      setError("Selecciona un area verde valida");
+      setError("Selecciona un área verde válida");
       return;
     }
 
@@ -276,7 +276,7 @@ export function useReports({
 
   const deleteReport = async (reportId: number) => {
     if (!token) {
-      setError("Debes iniciar sesion para eliminar reportes");
+      setError("Debes iniciar sesión para eliminar reportes");
       return false;
     }
 
@@ -307,7 +307,7 @@ export function useReports({
 
   const completeReport = async (reportId: number) => {
     if (!token) {
-      setError("Debes iniciar sesion para completar reportes");
+      setError("Debes iniciar sesión para completar reportes");
       return false;
     }
 

@@ -102,7 +102,7 @@ export function TreeTypeDetailSection({
   if (!selectedTreeTypeId) {
     return (
       <section className="box">
-        <p>El tipo de arbol solicitado no existe.</p>
+        <p>El tipo de árbol solicitado no existe.</p>
         <button type="button" onClick={onBack}>
           Volver
         </button>
@@ -113,7 +113,7 @@ export function TreeTypeDetailSection({
   if (!selectedTreeType) {
     return (
       <section className="box">
-        <p>Cargando tipo de arbol...</p>
+        <p>Cargando tipo de árbol...</p>
         <button type="button" onClick={onBack}>
           Volver
         </button>
@@ -146,7 +146,7 @@ export function TreeTypeDetailSection({
     },
     {
       key: "name",
-      label: "Arbol",
+      label: "Árbol",
       sortable: true,
       sortValue: (tree) => tree.name,
       render: (tree) => tree.name,
@@ -164,7 +164,7 @@ export function TreeTypeDetailSection({
     },
     {
       key: "location",
-      label: "Ubicacion",
+      label: "Ubicación",
       sortable: true,
       sortValue: (tree) => tree.greenSpace?.name || "",
       render: (tree) => tree.greenSpace?.name || "-",
@@ -189,7 +189,7 @@ export function TreeTypeDetailSection({
               onOpenTreeDetail(tree);
             }}
           >
-            Ver arbol
+            Ver árbol
           </button>
         ) : (
           <span className="small muted">Sin acciones</span>
@@ -201,7 +201,7 @@ export function TreeTypeDetailSection({
     <section className="box reports-box">
       <div className="button-row">
         <button type="button" className="secondary" onClick={onBack}>
-          Volver a tipos de arboles
+          Volver a tipos de árboles
         </button>
         {userRole === "admin" && (
           <>
@@ -226,12 +226,12 @@ export function TreeTypeDetailSection({
             resolveAssetUrl={resolveAssetUrl}
           />
         ) : (
-          <p>Este tipo de arbol no tiene imagenes referenciales.</p>
+          <p>Este tipo de árbol no tiene imágenes referenciales.</p>
         )}
       </article>
 
       <article className="principal-panel">
-        <h3>Arboles registrados de este tipo</h3>
+        <h3>Árboles registrados de este tipo</h3>
         <DefaultTable
           columns={treeColumns}
           rows={treesOfType}
@@ -240,8 +240,8 @@ export function TreeTypeDetailSection({
           getSearchText={(tree) =>
             `${tree.name} ${tree.healthStatus} ${tree.greenSpace?.name || ""}`
           }
-          emptyMessage="No hay arboles registrados para este tipo todavia."
-          searchPlaceholder="Buscar por nombre, salud o ubicacion"
+          emptyMessage="No hay árboles registrados para este tipo todavía."
+          searchPlaceholder="Buscar por nombre, salud o ubicación"
         />
       </article>
 
@@ -267,10 +267,10 @@ export function TreeTypeDetailSection({
       <AppModal
         isOpen={showDeleteModal}
         onClose={closeDeleteModal}
-        title="Eliminar tipo de arbol"
-        description="Esta accion eliminara el tipo de arbol seleccionado."
+        title="Eliminar tipo de árbol"
+        description="Esta acción eliminará el tipo de árbol seleccionado."
       >
-        <p>Esta seguro de que desea continuar?</p>
+        <p>¿Está seguro de que desea continuar?</p>
         <div className="button-row">
           <button
             type="button"

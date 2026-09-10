@@ -94,7 +94,7 @@ export function ProjectDetailSection({
   if (!selectedProjectEntry) {
     return (
       <section className="box">
-        <p>El proyecto solicitado no existe o no esta disponible.</p>
+        <p>El proyecto solicitado no existe o no está disponible.</p>
         <button type="button" onClick={onBack}>
           Volver a proyectos
         </button>
@@ -134,7 +134,7 @@ export function ProjectDetailSection({
     },
     {
       key: "description",
-      label: "Descripcion",
+      label: "Descripción",
       sortable: true,
       sortValue: (update) => update.description,
       render: (update) => summarizeText(update.description),
@@ -168,7 +168,7 @@ export function ProjectDetailSection({
             ))}
           </div>
         ) : (
-          <span className="small muted">Sin imagenes</span>
+          <span className="small muted">Sin imágenes</span>
         ),
     },
   ];
@@ -189,15 +189,15 @@ export function ProjectDetailSection({
             <strong>{project.title}</strong>
           </div>
           <div className="details-item">
-            <span>Estado de ejecucion</span>
+            <span>Estado de ejecución</span>
             <strong>{statusLabel[project.completedStatus]}</strong>
           </div>
           <div className="details-item full-width">
-            <span>Descripcion del proyecto</span>
+            <span>Descripción del proyecto</span>
             <strong>{project.description}</strong>
           </div>
           <div className="details-item">
-            <span>Area verde</span>
+            <span>Área verde</span>
             <strong>{getSpaceName(project.spaceId)}</strong>
           </div>
           <div className="details-item">
@@ -272,7 +272,7 @@ export function ProjectDetailSection({
             }
             onRowClick={(update) => onOpenProjectActivityDetail(update.id)}
             emptyMessage="No hay actividades registradas por el momento."
-            searchPlaceholder="Buscar por actividad, descripcion o responsable"
+            searchPlaceholder="Buscar por actividad, descripción o responsable"
           />
         )}
       </article>
@@ -291,7 +291,7 @@ export function ProjectDetailSection({
             }
           >
             <label>
-              Titulo de actividad
+              Título de actividad
               <input
                 value={projectUpdateTitleInput}
                 onChange={(e) => setProjectUpdateTitleInput(e.target.value)}
@@ -299,7 +299,7 @@ export function ProjectDetailSection({
               />
             </label>
             <label>
-              Descripcion de actividad
+              Descripción de actividad
               <textarea
                 value={projectUpdateDescriptionInput}
                 onChange={(e) =>
@@ -310,7 +310,7 @@ export function ProjectDetailSection({
               />
             </label>
             <label>
-              Imagenes de actividad
+              Imágenes de actividad
               <input
                 type="file"
                 accept="image/*"
@@ -322,8 +322,8 @@ export function ProjectDetailSection({
               />
               <span className="muted">
                 {uploadingProjectUpdateImages
-                  ? "Subiendo imagenes..."
-                  : "Puedes subir una o varias imagenes"}
+                  ? "Subiendo imágenes..."
+                  : "Puedes subir una o varias imágenes"}
               </span>
             </label>
             <label>
@@ -331,7 +331,7 @@ export function ProjectDetailSection({
               <textarea
                 value={projectUpdateImagesInput}
                 onChange={(e) => setProjectUpdateImagesInput(e.target.value)}
-                placeholder="Se completa automaticamente al subir imagenes"
+                placeholder="Se completa automáticamente al subir imágenes"
               />
             </label>
             <div className="button-row">

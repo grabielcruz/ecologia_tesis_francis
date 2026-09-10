@@ -46,11 +46,11 @@ export function GreenSpaceFormModal({
     <AppModal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? "Editar area verde" : "Registrar area verde"}
+      title={isEditing ? "Editar área verde" : "Registrar área verde"}
       description={
         isEditing
-          ? "Actualiza la informacion del espacio verde."
-          : "Completa la informacion para registrar un nuevo espacio verde."
+          ? "Actualiza la información del espacio verde."
+          : "Completa la información para registrar un nuevo espacio verde."
       }
     >
       <form className="admin-form" onSubmit={onSubmit}>
@@ -65,7 +65,7 @@ export function GreenSpaceFormModal({
             />
           </label>
           <label>
-            Ubicacion
+            Ubicación
             <input
               value={spaceLocation}
               onChange={(e) => onSpaceLocationChange(e.target.value)}
@@ -76,7 +76,7 @@ export function GreenSpaceFormModal({
         </div>
         <div className="field-row">
           <label>
-            Area total (m2)
+            Área total (m2)
             <input
               type="number"
               min="0"
@@ -87,7 +87,7 @@ export function GreenSpaceFormModal({
             />
           </label>
           <label>
-            Numero de arboles altos
+            Número de árboles altos
             <input
               type="number"
               min="0"
@@ -100,7 +100,7 @@ export function GreenSpaceFormModal({
         </div>
 
         <p className="muted">
-          Las imagenes se agregan solo desde tu equipo con el boton "Elegir
+          Las imágenes se agregan solo desde tu equipo con el botón "Elegir
           archivos".
         </p>
         {spaceImagePreviewList.length > 0 && (
@@ -112,7 +112,7 @@ export function GreenSpaceFormModal({
               >
                 <img
                   src={onResolveAssetUrl(image)}
-                  alt={`Previsualizacion ${index + 1}`}
+                  alt={`Previsualización ${index + 1}`}
                 />
                 <figcaption>{image}</figcaption>
               </figure>
@@ -121,7 +121,7 @@ export function GreenSpaceFormModal({
         )}
 
         <label>
-          Imagenes del area verde (solo carga local)
+          Imágenes del área verde (solo carga local)
           <input
             type="file"
             accept="image/*"
@@ -131,10 +131,10 @@ export function GreenSpaceFormModal({
           />
         </label>
         {spaceImagePreviewList.length === 0 && (
-          <p className="muted">Aun no se han subido imagenes.</p>
+          <p className="muted">Aún no se han subido imágenes.</p>
         )}
         {uploadingSpaceImages && (
-          <p className="muted">Subiendo imagenes, por favor espera...</p>
+          <p className="muted">Subiendo imágenes, por favor espera...</p>
         )}
 
         <div className="button-row user-modal-actions">

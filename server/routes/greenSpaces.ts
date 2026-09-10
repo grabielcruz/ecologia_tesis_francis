@@ -42,7 +42,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    return res.status(401).json({ error: "Token inválido" });
   }
 };
 
@@ -58,7 +58,7 @@ const upload = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Solo se permiten imagenes") as any, false);
+      return cb(new Error("Solo se permiten imágenes") as any, false);
     }
     cb(null, true);
   },
@@ -104,7 +104,12 @@ router.get("/", async (_req, res) => {
 
   const reviewsBySpace: Record<
     number,
-    Array<{ username: string; rating: number; comment: string; updatedAt?: string }>
+    Array<{
+      username: string;
+      rating: number;
+      comment: string;
+      updatedAt?: string;
+    }>
   > = {};
 
   for (const review of reviews) {
@@ -134,7 +139,8 @@ router.get("/", async (_req, res) => {
       const totalReviews = rowReviews.length;
       const averageRating =
         totalReviews > 0
-          ? rowReviews.reduce((acc, item) => acc + item.rating, 0) / totalReviews
+          ? rowReviews.reduce((acc, item) => acc + item.rating, 0) /
+            totalReviews
           : 0;
 
       return {
@@ -157,7 +163,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     const files = (req.files as Express.Multer.File[]) || [];
     if (!files.length) {
-      return res.status(400).json({ error: "No se recibieron imagenes" });
+      return res.status(400).json({ error: "No se recibieron imágenes" });
     }
 
     try {
@@ -177,128 +183,159 @@ router.post(
 
       return res.status(201).json({ images: savedUrls });
     } catch {
-      return res.status(500).json({ error: "No se pudieron subir las imagenes" });
+      return res
+        .status(500)
+        .json({ error: "No se pudieron subir las imágenes" });
     }
   },
 );
 
-router.post("/", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
-  const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
+router.post(
+  "/",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
 
-  if (!name || !location) {
-    return res.status(400).json({ error: "Nombre y ubicacion son obligatorios" });
-  }
+    if (!name || !location) {
+      return res
+        .status(400)
+        .json({ error: "Nombre y ubicación son obligatorios" });
+    }
 
-  const imageList = Array.isArray(images)
-    ? images.filter((img) => typeof img === "string" && img.trim().length > 0)
-    : [];
+    const imageList = Array.isArray(images)
+      ? images.filter((img) => typeof img === "string" && img.trim().length > 0)
+      : [];
 
-  if (!imageList.length) {
-    return res.status(400).json({ error: "Debes incluir al menos una imagen" });
-  }
+    if (!imageList.length) {
+      return res
+        .status(400)
+        .json({ error: "Debes incluir al menos una imagen" });
+    }
 
-  const created = await GreenSpace.create({
-    name,
-    location,
-    total_area_m2: Number(totalAreaM2) || 0,
-    trees_count: Number(tallTreeCount) || 0,
-    images: JSON.stringify(imageList),
-    updated_at: new Date(),
-  });
+    const created = await GreenSpace.create({
+      name,
+      location,
+      total_area_m2: Number(totalAreaM2) || 0,
+      trees_count: Number(tallTreeCount) || 0,
+      images: JSON.stringify(imageList),
+      updated_at: new Date(),
+    });
 
-  return res.status(201).json(serializeGreenSpace(created));
-});
+    return res.status(201).json(serializeGreenSpace(created));
+  },
+);
 
-router.put("/:id", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
-  const row = await GreenSpace.findByPk(req.params.id);
-  if (!row) {
-    return res.status(404).json({ error: "Area verde no encontrada" });
-  }
+router.put(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const row = await GreenSpace.findByPk(req.params.id);
+    if (!row) {
+      return res.status(404).json({ error: "Área verde no encontrada" });
+    }
 
-  const updates: Record<string, unknown> = {
-    updated_at: new Date(),
-  };
-  const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
+    const updates: Record<string, unknown> = {
+      updated_at: new Date(),
+    };
+    const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
 
-  if (typeof name !== "undefined") updates.name = name;
-  if (typeof location !== "undefined") updates.location = location;
-  if (typeof totalAreaM2 !== "undefined") {
-    updates.total_area_m2 = Number(totalAreaM2) || 0;
-  }
-  if (typeof tallTreeCount !== "undefined") {
-    updates.trees_count = Number(tallTreeCount) || 0;
-  }
-  if (Array.isArray(images)) {
-    updates.images = JSON.stringify(
-      images.filter((img) => typeof img === "string" && img.trim().length > 0),
-    );
-  }
+    if (typeof name !== "undefined") updates.name = name;
+    if (typeof location !== "undefined") updates.location = location;
+    if (typeof totalAreaM2 !== "undefined") {
+      updates.total_area_m2 = Number(totalAreaM2) || 0;
+    }
+    if (typeof tallTreeCount !== "undefined") {
+      updates.trees_count = Number(tallTreeCount) || 0;
+    }
+    if (Array.isArray(images)) {
+      updates.images = JSON.stringify(
+        images.filter(
+          (img) => typeof img === "string" && img.trim().length > 0,
+        ),
+      );
+    }
 
-  await row.update(updates);
-  return res.json(serializeGreenSpace(row));
-});
+    await row.update(updates);
+    return res.json(serializeGreenSpace(row));
+  },
+);
 
-router.delete("/:id", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
-  const row = await GreenSpace.findByPk(req.params.id);
-  if (!row) {
-    return res.status(404).json({ error: "Area verde no encontrada" });
-  }
+router.delete(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const row = await GreenSpace.findByPk(req.params.id);
+    if (!row) {
+      return res.status(404).json({ error: "Área verde no encontrada" });
+    }
 
-  await row.destroy();
-  return res.status(204).end();
-});
+    await row.destroy();
+    return res.status(204).end();
+  },
+);
 
-router.post("/:id/reviews", authenticate, async (req: AuthRequest, res: Response) => {
-  const spaceId = Number(req.params.id);
-  if (!Number.isFinite(spaceId)) {
-    return res.status(400).json({ error: "Identificador de area verde invalido" });
-  }
+router.post(
+  "/:id/reviews",
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    const spaceId = Number(req.params.id);
+    if (!Number.isFinite(spaceId)) {
+      return res
+        .status(400)
+        .json({ error: "Identificador de área verde inválido" });
+    }
 
-  if (!req.user) {
-    return res.status(401).json({ error: "No autorizado" });
-  }
+    if (!req.user) {
+      return res.status(401).json({ error: "No autorizado" });
+    }
 
-  const greenSpace = await GreenSpace.findByPk(spaceId);
-  if (!greenSpace) {
-    return res.status(404).json({ error: "Area verde no encontrada" });
-  }
+    const greenSpace = await GreenSpace.findByPk(spaceId);
+    if (!greenSpace) {
+      return res.status(404).json({ error: "Área verde no encontrada" });
+    }
 
-  const rawRating = Number(req.body?.rating);
-  if (Number.isNaN(rawRating) || rawRating < 0 || rawRating > 5) {
-    return res.status(400).json({ error: "La calificacion debe estar entre 0 y 5" });
-  }
+    const rawRating = Number(req.body?.rating);
+    if (Number.isNaN(rawRating) || rawRating < 0 || rawRating > 5) {
+      return res
+        .status(400)
+        .json({ error: "La calificación debe estar entre 0 y 5" });
+    }
 
-  const rating = Math.round(rawRating);
-  const comment = String(req.body?.comment || "").trim();
-  if (!comment) {
-    return res.status(400).json({ error: "El comentario es obligatorio" });
-  }
+    const rating = Math.round(rawRating);
+    const comment = String(req.body?.comment || "").trim();
+    if (!comment) {
+      return res.status(400).json({ error: "El comentario es obligatorio" });
+    }
 
-  const existing = await GreenSpaceReview.findOne({
-    where: {
+    const existing = await GreenSpaceReview.findOne({
+      where: {
+        user_id: req.user.user_id,
+        space_id: spaceId,
+      },
+    });
+
+    const payload = {
+      review_notes: comment,
+      rating,
       user_id: req.user.user_id,
       space_id: spaceId,
-    },
-  });
+      updated_at: new Date(),
+    };
 
-  const payload = {
-    review_notes: comment,
-    rating,
-    user_id: req.user.user_id,
-    space_id: spaceId,
-    updated_at: new Date(),
-  };
+    if (existing) {
+      await existing.update(payload);
+      return res.json({ ok: true });
+    }
 
-  if (existing) {
-    await existing.update(payload);
-    return res.json({ ok: true });
-  }
-
-  await GreenSpaceReview.create({
-    ...payload,
-    created_at: new Date(),
-  });
-  return res.status(201).json({ ok: true });
-});
+    await GreenSpaceReview.create({
+      ...payload,
+      created_at: new Date(),
+    });
+    return res.status(201).json({ ok: true });
+  },
+);
 
 export default router;

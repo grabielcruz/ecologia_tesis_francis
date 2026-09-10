@@ -1694,6 +1694,69 @@ button.danger:hover {
   gap: 0.95rem;
 }
 
+.green-metrics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.green-metrics-header button {
+  margin-top: 0;
+}
+
+.green-metric-record-view {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.green-metric-record-details {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.green-metric-base-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.55rem;
+}
+
+.green-metric-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.green-metric-table-wrap {
+  overflow-x: auto;
+}
+
+.green-metric-chart-card {
+  margin-top: 0.7rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 0.7rem;
+}
+
+.green-metric-chart-card h4 {
+  margin: 0;
+}
+
+.green-metric-chart {
+  width: 100%;
+  height: auto;
+  margin-top: 0.35rem;
+  background: linear-gradient(180deg, #f9fdfd 0%, #f3f8f8 100%);
+  border-radius: 10px;
+}
+
+.chart-axis-label {
+  font-size: 10px;
+  fill: #4a6563;
+}
+
 .green-metrics-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

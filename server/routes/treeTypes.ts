@@ -41,7 +41,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    return res.status(401).json({ error: "Token inválido" });
   }
 };
 
@@ -65,7 +65,8 @@ const optionalAuthenticate = (
     req.user = payload;
     return next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    req.user = undefined;
+    return next();
   }
 };
 
@@ -81,7 +82,7 @@ const uploadTreeTypeImages = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Solo se permiten imagenes") as any, false);
+      return cb(new Error("Solo se permiten imágenes") as any, false);
     }
     cb(null, true);
   },
@@ -179,7 +180,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     const files = (req.files as Express.Multer.File[]) || [];
     if (!files.length) {
-      return res.status(400).json({ error: "No se recibieron imagenes" });
+      return res.status(400).json({ error: "No se recibieron imágenes" });
     }
 
     try {
@@ -201,7 +202,7 @@ router.post(
     } catch {
       return res
         .status(500)
-        .json({ error: "No se pudieron subir las imagenes" });
+        .json({ error: "No se pudieron subir las imágenes" });
     }
   },
 );
@@ -220,7 +221,7 @@ router.post(
     }
 
     if (!description) {
-      return res.status(400).json({ error: "La descripcion es obligatoria" });
+      return res.status(400).json({ error: "La descripción es obligatoria" });
     }
 
     if (!referenceImages.length) {
@@ -233,7 +234,7 @@ router.post(
     if (duplicated) {
       return res
         .status(409)
-        .json({ error: "Ya existe un tipo de arbol con ese nombre" });
+        .json({ error: "Ya existe un tipo de árbol con ese nombre" });
     }
 
     const created = await TreeType.create({
@@ -257,12 +258,12 @@ router.put(
     if (!Number.isFinite(treeTypeId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de tipo de arbol invalido" });
+        .json({ error: "Identificador de tipo de árbol inválido" });
     }
 
     const treeType = await TreeType.findByPk(treeTypeId);
     if (!treeType) {
-      return res.status(404).json({ error: "Tipo de arbol no encontrado" });
+      return res.status(404).json({ error: "Tipo de árbol no encontrado" });
     }
 
     const payload: Record<string, unknown> = {
@@ -279,7 +280,7 @@ router.put(
       if (duplicated) {
         return res
           .status(409)
-          .json({ error: "Ya existe un tipo de arbol con ese nombre" });
+          .json({ error: "Ya existe un tipo de árbol con ese nombre" });
       }
 
       payload.name = name;
@@ -288,7 +289,7 @@ router.put(
     if (typeof req.body?.description !== "undefined") {
       const description = String(req.body.description || "").trim();
       if (!description) {
-        return res.status(400).json({ error: "La descripcion es obligatoria" });
+        return res.status(400).json({ error: "La descripción es obligatoria" });
       }
       payload.description = description;
     }
@@ -317,12 +318,12 @@ router.delete(
     if (!Number.isFinite(treeTypeId)) {
       return res
         .status(400)
-        .json({ error: "Identificador de tipo de arbol invalido" });
+        .json({ error: "Identificador de tipo de árbol inválido" });
     }
 
     const treeType = await TreeType.findByPk(treeTypeId);
     if (!treeType) {
-      return res.status(404).json({ error: "Tipo de arbol no encontrado" });
+      return res.status(404).json({ error: "Tipo de árbol no encontrado" });
     }
 
     const totalReferences = await TreeInventory.count({
@@ -332,7 +333,7 @@ router.delete(
     if (totalReferences > 0) {
       return res.status(409).json({
         error:
-          "No se puede eliminar el tipo de arbol porque ya esta referenciado por arboles registrados",
+          "No se puede eliminar el tipo de árbol porque ya está referenciado por árboles registrados",
       });
     }
 

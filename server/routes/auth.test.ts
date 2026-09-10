@@ -70,10 +70,14 @@ describe("auth routes", () => {
   });
 
   it("returns 400 when username or password is missing", async () => {
-    const response = await request(app).post("/api/auth/login").send({ username: "" });
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ username: "" });
 
     expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: "Usuario y contrasena son obligatorios" });
+    expect(response.body).toEqual({
+      error: "Usuario y contraseña son obligatorios",
+    });
   });
 
   it("returns 401 when user is not found", async () => {
@@ -84,7 +88,7 @@ describe("auth routes", () => {
       .send({ username: "admin", password: "wrong" });
 
     expect(response.status).toBe(401);
-    expect(response.body).toEqual({ error: "Credenciales invalidas" });
+    expect(response.body).toEqual({ error: "Credenciales inválidas" });
   });
 
   it("returns 403 when user is inactive", async () => {

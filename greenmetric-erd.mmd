@@ -1,5 +1,14 @@
 erDiagram
-    %% Capa de Usuarios y Roles
+    %% Exact schema from server/models.ts (Sequelize models)
+
+    Role {
+        int role_id PK
+        string role_name
+        string description
+        datetime created_at
+        datetime updated_at
+    }
+
     User {
         int user_id PK
         string name
@@ -13,19 +22,10 @@ erDiagram
         datetime updated_at
     }
 
-    Role {
-        int role_id PK
-        string role_name
-        string description
-        datetime created_at
-        datetime updated_at
-    }
-
-    %% Capa de Áreas Verdes (GIS/Inventario)
     GreenSpace {
         int space_id PK
         string name
-        string location 
+        string location
         int total_area_m2
         int trees_count
         text images
@@ -57,12 +57,29 @@ erDiagram
         string name
         enum health_status "healthy|regular|sick|dead"
         int space_id FK
-        int type_id FK
+        int type_id FK "nullable"
+        enum status "pending|approved|rejected"
+        int submitted_by_user_id FK
+        int validated_by_user_id FK "nullable"
+        text images
         datetime created_at
         datetime updated_at
     }
 
-    %% Capa de Participación Ciudadana
+    TreeTypeSuggestion {
+        int tree_type_suggestion_id PK
+        string name
+        text description
+        text reference_images
+        enum status "pending|approved|rejected"
+        int suggested_by_user_id FK
+        int approved_by_user_id FK "nullable"
+        int tree_type_id FK "nullable"
+        string admin_notes
+        datetime created_at
+        datetime updated_at
+    }
+
     ReportOfGreenArea {
         int report_of_green_area_id PK
         string title
@@ -75,12 +92,34 @@ erDiagram
         int space_id FK
     }
 
+    GreenMetricRecord {
+        int record_id PK
+        datetime calculation_date
+        float total_campus_area_m2
+        float green_area_m2
+        int campus_population
+        float dense_vegetation_area_m2
+        float rainwater_absorption_area_m2
+        float sustainability_budget
+        float conservation_operation_budget
+        float metric_1_green_area_ratio
+        float metric_2_green_area_per_capita
+        float metric_3_dense_vegetation_ratio
+        float metric_4_rainwater_absorption_ratio
+        float metric_5_sustainability_budget_share
+        float metric_6_conservation_operation_share
+        int created_by_user_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
     ProposalOfGreenArea {
         int proposal_of_green_area_id PK
         string title
         text description
         enum status "draft|open|closed|approved|rejected"
         int total_votes
+        int minimum_votes_required "nullable"
         datetime voting_starts "nullable"
         datetime voting_ends "nullable"
         int user_id FK
@@ -118,20 +157,33 @@ erDiagram
         datetime created_at
     }
 
-    %% Relaciones principales (físicas)
-    Role ||--o{ User : asigna
-    User ||--o{ ReportOfGreenArea : crea
-    GreenSpace ||--o{ ReportOfGreenArea : contiene
-    User ||--o{ ProposalOfGreenArea : propone
-    GreenSpace ||--o{ ProposalOfGreenArea : contiene
-    User ||--o{ VoteOfProposal : realiza
-    User ||--o{ GreenSpaceReview : realiza
-    ProposalOfGreenArea ||--o{ VoteOfProposal : recibe
-    ProposalOfGreenArea ||--o{ ProjectOfProposal : genera
-    ProjectOfProposal ||--o{ ProjectUpdateOfProposal : registra
-    User ||--o{ ProjectUpdateOfProposal : documenta
+    %% Relationships defined in Sequelize associations
+    Role ||--o{ User : assigns
 
-    TreeType ||--o{ TreeInventory : clasifica
-    GreenSpace ||--o{ TreeInventory : contiene
-    GreenSpace ||--o{ GreenSpaceReview : contiene
-    GreenSpace ||--o{ ProjectOfProposal : contiene
+    User ||--o{ ReportOfGreenArea : creates
+    GreenSpace ||--o{ ReportOfGreenArea : has
+
+    User ||--o{ GreenSpaceReview : writes
+    GreenSpace ||--o{ GreenSpaceReview : has
+
+    User ||--o{ ProposalOfGreenArea : proposes
+    GreenSpace ||--o{ ProposalOfGreenArea : has
+
+    User ||--o{ GreenMetricRecord : records
+
+    ProposalOfGreenArea ||--o{ VoteOfProposal : receives
+    User ||--o{ VoteOfProposal : casts
+
+    ProposalOfGreenArea ||--o{ ProjectOfProposal : generates
+    GreenSpace ||--o{ ProjectOfProposal : has
+    ProjectOfProposal ||--o{ ProjectUpdateOfProposal : logs
+    User ||--o{ ProjectUpdateOfProposal : records
+
+    GreenSpace ||--o{ TreeInventory : contains
+    TreeType ||--o{ TreeInventory : classifies
+    User ||--o{ TreeInventory : submits
+    User ||--o{ TreeInventory : validates
+
+    User ||--o{ TreeTypeSuggestion : suggests
+    User ||--o{ TreeTypeSuggestion : reviews
+    TreeType ||--o{ TreeTypeSuggestion : links

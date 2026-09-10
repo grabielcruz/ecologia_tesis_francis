@@ -32,7 +32,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    return res.status(401).json({ error: "Token inválido" });
   }
 };
 
@@ -56,7 +56,8 @@ const optionalAuthenticate = (
     req.user = payload;
     return next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    req.user = undefined;
+    return next();
   }
 };
 

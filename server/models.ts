@@ -472,27 +472,15 @@ ReportOfGreenArea.init(
   },
 );
 
-export class GreenMetricQuarterlyRecord extends Model {}
-GreenMetricQuarterlyRecord.init(
+export class GreenMetricRecord extends Model {}
+GreenMetricRecord.init(
   {
     record_id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    year: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    quarter: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    period_start: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    period_end: {
+    calculation_date: {
       type: DataTypes.DATE,
       allowNull: false,
     },
@@ -582,14 +570,14 @@ GreenMetricQuarterlyRecord.init(
   },
   {
     sequelize,
-    modelName: "GreenMetricQuarterlyRecord",
-    tableName: "GreenMetricQuarterlyRecord",
+    modelName: "GreenMetricRecord",
+    tableName: "GreenMetricRecord",
     freezeTableName: true,
     timestamps: false,
     indexes: [
       {
         unique: true,
-        fields: ["year", "quarter"],
+        fields: ["calculation_date"],
       },
     ],
   },
@@ -831,8 +819,8 @@ User.belongsTo(Role, { foreignKey: "role_id" });
 User.hasMany(ReportOfGreenArea, { foreignKey: "user_id" });
 ReportOfGreenArea.belongsTo(User, { foreignKey: "user_id" });
 
-User.hasMany(GreenMetricQuarterlyRecord, { foreignKey: "created_by_user_id" });
-GreenMetricQuarterlyRecord.belongsTo(User, {
+User.hasMany(GreenMetricRecord, { foreignKey: "created_by_user_id" });
+GreenMetricRecord.belongsTo(User, {
   foreignKey: "created_by_user_id",
   as: "CreatedBy",
 });
@@ -970,42 +958,9 @@ const enforceFixedRoles = async () => {
   }
 };
 
-const ensureProposalMinimumVotesColumn = async () => {
-  const queryInterface = sequelize.getQueryInterface();
-  const table = await queryInterface.describeTable("ProposalOfGreenArea");
-
-  if (!table.minimum_votes_required) {
-    await queryInterface.addColumn(
-      "ProposalOfGreenArea",
-      "minimum_votes_required",
-      {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: null,
-      },
-    );
-  }
-};
-
-const cleanupLegacyProposalData = async () => {
-  await sequelize.query(`
-    UPDATE ProposalOfGreenArea
-    SET
-      status = 'closed',
-      voting_starts = NULL,
-      voting_ends = NULL,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE
-      status IN ('open', 'approved')
-      AND (minimum_votes_required IS NULL OR minimum_votes_required <= 0)
-  `);
-};
-
 export const initializeDatabase = async () => {
   try {
     await sequelize.sync();
-    await ensureProposalMinimumVotesColumn();
-    await cleanupLegacyProposalData();
     await enforceFixedRoles();
   } catch (err) {
     console.error("Database sync failed:", err);

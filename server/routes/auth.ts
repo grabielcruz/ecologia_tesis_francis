@@ -43,7 +43,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    return res.status(401).json({ error: "Token inválido" });
   }
 };
 
@@ -57,7 +57,7 @@ const upload = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Solo se permiten imagenes") as any, false);
+      return cb(new Error("Solo se permiten imágenes") as any, false);
     }
     cb(null, true);
   },
@@ -70,7 +70,7 @@ router.post("/login", async (req, res) => {
   if (!username || !password) {
     return res
       .status(400)
-      .json({ error: "Usuario y contrasena son obligatorios" });
+      .json({ error: "Usuario y contraseña son obligatorios" });
   }
 
   const user = await User.findOne({
@@ -79,13 +79,13 @@ router.post("/login", async (req, res) => {
   });
 
   if (!user) {
-    return res.status(401).json({ error: "Credenciales invalidas" });
+    return res.status(401).json({ error: "Credenciales inválidas" });
   }
 
   const passwordHash = String(user.getDataValue("password_hash") || "");
   const validPassword = await bcrypt.compare(password, passwordHash);
   if (!validPassword) {
-    return res.status(401).json({ error: "Credenciales invalidas" });
+    return res.status(401).json({ error: "Credenciales inválidas" });
   }
 
   const isActive = Boolean(user.getDataValue("is_active"));
@@ -134,7 +134,7 @@ router.post("/register", async (req, res) => {
   if (password.length < 8) {
     return res
       .status(400)
-      .json({ error: "La contrasena debe tener al menos 8 caracteres" });
+      .json({ error: "La contraseña debe tener al menos 8 caracteres" });
   }
 
   const existingUsername = await User.findOne({ where: { username } });
@@ -144,7 +144,7 @@ router.post("/register", async (req, res) => {
 
   const existingEmail = await User.findOne({ where: { email } });
   if (existingEmail) {
-    return res.status(409).json({ error: "El correo ya esta registrado" });
+    return res.status(409).json({ error: "El correo ya está registrado" });
   }
 
   const regularRole =
@@ -186,7 +186,7 @@ router.put(
   async (req: AuthRequest, res: Response) => {
     const userId = Number(req.params.id);
     if (!Number.isFinite(userId)) {
-      return res.status(400).json({ error: "Identificador invalido" });
+      return res.status(400).json({ error: "Identificador inválido" });
     }
 
     if (!canEditUser(req, userId)) {
@@ -241,7 +241,7 @@ router.put(
         Number(emailTaken.getDataValue("user_id")) !==
           Number(row.getDataValue("user_id"))
       ) {
-        return res.status(409).json({ error: "El correo ya esta registrado" });
+        return res.status(409).json({ error: "El correo ya está registrado" });
       }
       updates.email = nextEmail.trim();
     }
@@ -254,13 +254,13 @@ router.put(
       if (nextPassword.length < 8) {
         return res
           .status(400)
-          .json({ error: "La contrasena debe tener al menos 8 caracteres" });
+          .json({ error: "La contraseña debe tener al menos 8 caracteres" });
       }
 
       if (!oldPassword || typeof oldPassword !== "string") {
         return res
           .status(400)
-          .json({ error: "Debes ingresar la contrasena actual" });
+          .json({ error: "Debes ingresar la contraseña actual" });
       }
 
       const currentHash = String(row.getDataValue("password_hash") || "");
@@ -268,7 +268,7 @@ router.put(
       if (!oldMatches) {
         return res
           .status(400)
-          .json({ error: "La contrasena actual es incorrecta" });
+          .json({ error: "La contraseña actual es incorrecta" });
       }
 
       updates.password_hash = await bcrypt.hash(nextPassword, 10);
@@ -299,7 +299,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     const userId = Number(req.params.id);
     if (!Number.isFinite(userId)) {
-      return res.status(400).json({ error: "Identificador invalido" });
+      return res.status(400).json({ error: "Identificador inválido" });
     }
 
     if (!canEditUser(req, userId)) {
@@ -313,7 +313,7 @@ router.post(
 
     const file = req.file as Express.Multer.File | undefined;
     if (!file) {
-      return res.status(400).json({ error: "No se recibio ninguna imagen" });
+      return res.status(400).json({ error: "No se recibió ninguna imagen" });
     }
 
     try {

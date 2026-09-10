@@ -39,7 +39,7 @@ export function ProfileForm({
       isOpen={isOpen}
       onClose={onClose}
       title="Editar perfil"
-      description="Actualiza tu informacion personal y avatar."
+      description="Actualiza tu información personal y avatar."
     >
       <div className="admin-form">
         <div className="profile-avatar-row">

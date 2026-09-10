@@ -87,7 +87,7 @@ export function useTreeTypes({
       });
 
       if (!response.ok) {
-        setError("No se pudieron subir las imagenes");
+        setError("No se pudieron subir las imágenes");
         return;
       }
 
@@ -103,7 +103,7 @@ export function useTreeTypes({
 
       event.target.value = "";
     } catch {
-      setError("No se pudieron subir las imagenes");
+      setError("No se pudieron subir las imágenes");
     } finally {
       setUploadingTreeTypeImages(false);
     }
@@ -112,7 +112,7 @@ export function useTreeTypes({
   const saveTreeType = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token || userRole !== "admin") {
-      setError("Solo administradores pueden gestionar tipos de arboles");
+      setError("Solo administradores pueden gestionar tipos de árboles");
       return false;
     }
 
@@ -121,7 +121,7 @@ export function useTreeTypes({
     const referenceImages = parseImagesInput(treeTypeImagesInput);
 
     if (!name || !description || referenceImages.length === 0) {
-      setError("Completa nombre, descripcion e imagenes referenciales");
+      setError("Completa nombre, descripción e imágenes referenciales");
       return false;
     }
 
@@ -150,20 +150,20 @@ export function useTreeTypes({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudo guardar el tipo de arbol");
+        setError(data.error || "No se pudo guardar el tipo de árbol");
         return false;
       }
 
       setSuccessMessage(
         isEditing
-          ? "Tipo de arbol actualizado correctamente."
-          : "Tipo de arbol creado correctamente.",
+          ? "Tipo de árbol actualizado correctamente."
+          : "Tipo de árbol creado correctamente.",
       );
       resetTreeTypeForm();
       await fetchTreeTypes();
       return true;
     } catch {
-      setError("No se pudo guardar el tipo de arbol");
+      setError("No se pudo guardar el tipo de árbol");
       return false;
     } finally {
       setIsSubmittingTreeType(false);
@@ -172,7 +172,7 @@ export function useTreeTypes({
 
   const deleteTreeType = async (treeTypeId: number) => {
     if (!token || userRole !== "admin") {
-      setError("Solo administradores pueden eliminar tipos de arboles");
+      setError("Solo administradores pueden eliminar tipos de árboles");
       return false;
     }
 
@@ -184,16 +184,16 @@ export function useTreeTypes({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudo eliminar el tipo de arbol");
+        setError(data.error || "No se pudo eliminar el tipo de árbol");
         return false;
       }
 
-      setSuccessMessage("Tipo de arbol eliminado correctamente.");
+      setSuccessMessage("Tipo de árbol eliminado correctamente.");
       setError(null);
       await fetchTreeTypes();
       return true;
     } catch {
-      setError("No se pudo eliminar el tipo de arbol");
+      setError("No se pudo eliminar el tipo de árbol");
       return false;
     }
   };

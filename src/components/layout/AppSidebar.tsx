@@ -58,7 +58,7 @@ export function AppSidebar({
       <div className="brand">
         <div>
           <h2>Panel del campus</h2>
-          <p>Accede a areas verdes y tu perfil.</p>
+          <p>Accede a áreas verdes y tu perfil.</p>
         </div>
       </div>
       {userRole !== "admin" && (
@@ -93,7 +93,7 @@ export function AppSidebar({
           className={isGreenSpacesRoute ? "active" : ""}
           onClick={onNavigateGreenSpaces}
         >
-          Areas verdes
+          Áreas verdes
         </button>
         <button
           type="button"
@@ -125,21 +125,21 @@ export function AppSidebar({
           className={isGreenMetricsRoute ? "active" : ""}
           onClick={onNavigateGreenMetrics}
         >
-          Metricas GreenMetric
+          Métricas GreenMetric
         </button>
         <button
           type="button"
           className={isTreeTypesRoute ? "active" : ""}
           onClick={onNavigateTreeTypes}
         >
-          Tipos de arboles
+          Tipos de árboles
         </button>
         <button
           type="button"
           className={isTreesRoute ? "active" : ""}
           onClick={onNavigateTrees}
         >
-          Arboles
+          Árboles
         </button>
         {userRole === "admin" && (
           <button

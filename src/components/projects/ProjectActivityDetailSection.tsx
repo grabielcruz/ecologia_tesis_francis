@@ -82,7 +82,7 @@ export function ProjectActivityDetailSection({
   if (!selectedProjectEntry || !selectedProjectUpdateId) {
     return (
       <section className="box">
-        <p>La actividad solicitada no existe o no esta disponible.</p>
+        <p>La actividad solicitada no existe o no está disponible.</p>
         <div className="button-row">
           <button type="button" onClick={onBackToProjects}>
             Volver a proyectos
@@ -181,7 +181,8 @@ export function ProjectActivityDetailSection({
 
         {selectedUpdate.createdBy && (
           <p className="muted">
-            Registrado por: {selectedUpdate.createdBy.name || selectedUpdate.createdBy.username}
+            Registrado por:{" "}
+            {selectedUpdate.createdBy.name || selectedUpdate.createdBy.username}
           </p>
         )}
 
@@ -193,7 +194,7 @@ export function ProjectActivityDetailSection({
             className="report-carousel"
           />
         ) : (
-          <p>Esta actividad no tiene imagenes.</p>
+          <p>Esta actividad no tiene imágenes.</p>
         )}
       </article>
 
@@ -204,7 +205,7 @@ export function ProjectActivityDetailSection({
           setShowEditModal(false);
         }}
         title="Editar actividad del proyecto"
-        description="Actualiza la descripcion, titulo y evidencias de esta actividad."
+        description="Actualiza la descripción, título y evidencias de esta actividad."
       >
         <form
           className="admin-form"
@@ -222,7 +223,7 @@ export function ProjectActivityDetailSection({
           }}
         >
           <label>
-            Titulo de actividad
+            Título de actividad
             <input
               value={projectUpdateTitleInput}
               onChange={(e) => setProjectUpdateTitleInput(e.target.value)}
@@ -230,7 +231,7 @@ export function ProjectActivityDetailSection({
             />
           </label>
           <label>
-            Descripcion de actividad
+            Descripción de actividad
             <textarea
               value={projectUpdateDescriptionInput}
               onChange={(e) => setProjectUpdateDescriptionInput(e.target.value)}
@@ -239,18 +240,20 @@ export function ProjectActivityDetailSection({
             />
           </label>
           <label>
-            Imagenes de actividad
+            Imágenes de actividad
             <input
               type="file"
               accept="image/*"
               multiple
-              onChange={(event) => onUploadProjectActivityImages(project.id, event)}
+              onChange={(event) =>
+                onUploadProjectActivityImages(project.id, event)
+              }
               disabled={uploadingProjectUpdateImages}
             />
             <span className="muted">
               {uploadingProjectUpdateImages
-                ? "Subiendo imagenes..."
-                : "Puedes subir una o varias imagenes"}
+                ? "Subiendo imágenes..."
+                : "Puedes subir una o varias imágenes"}
             </span>
           </label>
           <label>
@@ -258,7 +261,7 @@ export function ProjectActivityDetailSection({
             <textarea
               value={projectUpdateImagesInput}
               onChange={(e) => setProjectUpdateImagesInput(e.target.value)}
-              placeholder="Se completa automaticamente al subir imagenes"
+              placeholder="Se completa automáticamente al subir imágenes"
             />
           </label>
           <div className="button-row">
@@ -286,9 +289,9 @@ export function ProjectActivityDetailSection({
           setShowDeleteModal(false);
         }}
         title="Eliminar actividad"
-        description="Esta accion eliminara la actividad seleccionada del historial del proyecto."
+        description="Esta acción eliminará la actividad seleccionada del historial del proyecto."
       >
-        <p>Esta seguro de que desea continuar?</p>
+        <p>¿Está seguro de que desea continuar?</p>
         <div className="button-row">
           <button
             type="button"

@@ -1,4 +1,4 @@
-export interface QuarterlyMetricsValues {
+export interface GreenMetricValues {
   metric1GreenAreaRatio: number;
   metric2GreenAreaPerCapita: number;
   metric3DenseVegetationRatio: number;
@@ -7,12 +7,9 @@ export interface QuarterlyMetricsValues {
   metric6ConservationOperationShare: number;
 }
 
-export interface QuarterlyGreenMetricRecord {
+export interface GreenMetricRecord {
   id: number;
-  year: number;
-  quarter: number;
-  periodStart?: string | null;
-  periodEnd?: string | null;
+  calculationDate: string;
   totalCampusAreaM2: number;
   greenAreaM2: number;
   campusPopulation: number;
@@ -20,7 +17,7 @@ export interface QuarterlyGreenMetricRecord {
   rainwaterAbsorptionAreaM2: number;
   sustainabilityBudget: number;
   conservationOperationBudget: number;
-  metrics: QuarterlyMetricsValues;
+  metrics: GreenMetricValues;
   createdBy: {
     id: number;
     username: string;
@@ -30,9 +27,8 @@ export interface QuarterlyGreenMetricRecord {
   updatedAt?: string | null;
 }
 
-export interface QuarterlyGreenMetricFormInput {
-  year: number;
-  quarter: number;
+export interface GreenMetricFormInput {
+  calculationDate: string;
   totalCampusAreaM2: number;
   greenAreaM2: number;
   campusPopulation: number;

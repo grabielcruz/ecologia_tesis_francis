@@ -11,7 +11,7 @@ interface AiChatWidgetProps {
 }
 
 const BOT_WELCOME =
-  "Hola. Soy tu asistente IA. Puedo responder preguntas sobre datos actuales de la plataforma y orientarte con informacion general del sistema.";
+  "Hola. Soy tu asistente IA. Puedo responder preguntas sobre datos actuales de la plataforma y orientarte con información general del sistema.";
 
 export function AiChatWidget({ token, isAuthenticated }: AiChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -91,7 +91,7 @@ export function AiChatWidget({ token, isAuthenticated }: AiChatWidgetProps) {
         {
           role: "assistant",
           content:
-            "Tuve un problema tecnico para responder. Intenta nuevamente en unos segundos.",
+            "Tuve un problema técnico para responder. Intenta nuevamente en unos segundos.",
         },
       ]);
     } finally {
@@ -113,7 +113,7 @@ export function AiChatWidget({ token, isAuthenticated }: AiChatWidgetProps) {
           <header className="ai-chatbox-header">
             <div>
               <h3>Asistente IA</h3>
-              <p>Preguntame por datos y estado de la plataforma.</p>
+              <p>Pregúntame por datos y estado de la plataforma.</p>
             </div>
             <button
               type="button"
@@ -148,7 +148,7 @@ export function AiChatWidget({ token, isAuthenticated }: AiChatWidgetProps) {
             <input
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
-              placeholder="Ejemplo: cuantas areas verdes hay?"
+              placeholder="Ejemplo: ¿cuántas áreas verdes hay?"
               maxLength={420}
             />
             <button type="submit" disabled={isSending || !inputValue.trim()}>

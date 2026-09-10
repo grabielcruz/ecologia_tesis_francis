@@ -155,17 +155,17 @@ export function useTrees({
     event.preventDefault();
 
     if (!token) {
-      setError("Debes iniciar sesion para gestionar arboles");
+      setError("Debes iniciar sesión para gestionar árboles");
       return false;
     }
 
     if (!treeNameInput.trim()) {
-      setError("El nombre del arbol es obligatorio");
+      setError("El nombre del árbol es obligatorio");
       return false;
     }
 
     if (!Number.isFinite(treeSpaceIdInput) || treeSpaceIdInput <= 0) {
-      setError("Selecciona un area verde valida");
+      setError("Selecciona un área verde válida");
       return false;
     }
 
@@ -195,7 +195,7 @@ export function useTrees({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudo guardar el arbol");
+        setError(data.error || "No se pudo guardar el árbol");
         return false;
       }
 
@@ -206,16 +206,16 @@ export function useTrees({
       setSuccessMessage(
         backendMessage ||
           (isEditing
-            ? "Arbol actualizado correctamente."
+            ? "Árbol actualizado correctamente."
             : userRole === "admin"
-              ? "Arbol registrado correctamente."
-              : "Arbol enviado para validacion de administrador."),
+              ? "Árbol registrado correctamente."
+              : "Árbol enviado para validación de administrador."),
       );
       resetTreeForm();
       await fetchTrees();
       return true;
     } catch {
-      setError("No se pudo guardar el arbol");
+      setError("No se pudo guardar el árbol");
       return false;
     } finally {
       setIsSubmittingTree(false);
@@ -224,7 +224,7 @@ export function useTrees({
 
   const deleteTree = async (treeId: number) => {
     if (!token || userRole !== "admin") {
-      setError("Solo administradores pueden eliminar arboles");
+      setError("Solo administradores pueden eliminar árboles");
       return false;
     }
 
@@ -238,23 +238,23 @@ export function useTrees({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudo eliminar el arbol");
+        setError(data.error || "No se pudo eliminar el árbol");
         return false;
       }
 
-      setSuccessMessage("Arbol eliminado correctamente.");
+      setSuccessMessage("Árbol eliminado correctamente.");
       setError(null);
       await fetchTrees();
       return true;
     } catch {
-      setError("No se pudo eliminar el arbol");
+      setError("No se pudo eliminar el árbol");
       return false;
     }
   };
 
   const approveTree = async (treeId: number) => {
     if (!token || userRole !== "admin") {
-      setError("Solo administradores pueden validar arboles");
+      setError("Solo administradores pueden validar árboles");
       return;
     }
 
@@ -269,15 +269,15 @@ export function useTrees({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudo aprobar el arbol");
+        setError(data.error || "No se pudo aprobar el árbol");
         return;
       }
 
-      setSuccessMessage("Arbol aprobado correctamente.");
+      setSuccessMessage("Árbol aprobado correctamente.");
       setError(null);
       await fetchTrees();
     } catch {
-      setError("No se pudo aprobar el arbol");
+      setError("No se pudo aprobar el árbol");
     } finally {
       setTreeActionLoadingId(null);
     }
@@ -285,7 +285,7 @@ export function useTrees({
 
   const rejectTree = async (treeId: number) => {
     if (!token || userRole !== "admin") {
-      setError("Solo administradores pueden validar arboles");
+      setError("Solo administradores pueden validar árboles");
       return;
     }
 
@@ -300,15 +300,15 @@ export function useTrees({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudo rechazar el arbol");
+        setError(data.error || "No se pudo rechazar el árbol");
         return;
       }
 
-      setSuccessMessage("Arbol rechazado.");
+      setSuccessMessage("Árbol rechazado.");
       setError(null);
       await fetchTrees();
     } catch {
-      setError("No se pudo rechazar el arbol");
+      setError("No se pudo rechazar el árbol");
     } finally {
       setTreeActionLoadingId(null);
     }

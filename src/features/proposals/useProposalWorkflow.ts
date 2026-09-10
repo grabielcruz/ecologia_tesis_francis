@@ -474,12 +474,12 @@ export function useProposalWorkflow({
     if (!token) return;
 
     if (!proposalTitleInput.trim() || !proposalDescriptionInput.trim()) {
-      setError("Completa titulo y descripcion de la propuesta");
+      setError("Completa título y descripción de la propuesta");
       return;
     }
 
     if (!Number.isFinite(proposalSpaceIdInput) || proposalSpaceIdInput <= 0) {
-      setError("Selecciona un area verde valida para la propuesta");
+      setError("Selecciona un área verde válida para la propuesta");
       return;
     }
 
@@ -496,7 +496,7 @@ export function useProposalWorkflow({
       setProposalDescriptionInput("");
       setShowProposalModal(false);
       setSuccessMessage(
-        "Propuesta enviada. Queda pendiente de validacion administrativa.",
+        "Propuesta enviada. Queda pendiente de validación administrativa.",
       );
       await fetchProposals();
     } catch (error) {

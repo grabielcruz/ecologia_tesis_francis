@@ -51,11 +51,11 @@ export function TreeTypeFormModal({
     <AppModal
       isOpen={isOpen}
       onClose={handleClose}
-      title={isEditing ? "Editar tipo de arbol" : "Nuevo tipo de arbol"}
+      title={isEditing ? "Editar tipo de árbol" : "Nuevo tipo de árbol"}
       description={
         isEditing
-          ? "Actualiza los datos del tipo de arbol."
-          : "Registra un nuevo tipo de arbol para el catalogo."
+          ? "Actualiza los datos del tipo de árbol."
+          : "Registra un nuevo tipo de árbol para el catálogo."
       }
     >
       <form className="admin-form" onSubmit={handleSubmit}>
@@ -69,25 +69,25 @@ export function TreeTypeFormModal({
           />
         </label>
         <label>
-          Descripcion
+          Descripción
           <textarea
             value={treeTypeDescriptionInput}
             onChange={(e) => setTreeTypeDescriptionInput(e.target.value)}
-            placeholder="Describe las caracteristicas principales de la especie"
+            placeholder="Describe las características principales de la especie"
             required
           />
         </label>
         <label>
-          Imagenes referenciales
+          Imágenes referenciales
           <textarea
             value={treeTypeImagesInput}
             onChange={(e) => setTreeTypeImagesInput(e.target.value)}
-            placeholder="Una URL por linea"
+            placeholder="Una URL por línea"
             required
           />
         </label>
         <label>
-          Subir imagenes
+          Subir imágenes
           <input
             type="file"
             accept="image/*"
@@ -108,7 +108,7 @@ export function TreeTypeFormModal({
           </button>
         </div>
         {uploadingTreeTypeImages && (
-          <p className="small muted">Subiendo imagenes...</p>
+          <p className="small muted">Subiendo imágenes...</p>
         )}
       </form>
     </AppModal>

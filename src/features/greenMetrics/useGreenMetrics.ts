@@ -1,8 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  QuarterlyGreenMetricFormInput,
-  QuarterlyGreenMetricRecord,
-} from "./types";
+import { GreenMetricFormInput, GreenMetricRecord } from "./types";
 
 interface UseGreenMetricsParams {
   token: string | null;
@@ -12,9 +9,15 @@ interface UseGreenMetricsParams {
   setSuccessMessage: (message: string | null) => void;
 }
 
-const getInitialForm = (): QuarterlyGreenMetricFormInput => ({
-  year: new Date().getFullYear(),
-  quarter: 1,
+const toDateInputValue = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getInitialForm = (): GreenMetricFormInput => ({
+  calculationDate: toDateInputValue(),
   totalCampusAreaM2: 0,
   greenAreaM2: 0,
   campusPopulation: 0,
@@ -31,17 +34,16 @@ export function useGreenMetrics({
   setError,
   setSuccessMessage,
 }: UseGreenMetricsParams) {
-  const [records, setRecords] = useState<QuarterlyGreenMetricRecord[]>([]);
+  const [records, setRecords] = useState<GreenMetricRecord[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [formInput, setFormInput] = useState<QuarterlyGreenMetricFormInput>(
-    getInitialForm(),
-  );
+  const [formInput, setFormInput] =
+    useState<GreenMetricFormInput>(getInitialForm());
 
   const getAuthHeaders = () =>
     token ? { Authorization: `Bearer ${token}` } : undefined;
 
-  const fetchQuarterlyRecords = async () => {
+  const fetchRecords = async () => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/green-metrics", {
@@ -50,7 +52,7 @@ export function useGreenMetrics({
 
       if (!response.ok) {
         setRecords([]);
-        setError("No se pudieron cargar las metricas trimestrales");
+        setError("No se pudieron cargar las métricas");
         return;
       }
 
@@ -58,15 +60,15 @@ export function useGreenMetrics({
       setRecords(Array.isArray(data) ? data : []);
     } catch {
       setRecords([]);
-      setError("No se pudieron cargar las metricas trimestrales");
+      setError("No se pudieron cargar las métricas");
     } finally {
       setIsLoading(false);
     }
   };
 
   const setFormValue = (
-    field: keyof QuarterlyGreenMetricFormInput,
-    value: number,
+    field: keyof GreenMetricFormInput,
+    value: number | string,
   ) => {
     setFormInput((prev) => ({
       ...prev,
@@ -78,26 +80,21 @@ export function useGreenMetrics({
     setFormInput(getInitialForm());
   };
 
-  const saveQuarterlyRecord = async (event: FormEvent<HTMLFormElement>) => {
+  const saveRecord = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!token) {
-      setError("Debes iniciar sesion para registrar metricas");
+      setError("Debes iniciar sesión para registrar métricas");
       return;
     }
 
     if (userRole !== "admin") {
-      setError("Solo los administradores pueden registrar metricas");
+      setError("Solo los administradores pueden registrar métricas");
       return;
     }
 
-    if (![1, 2, 3, 4].includes(formInput.quarter)) {
-      setError("Selecciona un trimestre valido");
-      return;
-    }
-
-    if (formInput.year < 2000 || formInput.year > 2200) {
-      setError("Ingresa un ano valido");
+    if (!formInput.calculationDate) {
+      setError("Selecciona una fecha de cálculo válida");
       return;
     }
 
@@ -116,32 +113,31 @@ export function useGreenMetrics({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudieron guardar las metricas");
+        setError(data.error || "No se pudieron guardar las métricas");
         return;
       }
 
-      const saved = (await response.json()) as QuarterlyGreenMetricRecord;
+      const saved = (await response.json()) as GreenMetricRecord;
 
       setRecords((prev) => {
-        const withoutSamePeriod = prev.filter(
-          (item) => !(item.year === saved.year && item.quarter === saved.quarter),
+        const withoutSameDate = prev.filter(
+          (item) => item.calculationDate !== saved.calculationDate,
         );
 
-        return [saved, ...withoutSamePeriod].sort((left, right) => {
-          if (left.year !== right.year) {
-            return right.year - left.year;
-          }
-          return right.quarter - left.quarter;
-        });
+        return [saved, ...withoutSameDate].sort(
+          (left, right) =>
+            new Date(right.calculationDate).getTime() -
+            new Date(left.calculationDate).getTime(),
+        );
       });
 
       setSuccessMessage(
-        `Metricas guardadas para T${saved.quarter} ${saved.year}.`,
+        `Métricas guardadas para ${new Date(saved.calculationDate).toLocaleDateString("es-AR")}.`,
       );
       setError(null);
       resetForm();
     } catch {
-      setError("No se pudieron guardar las metricas");
+      setError("No se pudieron guardar las métricas");
     } finally {
       setIsSubmitting(false);
     }
@@ -154,7 +150,7 @@ export function useGreenMetrics({
 
   useEffect(() => {
     if (route !== "/green-metrics") return;
-    fetchQuarterlyRecords();
+    fetchRecords();
   }, [route, token]);
 
   return {
@@ -164,6 +160,6 @@ export function useGreenMetrics({
     isLoading,
     formInput,
     setFormValue,
-    saveQuarterlyRecord,
+    saveRecord,
   };
 }

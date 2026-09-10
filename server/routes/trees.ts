@@ -42,7 +42,7 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = payload;
     next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    return res.status(401).json({ error: "Token inválido" });
   }
 };
 
@@ -66,7 +66,8 @@ const optionalAuthenticate = (
     req.user = payload;
     return next();
   } catch {
-    return res.status(401).json({ error: "Token invalido" });
+    req.user = undefined;
+    return next();
   }
 };
 
@@ -82,7 +83,7 @@ const uploadTreeImages = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Solo se permiten imagenes") as any, false);
+      return cb(new Error("Solo se permiten imágenes") as any, false);
     }
     cb(null, true);
   },
@@ -262,7 +263,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     const files = (req.files as Express.Multer.File[]) || [];
     if (!files.length) {
-      return res.status(400).json({ error: "No se recibieron imagenes" });
+      return res.status(400).json({ error: "No se recibieron imágenes" });
     }
 
     try {
@@ -284,7 +285,7 @@ router.post(
     } catch {
       return res
         .status(500)
-        .json({ error: "No se pudieron guardar las imagenes" });
+        .json({ error: "No se pudieron guardar las imágenes" });
     }
   },
 );
@@ -295,7 +296,7 @@ router.get(
   async (req: AuthRequest, res: Response) => {
     const treeId = Number(req.params.id);
     if (!Number.isFinite(treeId)) {
-      return res.status(400).json({ error: "Identificador de arbol invalido" });
+      return res.status(400).json({ error: "Identificador de árbol inválido" });
     }
 
     const row = await TreeInventory.findByPk(treeId, {
@@ -316,14 +317,14 @@ router.get(
     });
 
     if (!row) {
-      return res.status(404).json({ error: "Arbol no encontrado" });
+      return res.status(404).json({ error: "Árbol no encontrado" });
     }
 
     const rowStatus = String(row.getDataValue("status") || "approved");
     const submittedByUserId = Number(row.getDataValue("submitted_by_user_id"));
 
     if (!req.user && rowStatus !== "approved") {
-      return res.status(404).json({ error: "Arbol no encontrado" });
+      return res.status(404).json({ error: "Árbol no encontrado" });
     }
 
     if (
@@ -332,7 +333,7 @@ router.get(
       rowStatus !== "approved" &&
       submittedByUserId !== req.user.user_id
     ) {
-      return res.status(404).json({ error: "Arbol no encontrado" });
+      return res.status(404).json({ error: "Árbol no encontrado" });
     }
 
     return res.json(serializeTree(row as TreeInventory));
@@ -356,27 +357,27 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
   if (!name) {
     return res
       .status(400)
-      .json({ error: "El nombre del arbol es obligatorio" });
+      .json({ error: "El nombre del árbol es obligatorio" });
   }
 
   if (!["healthy", "regular", "sick", "dead"].includes(healthStatus)) {
-    return res.status(400).json({ error: "Estado de salud invalido" });
+    return res.status(400).json({ error: "Estado de salud inválido" });
   }
 
   if (!Number.isFinite(spaceId) || spaceId <= 0) {
-    return res.status(400).json({ error: "Area verde invalida" });
+    return res.status(400).json({ error: "Área verde inválida" });
   }
 
   if (hasTypeId) {
     const treeType = await TreeType.findByPk(typeId);
     if (!treeType) {
-      return res.status(404).json({ error: "Tipo de arbol no encontrado" });
+      return res.status(404).json({ error: "Tipo de árbol no encontrado" });
     }
   }
 
   const greenSpace = await GreenSpace.findByPk(spaceId);
   if (!greenSpace) {
-    return res.status(404).json({ error: "Area verde no encontrada" });
+    return res.status(404).json({ error: "Área verde no encontrada" });
   }
 
   const created = await TreeInventory.create({
@@ -419,8 +420,8 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
   return res.status(201).json({
     message:
       req.user.role === "admin"
-        ? "Arbol registrado correctamente"
-        : "Arbol enviado para validacion de administrador",
+        ? "Árbol registrado correctamente"
+        : "Árbol enviado para validación de administrador",
     tree: serializeTree((withRelations || created) as TreeInventory),
   });
 });
@@ -432,12 +433,12 @@ router.put(
   async (req: AuthRequest, res: Response) => {
     const treeId = Number(req.params.id);
     if (!Number.isFinite(treeId)) {
-      return res.status(400).json({ error: "Identificador de arbol invalido" });
+      return res.status(400).json({ error: "Identificador de árbol inválido" });
     }
 
     const row = await TreeInventory.findByPk(treeId);
     if (!row) {
-      return res.status(404).json({ error: "Arbol no encontrado" });
+      return res.status(404).json({ error: "Árbol no encontrado" });
     }
 
     const previousSpaceId = Number(row.getDataValue("space_id"));
@@ -450,7 +451,7 @@ router.put(
       if (!name) {
         return res
           .status(400)
-          .json({ error: "El nombre del arbol es obligatorio" });
+          .json({ error: "El nombre del árbol es obligatorio" });
       }
       payload.name = name;
     }
@@ -461,7 +462,7 @@ router.put(
         .toLowerCase();
 
       if (!["healthy", "regular", "sick", "dead"].includes(healthStatus)) {
-        return res.status(400).json({ error: "Estado de salud invalido" });
+        return res.status(400).json({ error: "Estado de salud inválido" });
       }
 
       payload.health_status = healthStatus;
@@ -474,7 +475,7 @@ router.put(
       } else {
         const treeType = await TreeType.findByPk(typeId);
         if (!treeType) {
-          return res.status(404).json({ error: "Tipo de arbol no encontrado" });
+          return res.status(404).json({ error: "Tipo de árbol no encontrado" });
         }
 
         payload.type_id = typeId;
@@ -484,12 +485,12 @@ router.put(
     if (typeof req.body?.spaceId !== "undefined") {
       const spaceId = Number(req.body.spaceId);
       if (!Number.isFinite(spaceId) || spaceId <= 0) {
-        return res.status(400).json({ error: "Area verde invalida" });
+        return res.status(400).json({ error: "Área verde inválida" });
       }
 
       const greenSpace = await GreenSpace.findByPk(spaceId);
       if (!greenSpace) {
-        return res.status(404).json({ error: "Area verde no encontrada" });
+        return res.status(404).json({ error: "Área verde no encontrada" });
       }
 
       payload.space_id = spaceId;
@@ -535,12 +536,12 @@ router.delete(
   async (req: AuthRequest, res: Response) => {
     const treeId = Number(req.params.id);
     if (!Number.isFinite(treeId)) {
-      return res.status(400).json({ error: "Identificador de arbol invalido" });
+      return res.status(400).json({ error: "Identificador de árbol inválido" });
     }
 
     const row = await TreeInventory.findByPk(treeId);
     if (!row) {
-      return res.status(404).json({ error: "Arbol no encontrado" });
+      return res.status(404).json({ error: "Árbol no encontrado" });
     }
 
     const spaceId = Number(row.getDataValue("space_id"));
@@ -565,12 +566,12 @@ router.patch(
 
     const treeId = Number(req.params.id);
     if (!Number.isFinite(treeId)) {
-      return res.status(400).json({ error: "Identificador de arbol invalido" });
+      return res.status(400).json({ error: "Identificador de árbol inválido" });
     }
 
     const row = await TreeInventory.findByPk(treeId);
     if (!row) {
-      return res.status(404).json({ error: "Arbol no encontrado" });
+      return res.status(404).json({ error: "Árbol no encontrado" });
     }
 
     const previousStatus = String(row.getDataValue("status") || "approved");
@@ -618,12 +619,12 @@ router.patch(
 
     const treeId = Number(req.params.id);
     if (!Number.isFinite(treeId)) {
-      return res.status(400).json({ error: "Identificador de arbol invalido" });
+      return res.status(400).json({ error: "Identificador de árbol inválido" });
     }
 
     const row = await TreeInventory.findByPk(treeId);
     if (!row) {
-      return res.status(404).json({ error: "Arbol no encontrado" });
+      return res.status(404).json({ error: "Árbol no encontrado" });
     }
 
     const previousStatus = String(row.getDataValue("status") || "approved");

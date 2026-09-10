@@ -76,14 +76,14 @@ export function TreeTypesSection({
     },
     {
       key: "name",
-      label: "Tipo de arbol",
+      label: "Tipo de árbol",
       sortable: true,
       sortValue: (treeType) => treeType.name,
       render: (treeType) => treeType.name,
     },
     {
       key: "description",
-      label: "Descripcion",
+      label: "Descripción",
       sortable: true,
       sortValue: (treeType) => treeType.description,
       render: (treeType) => treeType.description,
@@ -107,15 +107,15 @@ export function TreeTypesSection({
   return (
     <section className="box reports-box">
       <article className="principal-panel">
-        <h3>Catalogo de tipos de arboles</h3>
+        <h3>Catálogo de tipos de árboles</h3>
         <p>
           Referencias de especies para su uso posterior en el inventario real de
-          arboles por area verde.
+          árboles por área verde.
         </p>
         {userRole === "admin" && (
           <div className="button-row">
             <button type="button" onClick={openCreateModal}>
-              Nuevo tipo de arbol
+              Nuevo tipo de árbol
             </button>
           </div>
         )}
@@ -127,8 +127,8 @@ export function TreeTypesSection({
           getSearchText={(treeType) =>
             `${treeType.name} ${treeType.description} ${treeType.referenceImages.join(" ")}`
           }
-          emptyMessage="No hay tipos de arboles registrados."
-          searchPlaceholder="Buscar por nombre, descripcion o referencia"
+          emptyMessage="No hay tipos de árboles registrados."
+          searchPlaceholder="Buscar por nombre, descripción o referencia"
         />
       </article>
 

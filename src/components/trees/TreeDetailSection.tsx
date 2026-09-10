@@ -120,7 +120,7 @@ export function TreeDetailSection({
   if (!selectedTreeId) {
     return (
       <section className="box">
-        <p>El arbol solicitado no existe.</p>
+        <p>El árbol solicitado no existe.</p>
         <button type="button" onClick={onBack}>
           Volver
         </button>
@@ -131,7 +131,7 @@ export function TreeDetailSection({
   if (!selectedTree) {
     return (
       <section className="box">
-        <p>Cargando arbol...</p>
+        <p>Cargando árbol...</p>
         <button type="button" onClick={onBack}>
           Volver
         </button>
@@ -148,7 +148,7 @@ export function TreeDetailSection({
             className="secondary"
             onClick={() => onOpenGreenSpace(selectedTree.greenSpace!.id)}
           >
-            Areas verdes
+            Áreas verdes
           </button>
         )}
         {selectedTree.greenSpace?.id && <span className="small muted">/</span>}
@@ -157,7 +157,7 @@ export function TreeDetailSection({
           className="secondary"
           onClick={() => (onOpenTrees ? onOpenTrees() : onBack())}
         >
-          Arboles
+          Árboles
         </button>
         <span className="small muted">/</span>
         <span className="small muted">Detalle</span>
@@ -165,15 +165,15 @@ export function TreeDetailSection({
 
       <div className="button-row">
         <button type="button" className="secondary" onClick={onBack}>
-          Volver a arboles
+          Volver a árboles
         </button>
         {userRole === "admin" && (
           <>
             <button type="button" onClick={openEditModal}>
-              Editar arbol
+              Editar árbol
             </button>
             <button type="button" className="danger" onClick={openDeleteModal}>
-              Eliminar arbol
+              Eliminar árbol
             </button>
           </>
         )}
@@ -188,7 +188,7 @@ export function TreeDetailSection({
             resolveAssetUrl={resolveAssetUrl}
           />
         ) : (
-          <p>Este arbol aun no tiene imagenes registradas.</p>
+          <p>Este árbol aún no tiene imágenes registradas.</p>
         )}
         <div className="details-grid">
           <div className="details-item">
@@ -196,7 +196,7 @@ export function TreeDetailSection({
             <strong>{healthLabel[selectedTree.healthStatus]}</strong>
           </div>
           <div className="details-item">
-            <span>Tipo de arbol</span>
+            <span>Tipo de árbol</span>
             <strong>{selectedTree.treeType?.name || "No definido"}</strong>
             {selectedTree.treeType?.id && onOpenTreeType && (
               <button
@@ -209,7 +209,7 @@ export function TreeDetailSection({
             )}
           </div>
           <div className="details-item">
-            <span>Ubicacion</span>
+            <span>Ubicación</span>
             <strong>{selectedTree.greenSpace?.name || "No definida"}</strong>
             {selectedTree.greenSpace?.id && onOpenGreenSpace && (
               <button
@@ -217,12 +217,12 @@ export function TreeDetailSection({
                 className="secondary"
                 onClick={() => onOpenGreenSpace(selectedTree.greenSpace!.id)}
               >
-                Ver area verde
+                Ver área verde
               </button>
             )}
           </div>
           <div className="details-item">
-            <span>Ultima actualizacion</span>
+            <span>Última actualización</span>
             <strong>
               {formatUpdatedAt(selectedTree.updatedAt || undefined)}
             </strong>
@@ -259,10 +259,10 @@ export function TreeDetailSection({
       <AppModal
         isOpen={showDeleteModal}
         onClose={closeDeleteModal}
-        title="Eliminar arbol"
-        description="Esta accion eliminara el arbol seleccionado."
+        title="Eliminar árbol"
+        description="Esta acción eliminará el árbol seleccionado."
       >
-        <p>Esta seguro de que desea continuar?</p>
+        <p>¿Está seguro de que desea continuar?</p>
         <div className="button-row">
           <button
             type="button"

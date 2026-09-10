@@ -87,14 +87,14 @@ export function Reports({
     },
     {
       key: "title",
-      label: "Titulo",
+      label: "Título",
       sortable: true,
       sortValue: (report) => report.title,
       render: (report) => report.title,
     },
     {
       key: "space",
-      label: "Area verde",
+      label: "Área verde",
       sortable: true,
       sortValue: (report) => report.spaceName,
       render: (report) => report.spaceName,
@@ -124,9 +124,9 @@ export function Reports({
   return (
     <section className="box reports-box">
       <article className="principal-panel">
-        <h3>Reportes de areas verdes</h3>
+        <h3>Reportes de áreas verdes</h3>
         <p>
-          Registra una nueva queja o sugerencia desde el boton de nuevo reporte.
+          Registra una nueva queja o sugerencia desde el botón de nuevo reporte.
         </p>
         {onOpenCreateReportModal && (
           <div className="button-row">
@@ -164,7 +164,7 @@ export function Reports({
             `${report.title} ${report.description} ${report.spaceName} ${report.state} ${report.createdBy?.name || ""}`
           }
           emptyMessage="No hay reportes para el filtro seleccionado."
-          searchPlaceholder="Buscar por titulo, descripcion, area verde o estado"
+          searchPlaceholder="Buscar por título, descripción, área verde o estado"
           onRowClick={(report) => onOpenReportDetail(report.id)}
         />
       </article>
