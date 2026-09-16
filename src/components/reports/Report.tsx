@@ -19,15 +19,12 @@ interface ReportProps {
   reportTitleInput: string;
   reportDescriptionInput: string;
   reportSpaceIdInput: number;
-  reportImagesInput: string;
   editingReportStateInput: "open" | "closed";
   isSubmittingReport: boolean;
-  uploadingReportImages: boolean;
   onBack: () => void;
   onOpenEditReportModal: (report: GreenAreaReport) => void;
   onCloseEditReportModal: () => void;
   onSaveReport: (event: React.FormEvent<HTMLFormElement>) => void;
-  onUploadReportImages: (event: React.ChangeEvent<HTMLInputElement>) => void;
   setReportTitleInput: (value: string) => void;
   setReportDescriptionInput: (value: string) => void;
   setReportSpaceIdInput: (value: number) => void;
@@ -48,15 +45,12 @@ export function Report({
   reportTitleInput,
   reportDescriptionInput,
   reportSpaceIdInput,
-  reportImagesInput,
   editingReportStateInput,
   isSubmittingReport,
-  uploadingReportImages,
   onBack,
   onOpenEditReportModal,
   onCloseEditReportModal,
   onSaveReport,
-  onUploadReportImages,
   setReportTitleInput,
   setReportDescriptionInput,
   setReportSpaceIdInput,
@@ -202,18 +196,14 @@ export function Report({
         reportTitleInput={reportTitleInput}
         reportDescriptionInput={reportDescriptionInput}
         reportSpaceIdInput={reportSpaceIdInput}
-        reportImagesInput={reportImagesInput}
         editingReportStateInput={editingReportStateInput}
         isSubmittingReport={isSubmittingReport}
-        uploadingReportImages={uploadingReportImages}
         onClose={onCloseEditReportModal}
         onSubmit={onSaveReport}
-        onUploadReportImages={onUploadReportImages}
         setReportTitleInput={setReportTitleInput}
         setReportDescriptionInput={setReportDescriptionInput}
         setReportSpaceIdInput={setReportSpaceIdInput}
         setEditingReportStateInput={setEditingReportStateInput}
-        resolveAssetUrl={resolveAssetUrl}
       />
 
       <AppModal

@@ -1,5 +1,9 @@
 import { ReactNode } from "react";
-import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
+import {
+  DefaultTable,
+  DefaultTableColumn,
+  DefaultTableExportColumn,
+} from "../DefaultTable";
 
 interface GreenSpaceRow {
   id: number;
@@ -104,6 +108,37 @@ export function GreenSpacesSection({
     },
   ];
 
+  const greenSpaceExportColumns: DefaultTableExportColumn<GreenSpaceRow>[] = [
+    {
+      label: "#",
+      value: (_space, rowNumber) => rowNumber,
+    },
+    {
+      label: "Nombre",
+      value: (space) => space.name,
+    },
+    {
+      label: "Ubicación",
+      value: (space) => space.location,
+    },
+    {
+      label: "Área (m2)",
+      value: (space) => space.totalAreaM2,
+    },
+    {
+      label: "Árboles",
+      value: (space) => space.tallTreeCount,
+    },
+    {
+      label: "Valoración promedio",
+      value: (space) => (space.reviewSummary?.averageRating ?? 0).toFixed(1),
+    },
+    {
+      label: "Total reseñas",
+      value: (space) => space.reviewSummary?.totalReviews ?? 0,
+    },
+  ];
+
   return (
     <section className="box admin-box">
       <div className="admin-header">
@@ -127,6 +162,9 @@ export function GreenSpacesSection({
           searchPlaceholder="Buscar por nombre o ubicación"
           onAdd={userRole === "admin" ? onOpenCreateGreenSpaceModal : undefined}
           addButtonLabel="Nueva área verde"
+          exportTitle="Listado de áreas verdes"
+          exportFileName="areas-verdes-campus"
+          exportColumns={greenSpaceExportColumns}
         />
       </article>
       {greenSpaceModal}

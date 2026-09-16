@@ -273,6 +273,8 @@ export function ProjectDetailSection({
             onRowClick={(update) => onOpenProjectActivityDetail(update.id)}
             emptyMessage="No hay actividades registradas por el momento."
             searchPlaceholder="Buscar por actividad, descripción o responsable"
+            exportTitle={`Actividades del proyecto ${project.title}`}
+            exportFileName={`actividades-proyecto-${project.id}`}
           />
         )}
       </article>

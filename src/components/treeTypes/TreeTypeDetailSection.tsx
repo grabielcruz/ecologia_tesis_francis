@@ -242,6 +242,8 @@ export function TreeTypeDetailSection({
           }
           emptyMessage="No hay árboles registrados para este tipo todavía."
           searchPlaceholder="Buscar por nombre, salud o ubicación"
+          exportTitle={`Árboles del tipo ${selectedTreeType.name}`}
+          exportFileName={`arboles-tipo-${selectedTreeType.id}`}
         />
       </article>
 

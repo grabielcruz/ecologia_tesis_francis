@@ -1,4 +1,8 @@
-import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
+import {
+  DefaultTable,
+  DefaultTableColumn,
+  DefaultTableExportColumn,
+} from "../DefaultTable";
 import {
   ProjectExecutionStatus,
   ProjectListEntry,
@@ -15,6 +19,17 @@ export function ProjectsListSection({
   onOpenProjectPage,
   getSpaceName,
 }: ProjectsListSectionProps) {
+  const formatExportDate = (value?: string | null) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   const projectStatusLabel: Record<ProjectExecutionStatus, string> = {
     not_created: "Sin proyecto",
     planned: "Planificado",
@@ -59,6 +74,50 @@ export function ProjectsListSection({
     },
   ];
 
+  const projectExportColumns: DefaultTableExportColumn<ProjectListEntry>[] = [
+    {
+      label: "#",
+      value: (_entry, rowNumber) => rowNumber,
+    },
+    {
+      label: "Proyecto",
+      value: (entry) => entry.project.title,
+    },
+    {
+      label: "Descripción del proyecto",
+      value: (entry) => entry.project.description,
+    },
+    {
+      label: "Área",
+      value: (entry) => getSpaceName(entry.project.spaceId),
+    },
+    {
+      label: "Estado de ejecución",
+      value: (entry) => projectStatusLabel[entry.project.completedStatus],
+    },
+    {
+      label: "Propuesta origen",
+      value: (entry) => entry.proposal.title,
+    },
+    {
+      label: "Descripción de propuesta",
+      value: (entry) => entry.proposal.description,
+    },
+    {
+      label: "Última actividad",
+      value: (entry) => entry.latestUpdate?.title || "Sin actividad",
+    },
+    {
+      label: "Actualizado",
+      value: (entry) =>
+        formatExportDate(
+          entry.project.updatedAt ||
+            entry.proposal.updatedAt ||
+            entry.latestUpdate?.createdAt,
+        ),
+    },
+  ];
+
   return (
     <section className="box admin-box">
       <div className="admin-header">
@@ -80,6 +139,9 @@ export function ProjectsListSection({
           }
           emptyMessage="No hay proyectos visibles por el momento."
           searchPlaceholder="Buscar por proyecto, propuesta, área o estado"
+          exportTitle="Listado de proyectos"
+          exportFileName="proyectos-campus"
+          exportColumns={projectExportColumns}
         />
       </article>
     </section>

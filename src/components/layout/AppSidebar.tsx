@@ -61,115 +61,148 @@ export function AppSidebar({
           <p>Accede a áreas verdes y tu perfil.</p>
         </div>
       </div>
-      {userRole !== "admin" && (
-        <>
-          <div className="activity-badge">
-            {answeredPolls} encuestas respondidas
-          </div>
-          <div className="activity-badge secondary">
-            {unansweredPolls} encuestas sin responder
-          </div>
-        </>
-      )}
-      <nav className="nav-bar">
-        <button
-          type="button"
-          className={route === "/" ? "active" : ""}
-          onClick={onNavigateHome}
-        >
-          Principal
-        </button>
-        {isAuthenticated && (
+      <nav className="nav-bar" aria-label="Navegacion principal">
+        <div className="nav-group">
+          <p className="nav-section-title">General</p>
           <button
             type="button"
-            className={route === "/profile" ? "active" : ""}
-            onClick={onNavigateProfile}
+            className={`nav-item ${route === "/" ? "active" : ""}`}
+            onClick={onNavigateHome}
           >
-            Perfil
+            <span className="nav-icon" aria-hidden="true">
+              HM
+            </span>
+            <span>Principal</span>
           </button>
-        )}
-        <button
-          type="button"
-          className={isGreenSpacesRoute ? "active" : ""}
-          onClick={onNavigateGreenSpaces}
-        >
-          Áreas verdes
-        </button>
-        <button
-          type="button"
-          className={
-            route === "/proposals" || route.startsWith("/proposals/")
-              ? "active"
-              : ""
-          }
-          onClick={onNavigateProposals}
-        >
-          Propuestas
-        </button>
-        <button
-          type="button"
-          className={isProjectsRoute ? "active" : ""}
-          onClick={onNavigateProjects}
-        >
-          Proyectos
-        </button>
-        <button
-          type="button"
-          className={isReportsRoute ? "active" : ""}
-          onClick={onNavigateReports}
-        >
-          Reportes
-        </button>
-        <button
-          type="button"
-          className={isGreenMetricsRoute ? "active" : ""}
-          onClick={onNavigateGreenMetrics}
-        >
-          Métricas GreenMetric
-        </button>
-        <button
-          type="button"
-          className={isTreeTypesRoute ? "active" : ""}
-          onClick={onNavigateTreeTypes}
-        >
-          Tipos de árboles
-        </button>
-        <button
-          type="button"
-          className={isTreesRoute ? "active" : ""}
-          onClick={onNavigateTrees}
-        >
-          Árboles
-        </button>
+          {isAuthenticated && (
+            <button
+              type="button"
+              className={`nav-item ${route === "/profile" ? "active" : ""}`}
+              onClick={onNavigateProfile}
+            >
+              <span className="nav-icon" aria-hidden="true">
+                PF
+              </span>
+              <span>Perfil</span>
+            </button>
+          )}
+        </div>
+
+        <div className="nav-group">
+          <p className="nav-section-title">Gestion Verde</p>
+          <button
+            type="button"
+            className={`nav-item ${isGreenSpacesRoute ? "active" : ""}`}
+            onClick={onNavigateGreenSpaces}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              AV
+            </span>
+            <span>Áreas verdes</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${
+              route === "/proposals" || route.startsWith("/proposals/")
+                ? "active"
+                : ""
+            }`}
+            onClick={onNavigateProposals}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              PP
+            </span>
+            <span>Propuestas</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${isProjectsRoute ? "active" : ""}`}
+            onClick={onNavigateProjects}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              PJ
+            </span>
+            <span>Proyectos</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${isReportsRoute ? "active" : ""}`}
+            onClick={onNavigateReports}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              RP
+            </span>
+            <span>Reportes</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${isGreenMetricsRoute ? "active" : ""}`}
+            onClick={onNavigateGreenMetrics}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              GM
+            </span>
+            <span>Métricas GreenMetric</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${isTreeTypesRoute ? "active" : ""}`}
+            onClick={onNavigateTreeTypes}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              TT
+            </span>
+            <span>Tipos de árboles</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${isTreesRoute ? "active" : ""}`}
+            onClick={onNavigateTrees}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              AR
+            </span>
+            <span>Árboles</span>
+          </button>
+        </div>
+
         {userRole === "admin" && (
-          <button
-            type="button"
-            className={route === "/admin-users" ? "active" : ""}
-            onClick={onNavigateUsers}
-          >
-            Usuarios
-          </button>
+          <div className="nav-group">
+            <p className="nav-section-title">Administracion</p>
+            <button
+              type="button"
+              className={`nav-item ${route === "/admin-users" ? "active" : ""}`}
+              onClick={onNavigateUsers}
+            >
+              <span className="nav-icon" aria-hidden="true">
+                US
+              </span>
+              <span>Usuarios</span>
+            </button>
+          </div>
         )}
       </nav>
       {userRole === "admin" && <span className="nav-badge">ADMIN</span>}
-      <div className="sidebar-user-panel">
-        <div className="avatar">
-          <img src={avatarUrl} alt={`${displayName || "Invitado"} avatar`} />
+      <div className="sidebar-bottom-auth">
+        <div className="sidebar-user-panel">
+          <div className="avatar">
+            <img src={avatarUrl} alt={`${displayName || "Invitado"} avatar`} />
+          </div>
+          <div className="user-info">
+            <div className="user-name">{displayName || "Invitado"}</div>
+            <div className="user-role">{userRole || "guest"}</div>
+          </div>
         </div>
-        <div className="user-info">
-          <div className="user-name">{displayName || "Invitado"}</div>
-          <div className="user-role">{userRole || "guest"}</div>
-        </div>
+        {isAuthenticated ? (
+          <button className="logout-button sidebar-auth-button" onClick={onLogout}>
+            Cerrar sesión
+          </button>
+        ) : (
+          <button className="logout-button sidebar-auth-button" onClick={onLogin}>
+            Iniciar sesión
+          </button>
+        )}
       </div>
-      {isAuthenticated ? (
-        <button className="logout-button sidebar-logout" onClick={onLogout}>
-          Cerrar sesión
-        </button>
-      ) : (
-        <button className="logout-button sidebar-logout" onClick={onLogin}>
-          Iniciar sesión
-        </button>
-      )}
     </>
   );
 }

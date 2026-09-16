@@ -28,7 +28,7 @@ export function RegisterView({
   return (
     <div className="container">
       <h1>Registro de usuario</h1>
-      <section className="box">
+      <section className="box register-box">
         <h2>Crea tu cuenta</h2>
         <label>
           Nombre completo

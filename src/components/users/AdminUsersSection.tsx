@@ -103,6 +103,8 @@ export function AdminUsersSection({
           searchPlaceholder="Buscar por nombre, usuario o correo"
           onAdd={onOpenCreateUserModal}
           addButtonLabel="Nuevo usuario"
+          exportTitle="Usuarios del sistema"
+          exportFileName="usuarios-sistema"
         />
       </article>
       {userModal}

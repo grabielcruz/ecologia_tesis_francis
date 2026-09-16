@@ -257,6 +257,8 @@ export function TreesSection({
           }
           emptyMessage="No hay árboles registrados por el momento."
           searchPlaceholder="Buscar por nombre, tipo, salud o área"
+          exportTitle="Inventario de árboles"
+          exportFileName="inventario-arboles"
         />
       </article>
 

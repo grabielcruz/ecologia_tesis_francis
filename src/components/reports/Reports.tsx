@@ -1,5 +1,9 @@
-import { ChangeEvent, FormEvent } from "react";
-import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
+import { FormEvent } from "react";
+import {
+  DefaultTable,
+  DefaultTableColumn,
+  DefaultTableExportColumn,
+} from "../DefaultTable";
 import {
   GreenAreaReport,
   ReportStateFilter,
@@ -20,16 +24,12 @@ interface ReportsProps {
   reportTitleInput: string;
   reportDescriptionInput: string;
   reportSpaceIdInput: number;
-  reportImagesInput: string;
   editingReportStateInput: "open" | "closed";
   isSubmittingReport: boolean;
-  uploadingReportImages: boolean;
   formatUpdatedAt: (value?: string) => string;
-  resolveAssetUrl: (assetPath: string) => string;
   onOpenCreateReportModal?: () => void;
   onCloseCreateReportModal: () => void;
   onSaveReport: (event: FormEvent<HTMLFormElement>) => void;
-  onUploadReportImages: (event: ChangeEvent<HTMLInputElement>) => void;
   setReportTitleInput: (value: string) => void;
   setReportDescriptionInput: (value: string) => void;
   setReportSpaceIdInput: (value: number) => void;
@@ -46,16 +46,12 @@ export function Reports({
   reportTitleInput,
   reportDescriptionInput,
   reportSpaceIdInput,
-  reportImagesInput,
   editingReportStateInput,
   isSubmittingReport,
-  uploadingReportImages,
   formatUpdatedAt,
-  resolveAssetUrl,
   onOpenCreateReportModal,
   onCloseCreateReportModal,
   onSaveReport,
-  onUploadReportImages,
   setReportTitleInput,
   setReportDescriptionInput,
   setReportSpaceIdInput,
@@ -63,28 +59,6 @@ export function Reports({
   onOpenReportDetail,
 }: ReportsProps) {
   const reportColumns: DefaultTableColumn<GreenAreaReport>[] = [
-    {
-      key: "thumbnail",
-      label: "Imagen",
-      render: (report) => {
-        const thumbnail = report.images?.[0];
-        if (!thumbnail) {
-          return (
-            <span className="report-table-thumbnail placeholder">
-              Sin imagen
-            </span>
-          );
-        }
-
-        return (
-          <img
-            className="report-table-thumbnail"
-            src={resolveAssetUrl(thumbnail)}
-            alt={`${report.title} miniatura`}
-          />
-        );
-      },
-    },
     {
       key: "title",
       label: "Título",
@@ -118,6 +92,45 @@ export function Reports({
       sortable: true,
       sortValue: (report) => report.updatedAt || "",
       render: (report) => formatUpdatedAt(report.updatedAt || undefined),
+    },
+  ];
+
+  const reportExportColumns: DefaultTableExportColumn<GreenAreaReport>[] = [
+    {
+      label: "#",
+      value: (_report, rowNumber) => rowNumber,
+    },
+    {
+      label: "Título",
+      value: (report) => report.title,
+    },
+    {
+      label: "Descripción",
+      value: (report) => report.description,
+    },
+    {
+      label: "Área verde",
+      value: (report) => report.spaceName,
+    },
+    {
+      label: "Estado",
+      value: (report) => (report.state === "open" ? "Abierto" : "Cerrado"),
+    },
+    {
+      label: "Registrado por",
+      value: (report) => report.createdBy?.name || "-",
+    },
+    {
+      label: "Usuario",
+      value: (report) => report.createdBy?.username || "-",
+    },
+    {
+      label: "Creado",
+      value: (report) => formatUpdatedAt(report.createdAt || undefined),
+    },
+    {
+      label: "Actualizado",
+      value: (report) => formatUpdatedAt(report.updatedAt || undefined),
     },
   ];
 
@@ -161,11 +174,14 @@ export function Reports({
           rows={reports}
           getRowId={(report) => report.id}
           getSearchText={(report) =>
-            `${report.title} ${report.description} ${report.spaceName} ${report.state} ${report.createdBy?.name || ""}`
+            `${report.title} ${report.description} ${report.spaceName} ${report.state} ${report.createdBy?.name || ""} ${report.createdBy?.username || ""}`
           }
           emptyMessage="No hay reportes para el filtro seleccionado."
           searchPlaceholder="Buscar por título, descripción, área verde o estado"
           onRowClick={(report) => onOpenReportDetail(report.id)}
+          exportTitle="Reporte de áreas verdes"
+          exportFileName={`reportes-areas-verdes-${reportStateFilter}`}
+          exportColumns={reportExportColumns}
         />
       </article>
 
@@ -176,18 +192,14 @@ export function Reports({
         reportTitleInput={reportTitleInput}
         reportDescriptionInput={reportDescriptionInput}
         reportSpaceIdInput={reportSpaceIdInput}
-        reportImagesInput={reportImagesInput}
         editingReportStateInput={editingReportStateInput}
         isSubmittingReport={isSubmittingReport}
-        uploadingReportImages={uploadingReportImages}
         onClose={onCloseCreateReportModal}
         onSubmit={onSaveReport}
-        onUploadReportImages={onUploadReportImages}
         setReportTitleInput={setReportTitleInput}
         setReportDescriptionInput={setReportDescriptionInput}
         setReportSpaceIdInput={setReportSpaceIdInput}
         setEditingReportStateInput={setEditingReportStateInput}
-        resolveAssetUrl={resolveAssetUrl}
       />
     </section>
   );

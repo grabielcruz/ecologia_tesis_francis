@@ -1,4 +1,8 @@
-import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
+import {
+  DefaultTable,
+  DefaultTableColumn,
+  DefaultTableExportColumn,
+} from "../DefaultTable";
 import {
   ProjectExecutionStatus,
   Proposal,
@@ -155,6 +159,48 @@ export function ProposalsListSection({
     },
   ];
 
+  const proposalExportColumns: DefaultTableExportColumn<Proposal>[] = [
+    {
+      label: "#",
+      value: (_proposal, rowNumber) => rowNumber,
+    },
+    {
+      label: "Título",
+      value: (proposal) => proposal.title,
+    },
+    {
+      label: "Área",
+      value: (proposal) => getSpaceName(proposal.spaceId),
+    },
+    {
+      label: "Estado",
+      value: (proposal) => statusLabel[proposal.status],
+    },
+    {
+      label: "Votos",
+      value: (proposal) =>
+        proposal.minimumVotesRequired && proposal.minimumVotesRequired > 0
+          ? `${proposal.totalVotes}/${proposal.minimumVotesRequired}`
+          : String(proposal.totalVotes),
+    },
+    {
+      label: "Aprobación",
+      value: (proposal) => getVoteThresholdStatus(proposal).label,
+    },
+    {
+      label: "Estado del proyecto",
+      value: (proposal) => {
+        const projectStatus =
+          proposalProjectStatusByProposalId[proposal.id] || "not_created";
+        return projectStatusLabel[projectStatus];
+      },
+    },
+    {
+      label: "Actualizada",
+      value: (proposal) => formatUpdatedAt(proposal.updatedAt || undefined),
+    },
+  ];
+
   return (
     <section className="box admin-box">
       <div className="admin-header">
@@ -217,6 +263,9 @@ export function ProposalsListSection({
           searchPlaceholder="Buscar por título, descripción o estado"
           onAdd={onOpenCreateProposalModal}
           addButtonLabel="Nueva propuesta"
+          exportTitle="Listado de propuestas"
+          exportFileName="propuestas-campus"
+          exportColumns={proposalExportColumns}
         />
       </article>
     </section>

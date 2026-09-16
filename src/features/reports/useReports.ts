@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { GreenAreaReport, ReportStateFilter } from "./types";
 
 interface GreenSpaceOption {
@@ -30,8 +30,6 @@ export function useReports({
   const [reportTitleInput, setReportTitleInput] = useState("");
   const [reportDescriptionInput, setReportDescriptionInput] = useState("");
   const [reportSpaceIdInput, setReportSpaceIdInput] = useState(0);
-  const [reportImagesInput, setReportImagesInput] = useState("");
-  const [uploadingReportImages, setUploadingReportImages] = useState(false);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [showReportCreateModal, setShowReportCreateModal] = useState(false);
   const [showReportEditModal, setShowReportEditModal] = useState(false);
@@ -103,8 +101,6 @@ export function useReports({
     setEditingReportStateInput("open");
     setReportTitleInput("");
     setReportDescriptionInput("");
-    setReportImagesInput("");
-    setUploadingReportImages(false);
     if (greenSpaces.length > 0) {
       setReportSpaceIdInput(greenSpaces[0].id);
     } else {
@@ -129,7 +125,6 @@ export function useReports({
     setReportTitleInput(report.title);
     setReportDescriptionInput(report.description);
     setReportSpaceIdInput(report.spaceId);
-    setReportImagesInput((report.images || []).join("\n"));
   };
 
   const openEditReportModal = (report: GreenAreaReport) => {
@@ -141,56 +136,6 @@ export function useReports({
   const closeEditReportModal = () => {
     setShowReportEditModal(false);
     resetReportForm();
-  };
-
-  const uploadReportImages = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-    if (!token) {
-      setError("Debes iniciar sesión para subir imágenes");
-      return;
-    }
-
-    setUploadingReportImages(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      Array.from(files).forEach((file) => formData.append("images", file));
-
-      const response = await fetch("/api/suggestions/images", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        setError("No se pudieron subir las imágenes del reporte");
-        return;
-      }
-
-      const data = await response.json();
-      const uploadedPaths = Array.isArray(data.images)
-        ? data.images.map((img: string) => img.trim()).filter(Boolean)
-        : [];
-
-      if (uploadedPaths.length > 0) {
-        setReportImagesInput((prev) => {
-          const current = prev
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0);
-          const merged = [...new Set([...current, ...uploadedPaths])];
-          return merged.join("\n");
-        });
-      }
-      event.target.value = "";
-    } catch {
-      setError("No se pudieron subir las imágenes del reporte");
-    } finally {
-      setUploadingReportImages(false);
-    }
   };
 
   const saveReport = async (event: FormEvent<HTMLFormElement>) => {
@@ -210,11 +155,6 @@ export function useReports({
       return;
     }
 
-    const images = reportImagesInput
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
     setIsSubmittingReport(true);
     setError(null);
     try {
@@ -227,7 +167,6 @@ export function useReports({
       const payload: Record<string, unknown> = {
         title: reportTitleInput.trim(),
         description: reportDescriptionInput.trim(),
-        images,
       };
 
       if (isEditing) {
@@ -360,8 +299,6 @@ export function useReports({
     reportTitleInput,
     reportDescriptionInput,
     reportSpaceIdInput,
-    reportImagesInput,
-    uploadingReportImages,
     isSubmittingReport,
     showReportCreateModal,
     showReportEditModal,
@@ -377,7 +314,6 @@ export function useReports({
     closeCreateReportModal,
     openEditReportModal,
     closeEditReportModal,
-    uploadReportImages,
     saveReport,
     deleteReport,
     completeReport,

@@ -337,8 +337,6 @@ function App() {
     reportTitleInput,
     reportDescriptionInput,
     reportSpaceIdInput,
-    reportImagesInput,
-    uploadingReportImages,
     isSubmittingReport,
     showReportCreateModal,
     showReportEditModal,
@@ -354,7 +352,6 @@ function App() {
     closeCreateReportModal,
     openEditReportModal,
     closeEditReportModal,
-    uploadReportImages,
     saveReport,
     deleteReport,
     completeReport,
@@ -2776,7 +2773,29 @@ function App() {
     const pendingProposals = proposals.filter(
       (proposal) => proposal.status === "draft",
     ).length;
-
+    const principalQuickActions = [
+      {
+        id: "gm",
+        badge: "GM",
+        title: "Módulo GreenMetric",
+        hint: `${greenMetricRecords.length} cálculos disponibles`,
+        onClick: () => navigate("/green-metrics"),
+      },
+      {
+        id: "rp",
+        badge: "RP",
+        title: "Centro de reportes",
+        hint: `${reports.length} reportes registrados`,
+        onClick: () => navigate("/reports"),
+      },
+      {
+        id: "av",
+        badge: "AV",
+        title: "Gestión de áreas verdes",
+        hint: `${greenSpaces.length} áreas activas`,
+        onClick: () => navigate("/green-spaces"),
+      },
+    ];
     return (
       <section className="box principal-box">
         <div className="principal-summary-grid">
@@ -2811,6 +2830,32 @@ function App() {
         </div>
 
         <div className="principal-highlights">
+          <article className="principal-panel">
+            <h3>Accesos rápidos</h3>
+            <p className="muted">
+              Navega directo a los módulos clave para actualizar datos y revisar
+              reportes.
+            </p>
+            <div className="principal-quick-actions">
+              {principalQuickActions.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  className="quick-action-button"
+                  onClick={action.onClick}
+                >
+                  <span className="quick-action-badge" aria-hidden="true">
+                    {action.badge}
+                  </span>
+                  <span className="quick-action-copy">
+                    <strong className="quick-action-title">{action.title}</strong>
+                    <small className="quick-action-hint">{action.hint}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </article>
+
           <article className="principal-panel">
             <h3>Encuestas recientes</h3>
             {surveySource.slice(0, 4).map((survey) => (
@@ -2876,18 +2921,14 @@ function App() {
         reportTitleInput={reportTitleInput}
         reportDescriptionInput={reportDescriptionInput}
         reportSpaceIdInput={reportSpaceIdInput}
-        reportImagesInput={reportImagesInput}
         editingReportStateInput={editingReportStateInput}
         isSubmittingReport={isSubmittingReport}
-        uploadingReportImages={uploadingReportImages}
         formatUpdatedAt={formatUpdatedAt}
-        resolveAssetUrl={resolveAssetUrl}
         onOpenCreateReportModal={
           isAuthenticated ? openCreateReportModal : undefined
         }
         onCloseCreateReportModal={closeCreateReportModal}
         onSaveReport={saveReport}
-        onUploadReportImages={uploadReportImages}
         setReportTitleInput={setReportTitleInput}
         setReportDescriptionInput={setReportDescriptionInput}
         setReportSpaceIdInput={setReportSpaceIdInput}
@@ -2924,15 +2965,12 @@ function App() {
         reportTitleInput={reportTitleInput}
         reportDescriptionInput={reportDescriptionInput}
         reportSpaceIdInput={reportSpaceIdInput}
-        reportImagesInput={reportImagesInput}
         editingReportStateInput={editingReportStateInput}
         isSubmittingReport={isSubmittingReport}
-        uploadingReportImages={uploadingReportImages}
         onBack={() => navigate("/reports")}
         onOpenEditReportModal={openEditReportModal}
         onCloseEditReportModal={closeEditReportModal}
         onSaveReport={saveReport}
-        onUploadReportImages={uploadReportImages}
         setReportTitleInput={setReportTitleInput}
         setReportDescriptionInput={setReportDescriptionInput}
         setReportSpaceIdInput={setReportSpaceIdInput}
@@ -3400,21 +3438,6 @@ function App() {
         />
       </aside>
       <main className="main-content">
-        <header className="topbar">
-          <div>
-            <h1>{pageTitle}</h1>
-            <p>{pageSubtitle}</p>
-          </div>
-          {!isAuthenticated && (
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => navigate("/login")}
-            >
-              Iniciar sesión
-            </button>
-          )}
-        </header>
         {renderMainSection()}
         {renderProfileEditModal()}
         {renderPasswordModal()}

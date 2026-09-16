@@ -1,4 +1,5 @@
 import { ReactNode, useMemo, useState } from "react";
+import { downloadPdfTable } from "../utils/pdfTable";
 
 export type TableSortDirection = "asc" | "desc";
 
@@ -7,7 +8,13 @@ export interface DefaultTableColumn<T> {
   label: string;
   sortable?: boolean;
   sortValue?: (row: T) => string | number;
-  render: (row: T) => ReactNode;
+  exportValue?: (row: T, rowNumber: number) => string | number;
+  render: (row: T, rowNumber: number) => ReactNode;
+}
+
+export interface DefaultTableExportColumn<T> {
+  label: string;
+  value: (row: T, rowNumber: number) => string | number;
 }
 
 interface DefaultTableProps<T> {
@@ -21,6 +28,9 @@ interface DefaultTableProps<T> {
   searchPlaceholder?: string;
   addButtonLabel?: string;
   onAdd?: () => void;
+  exportFileName?: string;
+  exportTitle?: string;
+  exportColumns?: DefaultTableExportColumn<T>[];
 }
 
 export function DefaultTable<T>({
@@ -34,6 +44,9 @@ export function DefaultTable<T>({
   searchPlaceholder = "Buscar...",
   addButtonLabel = "Agregar",
   onAdd,
+  exportFileName,
+  exportTitle = "Reporte de tabla",
+  exportColumns,
 }: DefaultTableProps<T>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<string>("");
@@ -107,6 +120,49 @@ export function DefaultTable<T>({
     });
   };
 
+  const getExportCellValue = (
+    row: T,
+    column: DefaultTableColumn<T>,
+    rowNumber: number,
+  ) => {
+    if (column.exportValue) return column.exportValue(row, rowNumber);
+    if (column.sortValue) return column.sortValue(row);
+
+    const rendered = column.render(row, rowNumber);
+    if (typeof rendered === "string" || typeof rendered === "number") {
+      return rendered;
+    }
+
+    return "";
+  };
+
+  const handleDownloadPdf = async () => {
+    const activeExportColumns =
+      exportColumns && exportColumns.length > 0
+        ? exportColumns
+        : columns.map((column) => ({
+            label: column.label,
+            value: (row: T, rowNumber: number) =>
+              getExportCellValue(row, column, rowNumber),
+          }));
+
+    const exportRows = visibleRows.map((row, index) => {
+      const rowNumber = index + 1;
+      return activeExportColumns.map((column) => column.value(row, rowNumber));
+    });
+
+    try {
+      await downloadPdfTable({
+        title: exportTitle,
+        columns: activeExportColumns.map((column) => column.label),
+        rows: exportRows,
+        fileName: exportFileName,
+      });
+    } catch (error) {
+      console.error("No se pudo generar el PDF", error);
+    }
+  };
+
   return (
     <div className="default-table-container">
       <div className="default-table-toolbar">
@@ -136,6 +192,15 @@ export function DefaultTable<T>({
             {addButtonLabel}
           </button>
         )}
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            void handleDownloadPdf();
+          }}
+        >
+          Descargar PDF
+        </button>
       </div>
 
       {visibleRows.length === 0 ? (
@@ -175,8 +240,9 @@ export function DefaultTable<T>({
                 </tr>
               </thead>
               <tbody>
-                {pagedRows.map((row) => {
+                {pagedRows.map((row, rowIndex) => {
                   const isClickable = Boolean(onRowClick);
+                  const rowNumber = (safePage - 1) * pageSize + rowIndex + 1;
 
                   return (
                     <tr
@@ -196,7 +262,7 @@ export function DefaultTable<T>({
                       tabIndex={isClickable ? 0 : undefined}
                     >
                       {columns.map((column) => (
-                        <td key={column.key}>{column.render(row)}</td>
+                        <td key={column.key}>{column.render(row, rowNumber)}</td>
                       ))}
                     </tr>
                   );

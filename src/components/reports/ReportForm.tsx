@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent } from "react";
+import { FormEvent } from "react";
 import { AppModal } from "../AppModal";
 
 interface GreenSpaceOption {
@@ -13,18 +13,14 @@ interface ReportFormProps {
   reportTitleInput: string;
   reportDescriptionInput: string;
   reportSpaceIdInput: number;
-  reportImagesInput: string;
   editingReportStateInput: "open" | "closed";
   isSubmittingReport: boolean;
-  uploadingReportImages: boolean;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onUploadReportImages: (event: ChangeEvent<HTMLInputElement>) => void;
   setReportTitleInput: (value: string) => void;
   setReportDescriptionInput: (value: string) => void;
   setReportSpaceIdInput: (value: number) => void;
   setEditingReportStateInput: (value: "open" | "closed") => void;
-  resolveAssetUrl: (assetPath: string) => string;
 }
 
 export function ReportForm({
@@ -34,25 +30,16 @@ export function ReportForm({
   reportTitleInput,
   reportDescriptionInput,
   reportSpaceIdInput,
-  reportImagesInput,
   editingReportStateInput,
   isSubmittingReport,
-  uploadingReportImages,
   onClose,
   onSubmit,
-  onUploadReportImages,
   setReportTitleInput,
   setReportDescriptionInput,
   setReportSpaceIdInput,
   setEditingReportStateInput,
-  resolveAssetUrl,
 }: ReportFormProps) {
   if (!isOpen) return null;
-
-  const reportImagePreviewList = reportImagesInput
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
 
   const isEditing = mode === "edit";
 
@@ -119,39 +106,8 @@ export function ReportForm({
           </label>
         )}
 
-        <label>
-          Imágenes
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={onUploadReportImages}
-            disabled={uploadingReportImages}
-          />
-        </label>
-
-        {reportImagePreviewList.length > 0 && (
-          <div className="green-space-preview-grid">
-            {reportImagePreviewList.map((imageUrl, index) => (
-              <figure
-                key={`report-form-preview-${index}`}
-                className="green-space-preview-item"
-              >
-                <img
-                  src={resolveAssetUrl(imageUrl)}
-                  alt={`Reporte imagen ${index + 1}`}
-                />
-                <figcaption>{imageUrl}</figcaption>
-              </figure>
-            ))}
-          </div>
-        )}
-
         <div className="button-row">
-          <button
-            type="submit"
-            disabled={isSubmittingReport || uploadingReportImages}
-          >
+          <button type="submit" disabled={isSubmittingReport}>
             {isSubmittingReport
               ? "Guardando..."
               : isEditing

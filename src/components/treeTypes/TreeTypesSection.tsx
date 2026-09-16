@@ -129,6 +129,8 @@ export function TreeTypesSection({
           }
           emptyMessage="No hay tipos de árboles registrados."
           searchPlaceholder="Buscar por nombre, descripción o referencia"
+          exportTitle="Catálogo de tipos de árboles"
+          exportFileName="tipos-de-arboles"
         />
       </article>
 
