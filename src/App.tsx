@@ -31,7 +31,6 @@ import { useProposalWorkflow } from "./features/proposals/useProposalWorkflow";
 import { useGreenMetrics } from "./features/greenMetrics/useGreenMetrics";
 import { useReports } from "./features/reports/useReports";
 import {
-  getPageHeaderMeta,
   getRouteFlags,
   getSelectedRouteIds,
 } from "./features/navigation/routeMeta";
@@ -96,9 +95,24 @@ interface AdminUser {
   isActive: boolean;
   roleId: number;
   roleName: string;
+  updatedAt?: string | null;
 }
 
 type SortDirection = "asc" | "desc";
+type ThemeMode = "light" | "dark";
+
+const THEME_STORAGE_KEY = "ecologia-theme-mode";
+
+const getInitialThemeMode = (): ThemeMode => {
+  const storedValue = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (storedValue === "light" || storedValue === "dark") {
+    return storedValue;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+};
 
 function App() {
   const MOBILE_BREAKPOINT_PX = 1024;
@@ -231,9 +245,21 @@ function App() {
     }
   };
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showPrincipalMetricModal, setShowPrincipalMetricModal] =
+    useState(false);
+  const [selectedPrincipalMetricKey, setSelectedPrincipalMetricKey] = useState<
+    | "metric1GreenAreaRatio"
+    | "metric2GreenAreaPerCapita"
+    | "metric3DenseVegetationRatio"
+    | "metric4RainwaterAbsorptionRatio"
+    | "metric5SustainabilityBudgetShare"
+    | "metric6ConservationOperationShare"
+    | null
+  >(null);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(() => !isMobileViewport());
+  const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialThemeMode);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
@@ -263,6 +289,11 @@ function App() {
       window.clearTimeout(clearTimer);
     };
   }, [successMessage]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", themeMode);
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+  }, [themeMode]);
   const [limit] = useState(5);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -1010,8 +1041,6 @@ function App() {
           latestUpdate: null,
         }
       : null);
-  const { pageTitle, pageSubtitle } = getPageHeaderMeta(route, displayName);
-
   useEffect(() => {
     if (!route.startsWith("/projects/") || !selectedProjectId) {
       return;
@@ -2773,6 +2802,218 @@ function App() {
     const pendingProposals = proposals.filter(
       (proposal) => proposal.status === "draft",
     ).length;
+    const metricTrendDefinitions = [
+      {
+        key: "metric1GreenAreaRatio",
+        label: "M1 Área verde (%)",
+        formula: "Área verde / Área total del campus",
+        color: "#1f9f86",
+      },
+      {
+        key: "metric2GreenAreaPerCapita",
+        label: "M2 m2 por persona",
+        formula: "Área verde / Población del campus",
+        color: "#2f74c0",
+      },
+      {
+        key: "metric3DenseVegetationRatio",
+        label: "M3 Vegetación densa (%)",
+        formula: "Área de bosque denso / Área total",
+        color: "#3f9a2e",
+      },
+      {
+        key: "metric4RainwaterAbsorptionRatio",
+        label: "M4 Absorción lluvia (%)",
+        formula: "Área absorción / Área total",
+        color: "#20a4b8",
+      },
+      {
+        key: "metric5SustainabilityBudgetShare",
+        label: "M5 Presupuesto sostenible (%)",
+        formula: "Presupuesto sostenible / presupuesto total ambiental",
+        color: "#b38a1b",
+      },
+      {
+        key: "metric6ConservationOperationShare",
+        label: "M6 Operación ambiental (%)",
+        formula: "Presupuesto conservación / presupuesto total ambiental",
+        color: "#7d5bc7",
+      },
+    ] as const;
+    const validMetricRecords = [...greenMetricRecords]
+      .filter((record) => !Number.isNaN(new Date(record.calculationDate).getTime()))
+      .sort(
+        (left, right) =>
+          new Date(left.calculationDate).getTime() -
+          new Date(right.calculationDate).getTime(),
+      );
+    const recentMetricRecords = validMetricRecords.slice(-4);
+    const selectedPrincipalMetric =
+      metricTrendDefinitions.find(
+        (metric) => metric.key === selectedPrincipalMetricKey,
+      ) || null;
+
+    const formatMetricMonth = (date: string) =>
+      new Date(date).toLocaleDateString("es-AR", {
+        month: "short",
+        year: "2-digit",
+      });
+
+    const formatMetricDate = (date: string) =>
+      new Date(date).toLocaleDateString("es-AR", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+
+    const formatMetricValue = (value: number) =>
+      new Intl.NumberFormat("es-AR", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(value);
+
+    const getMetricScale = (
+      metricKey: (typeof metricTrendDefinitions)[number]["key"],
+      sourceRows: typeof recentMetricRecords,
+    ) => {
+      const values = sourceRows.map((record) => record.metrics[metricKey]);
+      const min = values.length ? Math.min(...values) : 0;
+      const max = values.length ? Math.max(...values) : 0;
+      return {
+        min,
+        max,
+        range: max - min || 1,
+      };
+    };
+
+    const buildMetricPoints = (
+      metricKey: (typeof metricTrendDefinitions)[number]["key"],
+      sourceRows: typeof recentMetricRecords,
+      chartWidth: number,
+      chartHeight: number,
+      paddingX: number,
+      paddingY: number,
+      minValue: number,
+      valueRange: number,
+    ) => {
+      const xSpan = Math.max(1, sourceRows.length - 1);
+
+      return sourceRows
+        .map((record, index) => {
+          const value = record.metrics[metricKey];
+          const x =
+            paddingX + (index * (chartWidth - paddingX * 2)) / xSpan;
+          const y =
+            chartHeight -
+            paddingY -
+            ((value - minValue) / valueRange) * (chartHeight - paddingY * 2);
+          return `${x},${y}`;
+        })
+        .join(" ");
+    };
+
+    const openPrincipalMetricModal = (
+      metricKey: (typeof metricTrendDefinitions)[number]["key"],
+    ) => {
+      setSelectedPrincipalMetricKey(metricKey);
+      setShowPrincipalMetricModal(true);
+    };
+
+    const renderMetricChart = (
+      metric: (typeof metricTrendDefinitions)[number],
+      sourceRows: typeof recentMetricRecords,
+      chartWidth: number,
+      chartHeight: number,
+      paddingX: number,
+      paddingY: number,
+      showOnlyEdgeLabels = true,
+    ) => {
+      if (!sourceRows.length) return null;
+
+      const scale = getMetricScale(metric.key, sourceRows);
+      const xSpan = Math.max(1, sourceRows.length - 1);
+      const points = buildMetricPoints(
+        metric.key,
+        sourceRows,
+        chartWidth,
+        chartHeight,
+        paddingX,
+        paddingY,
+        scale.min,
+        scale.range,
+      );
+
+      return (
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          className="green-metric-chart"
+        >
+          {[0, 0.5, 1].map((ratio) => {
+            const y = paddingY + ratio * (chartHeight - paddingY * 2);
+            const tickValue = scale.max - scale.range * ratio;
+            return (
+              <g key={`principal-grid-${metric.key}-${ratio}`}>
+                <line
+                  x1={paddingX}
+                  y1={y}
+                  x2={chartWidth - paddingX}
+                  y2={y}
+                  stroke="#d8e7e4"
+                  strokeWidth="1"
+                />
+                <text
+                  x={paddingX - 8}
+                  y={y + 4}
+                  textAnchor="end"
+                  className="chart-axis-label"
+                >
+                  {formatMetricValue(tickValue)}
+                </text>
+              </g>
+            );
+          })}
+
+          <polyline
+            fill="none"
+            stroke={metric.color}
+            strokeWidth="2.8"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            points={points}
+          />
+
+          {sourceRows.map((record, index) => {
+            const x =
+              paddingX + (index * (chartWidth - paddingX * 2)) / xSpan;
+            const y =
+              chartHeight -
+              paddingY -
+              ((record.metrics[metric.key] - scale.min) / scale.range) *
+                (chartHeight - paddingY * 2);
+            const showLabel =
+              !showOnlyEdgeLabels ||
+              index === 0 ||
+              index === sourceRows.length - 1;
+
+            return (
+              <g key={`principal-point-${metric.key}-${record.id}`}>
+                <circle cx={x} cy={y} r="3.2" fill={metric.color} />
+                {showLabel ? (
+                  <text
+                    x={x}
+                    y={chartHeight - 10}
+                    textAnchor="middle"
+                    className="chart-axis-label"
+                  >
+                    {formatMetricMonth(record.calculationDate)}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
+        </svg>
+      );
+    };
     const principalQuickActions = [
       {
         id: "gm",
@@ -2797,6 +3038,7 @@ function App() {
       },
     ];
     return (
+      <>
       <section className="box principal-box">
         <div className="principal-summary-grid">
           <article className="summary-item">
@@ -2830,6 +3072,48 @@ function App() {
         </div>
 
         <div className="principal-highlights">
+          {recentMetricRecords.length > 0 ? (
+            <article className="principal-panel principal-metrics-panel">
+              <h3>Indicadores GreenMetric (ultimos 4 registros)</h3>
+              <p className="muted">
+                Haz clic en cada indicador para ver el gráfico ampliado y los datos
+                que lo componen.
+              </p>
+              <div className="principal-metric-grid">
+                {metricTrendDefinitions.map((metric) => {
+                  const latestValue =
+                    recentMetricRecords[recentMetricRecords.length - 1]
+                      ?.metrics[metric.key] ?? 0;
+                  const valueDelta =
+                    recentMetricRecords.length > 1
+                      ? latestValue - recentMetricRecords[0].metrics[metric.key]
+                      : 0;
+
+                  return (
+                    <button
+                      key={`principal-indicator-${metric.key}`}
+                      type="button"
+                      className="green-metric-chart-card principal-metric-chart-card principal-metric-card-button"
+                      onClick={() => openPrincipalMetricModal(metric.key)}
+                    >
+                      <div className="metric-card-header">
+                        <h4>{metric.label}</h4>
+                        <span className="metric-card-value">
+                          {formatMetricValue(latestValue)}
+                        </span>
+                      </div>
+                      <p className="muted metric-card-delta">
+                        Variación: {valueDelta >= 0 ? "+" : ""}
+                        {formatMetricValue(valueDelta)}
+                      </p>
+                      {renderMetricChart(metric, recentMetricRecords, 680, 148, 44, 20)}
+                    </button>
+                  );
+                })}
+              </div>
+            </article>
+          ) : null}
+
           <article className="principal-panel">
             <h3>Accesos rápidos</h3>
             <p className="muted">
@@ -2907,6 +3191,56 @@ function App() {
           </article>
         </div>
       </section>
+      <AppModal
+        isOpen={showPrincipalMetricModal && !!selectedPrincipalMetric}
+        onClose={() => {
+          setShowPrincipalMetricModal(false);
+          setSelectedPrincipalMetricKey(null);
+        }}
+        title={selectedPrincipalMetric?.label || "Detalle de indicador"}
+        description={selectedPrincipalMetric?.formula || ""}
+      >
+        {selectedPrincipalMetric && recentMetricRecords.length > 0 ? (
+          <div className="principal-metric-modal-content">
+            <div className="green-metric-chart-card principal-metric-modal-chart">
+              {renderMetricChart(
+                selectedPrincipalMetric,
+                recentMetricRecords,
+                760,
+                260,
+                52,
+                26,
+                false,
+              )}
+            </div>
+            <div className="green-metric-table-wrap">
+              <table className="default-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Registro</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentMetricRecords.map((record) => (
+                    <tr key={`principal-modal-row-${selectedPrincipalMetric.key}-${record.id}`}>
+                      <td>{formatMetricDate(record.calculationDate)}</td>
+                      <td>#{record.id}</td>
+                      <td>
+                        {formatMetricValue(record.metrics[selectedPrincipalMetric.key])}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <p>No hay datos para este indicador.</p>
+        )}
+      </AppModal>
+      </>
     );
   };
 
@@ -3433,6 +3767,12 @@ function App() {
           onNavigateTreeTypes={() => navigate("/tree-types")}
           onNavigateTrees={() => navigate("/trees")}
           onNavigateUsers={() => navigate("/admin-users")}
+          themeMode={themeMode}
+          onToggleTheme={() =>
+            setThemeMode((previousMode) =>
+              previousMode === "dark" ? "light" : "dark",
+            )
+          }
           onLogin={() => navigate("/login")}
           onLogout={logout}
         />

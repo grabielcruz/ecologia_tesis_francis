@@ -1,6 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AppModal } from "../AppModal";
-import { downloadPdfTable } from "../../utils/pdfTable";
 import {
   GreenMetricFormInput,
   GreenMetricRecord,
@@ -314,21 +313,76 @@ export function GreenMetricsSection({
     .join(" ");
 
   const onDownloadMetricTablePdf = async () => {
+    if (!metricRows.length) {
+      return;
+    }
+
+    const formatMetricValueWithUnit = (value: number) => {
+      const decimals = selectedMetric.unit === "m2/persona" ? 3 : 2;
+      return `${formatNumber(value, decimals)} ${selectedMetric.unit}`;
+    };
+
+    const rangeLabel =
+      metricRows.length > 1
+        ? `${formatPeriod(metricRows[0])} a ${formatPeriod(
+            metricRows[metricRows.length - 1],
+          )}`
+        : formatPeriod(metricRows[0]);
+
     try {
-      await downloadPdfTable({
-        title: `GreenMetric - ${selectedMetric.title}`,
-        fileName: `greenmetric-${selectedMetric.key}`,
-        columns: ["Fecha", "Registro", selectedMetric.title, "Unidad"],
-        rows: metricRows.map((record) => [
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "pt",
+        format: "a4",
+      });
+
+      doc.setFontSize(14);
+      doc.text(`GreenMetric - ${selectedMetric.title}`, 40, 38);
+      doc.setFontSize(9);
+      doc.setTextColor(78, 103, 99);
+      doc.text(`Fórmula: ${selectedMetric.formula}`, 40, 52);
+      doc.text(`Rango: ${rangeLabel}`, 40, 66);
+
+      const chartSvg = buildMetricChartSvg(selectedMetric, metricRows);
+      const chartImage = await svgToPngDataUrl(chartSvg);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const chartWidth = pageWidth - 80;
+      const chartHeight = (chartWidth * 560) / 1400;
+
+      doc.addImage(chartImage, "PNG", 40, 78, chartWidth, chartHeight);
+
+      autoTable(doc, {
+        startY: 78 + chartHeight + 14,
+        head: [["Fecha", "Registro", selectedMetric.title]],
+        body: metricRows.map((record) => [
           formatPeriod(record),
           `#${record.id}`,
-          formatNumber(
-            record.metrics[selectedMetric.key],
-            selectedMetric.unit === "m2/persona" ? 3 : 2,
-          ),
-          selectedMetric.unit,
+          formatMetricValueWithUnit(record.metrics[selectedMetric.key]),
         ]),
+        styles: {
+          fontSize: 8,
+          cellPadding: 5,
+          overflow: "linebreak",
+        },
+        headStyles: {
+          fillColor: [63, 173, 147],
+          textColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [243, 251, 249],
+        },
+        margin: {
+          left: 28,
+          right: 28,
+        },
       });
+
+      doc.save(`greenmetric-${selectedMetric.key}.pdf`);
     } catch (error) {
       console.error("No se pudo generar el PDF de métricas", error);
     }
@@ -820,7 +874,10 @@ export function GreenMetricsSection({
           </p>
         ) : (
           <>
-            <div className="button-row">
+            <div className="green-metric-results-toolbar">
+              <p className="muted">
+                Registros mostrados: <strong>{metricRows.length}</strong>
+              </p>
               <button
                 type="button"
                 className="secondary"
@@ -832,7 +889,7 @@ export function GreenMetricsSection({
               </button>
             </div>
             <div className="green-metric-table-wrap">
-              <table className="default-table">
+              <table className="standard-table">
                 <thead>
                   <tr>
                     <th>Fecha</th>

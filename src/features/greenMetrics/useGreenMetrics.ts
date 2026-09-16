@@ -149,7 +149,9 @@ export function useGreenMetrics({
   }, [records]);
 
   useEffect(() => {
-    if (route !== "/green-metrics") return;
+    const shouldLoadForCurrentRoute =
+      route === "/" || route === "/green-metrics";
+    if (!shouldLoadForCurrentRoute) return;
     fetchRecords();
   }, [route, token]);
 

@@ -50,6 +50,13 @@ router.use(authenticate, requireAdmin);
 
 const FIXED_ROLE_NAMES = new Set(["admin", "regular"]);
 
+const toIsoStringOrNull = (value: unknown) => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+};
+
 router.get("/roles", async (_req, res) => {
   const roles = await Role.findAll({ order: [["role_id", "ASC"]] });
   res.json(
@@ -80,6 +87,7 @@ router.get("/users", async (_req, res) => {
         isActive: Boolean(user.getDataValue("is_active")),
         roleId: user.getDataValue("role_id"),
         roleName: role?.getDataValue("role_name") || "",
+        updatedAt: toIsoStringOrNull(user.getDataValue("updated_at")),
       };
     }),
   );
@@ -145,6 +153,7 @@ router.post("/users", async (req, res) => {
     email: user.getDataValue("email"),
     isActive: Boolean(user.getDataValue("is_active")),
     roleId: user.getDataValue("role_id"),
+    updatedAt: toIsoStringOrNull(user.getDataValue("updated_at")),
   });
 });
 
@@ -241,6 +250,7 @@ router.put("/users/:id", async (req, res) => {
     email: user.getDataValue("email"),
     isActive: Boolean(user.getDataValue("is_active")),
     roleId: user.getDataValue("role_id"),
+    updatedAt: toIsoStringOrNull(user.getDataValue("updated_at")),
   });
 });
 

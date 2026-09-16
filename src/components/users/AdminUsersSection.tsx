@@ -9,6 +9,7 @@ interface AdminUserRow {
   isActive: boolean;
   roleId: number;
   roleName: string;
+  updatedAt?: string | null;
 }
 
 interface AdminUsersSectionProps {
@@ -26,6 +27,20 @@ export function AdminUsersSection({
   userModal,
   userDetailsModal,
 }: AdminUsersSectionProps) {
+  const formatLastOnline = (value?: string | null) => {
+    if (!value) return "Sin registro";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Sin registro";
+
+    return date.toLocaleString("es-AR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const userColumns: DefaultTableColumn<AdminUserRow>[] = [
     {
       key: "name",
@@ -105,6 +120,36 @@ export function AdminUsersSection({
           addButtonLabel="Nuevo usuario"
           exportTitle="Usuarios del sistema"
           exportFileName="usuarios-sistema"
+          exportColumns={[
+            {
+              label: "#",
+              value: (_entry, rowNumber) => rowNumber,
+            },
+            {
+              label: "Nombre",
+              value: (entry) => entry.name,
+            },
+            {
+              label: "Usuario",
+              value: (entry) => `@${entry.username}`,
+            },
+            {
+              label: "Correo",
+              value: (entry) => entry.email,
+            },
+            {
+              label: "Rol",
+              value: (entry) => entry.roleName,
+            },
+            {
+              label: "Activo",
+              value: (entry) => (entry.isActive ? "Activo" : "No activo"),
+            },
+            {
+              label: "Última conexión",
+              value: (entry) => formatLastOnline(entry.updatedAt),
+            },
+          ]}
         />
       </article>
       {userModal}

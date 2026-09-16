@@ -22,6 +22,8 @@ interface AppSidebarProps {
   onNavigateTreeTypes: () => void;
   onNavigateTrees: () => void;
   onNavigateUsers: () => void;
+  themeMode: "light" | "dark";
+  onToggleTheme: () => void;
   onLogin: () => void;
   onLogout: () => void;
 }
@@ -50,14 +52,32 @@ export function AppSidebar({
   onNavigateTreeTypes,
   onNavigateTrees,
   onNavigateUsers,
+  themeMode,
+  onToggleTheme,
   onLogin,
   onLogout,
 }: AppSidebarProps) {
   return (
     <>
       <div className="brand">
-        <div>
+        <div className="brand-title-row">
           <h2>Panel del campus</h2>
+          <button
+            type="button"
+            className={`nav-theme-toggle ${
+              themeMode === "dark" ? "is-dark" : "is-light"
+            }`}
+            onClick={onToggleTheme}
+            aria-label={
+              themeMode === "dark" ? "Activar modo claro" : "Activar modo oscuro"
+            }
+            title={themeMode === "dark" ? "Modo claro" : "Modo oscuro"}
+          >
+            <span className="sun-icon" aria-hidden="true" />
+            <span className="moon-icon" aria-hidden="true" />
+          </button>
+        </div>
+        <div>
           <p>Accede a áreas verdes y tu perfil.</p>
         </div>
       </div>
@@ -181,6 +201,7 @@ export function AppSidebar({
             </button>
           </div>
         )}
+
       </nav>
       {userRole === "admin" && <span className="nav-badge">ADMIN</span>}
       <div className="sidebar-bottom-auth">
