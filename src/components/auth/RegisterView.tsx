@@ -63,6 +63,9 @@ export function RegisterView({
             value={password}
             onChange={(e) => onPasswordChange(e.target.value)}
           />
+          <span className="small muted">
+            Mínimo 8 caracteres, con mayúscula, minúscula y número.
+          </span>
         </label>
         <button onClick={onRegister}>Registrarse</button>
         <button type="button" className="secondary" onClick={onBackToLogin}>

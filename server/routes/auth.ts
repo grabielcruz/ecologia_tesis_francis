@@ -5,11 +5,17 @@ import multer from "multer";
 import sharp from "sharp";
 import fs from "fs";
 import path from "path";
+import { Op } from "sequelize";
 import { Role, User } from "../models";
+import { sendPasswordResetEmail, sendWelcomeEmail } from "../utils/mailer";
 
 const router = Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || "secret_key";
+const PASSWORD_RESET_EXPIRATION_MINUTES = Number(
+  process.env.PASSWORD_RESET_EXPIRATION_MINUTES || 30,
+);
+const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
 const avatarUploadsDir = path.resolve(
   process.cwd(),
   "public",
@@ -62,6 +68,50 @@ const upload = multer({
     cb(null, true);
   },
 });
+
+const createPasswordResetToken = (userId: number, passwordHash: string) => {
+  const secret = `${JWT_SECRET}:${passwordHash}`;
+  return jwt.sign({ user_id: userId, purpose: "password-reset" }, secret, {
+    expiresIn: Math.max(1, PASSWORD_RESET_EXPIRATION_MINUTES) * 60,
+  });
+};
+
+const getPasswordResetUserFromToken = async (token: string) => {
+  const decoded = jwt.decode(token) as {
+    user_id?: number;
+    purpose?: string;
+  } | null;
+  const userId = Number(decoded?.user_id);
+  if (
+    !decoded ||
+    decoded.purpose !== "password-reset" ||
+    !Number.isFinite(userId)
+  ) {
+    return null;
+  }
+
+  const user = await User.findByPk(userId);
+  if (!user) {
+    return null;
+  }
+
+  const passwordHash = String(user.getDataValue("password_hash") || "");
+  const secret = `${JWT_SECRET}:${passwordHash}`;
+
+  try {
+    jwt.verify(token, secret);
+    return user;
+  } catch {
+    return null;
+  }
+};
+
+const isStrongPassword = (value: string) => {
+  const hasUppercase = /[A-Z]/.test(value);
+  const hasLowercase = /[a-z]/.test(value);
+  const hasDigit = /\d/.test(value);
+  return hasUppercase && hasLowercase && hasDigit;
+};
 
 router.post("/login", async (req, res) => {
   const username = String(req.body?.username || "").trim();
@@ -125,16 +175,29 @@ router.post("/register", async (req, res) => {
   const email = String(req.body?.email || "").trim();
   const password = String(req.body?.password || "");
 
-  if (!name || !username || !email || !password) {
-    return res
-      .status(400)
-      .json({ error: "Completa todos los campos obligatorios" });
+  const missingFields: string[] = [];
+  if (!name) missingFields.push("nombre completo");
+  if (!username) missingFields.push("nombre de usuario");
+  if (!email) missingFields.push("correo");
+  if (!password) missingFields.push("contraseña");
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      error: `Completa los campos obligatorios: ${missingFields.join(", ")}`,
+    });
   }
 
   if (password.length < 8) {
     return res
       .status(400)
       .json({ error: "La contraseña debe tener al menos 8 caracteres" });
+  }
+
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({
+      error:
+        "La contraseña es muy débil. Usa al menos una mayúscula, una minúscula y un número",
+    });
   }
 
   const existingUsername = await User.findOne({ where: { username } });
@@ -169,6 +232,15 @@ router.post("/register", async (req, res) => {
     updated_at: new Date(),
   });
 
+  try {
+    await sendWelcomeEmail({
+      to: created.getDataValue("email"),
+      name: created.getDataValue("name"),
+    });
+  } catch (error) {
+    console.warn("No se pudo enviar correo de bienvenida", error);
+  }
+
   return res.status(201).json({
     id: created.getDataValue("user_id"),
     name: created.getDataValue("name"),
@@ -178,6 +250,98 @@ router.post("/register", async (req, res) => {
     points: 0,
     avatarUrl: created.getDataValue("avatar_url"),
   });
+});
+
+router.post("/forgot-password", async (req, res) => {
+  const identifier = String(
+    req.body?.identifier || req.body?.email || "",
+  ).trim();
+
+  if (!identifier) {
+    return res
+      .status(400)
+      .json({ error: "Debes indicar tu correo o nombre de usuario" });
+  }
+
+  const user = await User.findOne({
+    where: {
+      [Op.or]: [{ email: identifier }, { username: identifier }],
+    },
+  });
+
+  if (!user) {
+    return res.json({
+      message:
+        "Si la cuenta existe, recibirás un correo con instrucciones para recuperar la contraseña.",
+    });
+  }
+
+  const token = createPasswordResetToken(
+    user.getDataValue("user_id"),
+    String(user.getDataValue("password_hash") || ""),
+  );
+  const resetLink = `${APP_BASE_URL}/reset-password?token=${encodeURIComponent(token)}`;
+
+  try {
+    await sendPasswordResetEmail({
+      to: user.getDataValue("email"),
+      name: user.getDataValue("name"),
+      resetLink,
+    });
+  } catch (error) {
+    console.warn("No se pudo enviar correo de recuperación", error);
+  }
+
+  return res.json({
+    message:
+      "Si la cuenta existe, recibirás un correo con instrucciones para recuperar la contraseña.",
+  });
+});
+
+router.get("/reset-password/validate", async (req, res) => {
+  const token = String(req.query?.token || "").trim();
+  if (!token) {
+    return res.status(400).json({ error: "Token de recuperación inválido" });
+  }
+
+  const user = await getPasswordResetUserFromToken(token);
+  if (!user) {
+    return res
+      .status(400)
+      .json({ error: "El enlace de recuperación es inválido o expiró" });
+  }
+
+  return res.json({ ok: true });
+});
+
+router.post("/reset-password", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  const newPassword = String(req.body?.password || "");
+
+  if (!token) {
+    return res.status(400).json({ error: "Token de recuperación inválido" });
+  }
+
+  if (newPassword.length < 8) {
+    return res
+      .status(400)
+      .json({ error: "La contraseña debe tener al menos 8 caracteres" });
+  }
+
+  const user = await getPasswordResetUserFromToken(token);
+  if (!user) {
+    return res
+      .status(400)
+      .json({ error: "El enlace de recuperación es inválido o expiró" });
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await user.update({
+    password_hash: passwordHash,
+    updated_at: new Date(),
+  });
+
+  return res.json({ message: "Contraseña actualizada correctamente" });
 });
 
 router.put(

@@ -9,6 +9,7 @@ interface LoginViewProps {
   onPasswordChange: (value: string) => void;
   onTogglePassword: () => void;
   onLogin: () => void;
+  onGoForgotPassword: () => void;
   onGoRegister: () => void;
 }
 
@@ -23,6 +24,7 @@ export function LoginView({
   onPasswordChange,
   onTogglePassword,
   onLogin,
+  onGoForgotPassword,
   onGoRegister,
 }: LoginViewProps) {
   return (
@@ -97,6 +99,16 @@ export function LoginView({
           </label>
         </div>
         <button onClick={onLogin}>Entrar</button>
+        <p>
+          ¿Olvidaste tu contraseña?{" "}
+          <button
+            type="button"
+            className="link-button"
+            onClick={onGoForgotPassword}
+          >
+            Recuperarla aquí
+          </button>
+        </p>
         {successMessage && (
           <p className={`success-message${successVisible ? " visible" : ""}`}>
             {successMessage}

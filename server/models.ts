@@ -813,6 +813,58 @@ VoteOfProposal.init(
   },
 );
 
+export class FindFlowerScore extends Model {}
+FindFlowerScore.init(
+  {
+    find_flower_score_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      unique: true,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    max_score: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    best_time_seconds: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    best_moves: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "FindFlowerScore",
+    tableName: "FindFlowerScore",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
 Role.hasMany(User, { foreignKey: "role_id" });
 User.belongsTo(Role, { foreignKey: "role_id" });
 
@@ -856,6 +908,9 @@ ProjectOfProposal.belongsTo(ProposalOfGreenArea, {
 
 User.hasMany(VoteOfProposal, { foreignKey: "user_id" });
 VoteOfProposal.belongsTo(User, { foreignKey: "user_id" });
+
+User.hasOne(FindFlowerScore, { foreignKey: "user_id" });
+FindFlowerScore.belongsTo(User, { foreignKey: "user_id" });
 
 GreenSpace.hasMany(ProjectOfProposal, { foreignKey: "space_id" });
 ProjectOfProposal.belongsTo(GreenSpace, { foreignKey: "space_id" });

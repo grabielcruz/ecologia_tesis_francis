@@ -124,7 +124,8 @@ const buildMetricChartSvg = (
 
   const points = entries.map((entry, index) => {
     const x = left + (index * innerWidth) / xSpan;
-    const y = top + innerHeight - ((entry.value - minValue) / range) * innerHeight;
+    const y =
+      top + innerHeight - ((entry.value - minValue) / range) * innerHeight;
     return { ...entry, x, y };
   });
 
@@ -133,7 +134,10 @@ const buildMetricChartSvg = (
   const yGrid = ticks
     .map((tick) => {
       const y = top + innerHeight - tick * innerHeight;
-      const valueLabel = formatNumber(minValue + range * tick, metric.unit === "m2/persona" ? 3 : 2);
+      const valueLabel = formatNumber(
+        minValue + range * tick,
+        metric.unit === "m2/persona" ? 3 : 2,
+      );
       return `
         <line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}" stroke="#d6e6e4" stroke-width="1" />
         <text x="${left - 18}" y="${y + 5}" text-anchor="end" font-size="16" fill="#3e5b58">${escapeSvgText(valueLabel)}</text>
@@ -191,7 +195,8 @@ const svgToPngDataUrl = async (svgMarkup: string) => {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const createdImage = new Image();
       createdImage.onload = () => resolve(createdImage);
-      createdImage.onerror = () => reject(new Error("No se pudo cargar el gráfico SVG"));
+      createdImage.onerror = () =>
+        reject(new Error("No se pudo cargar el gráfico SVG"));
       createdImage.src = url;
     });
 
@@ -414,11 +419,7 @@ export function GreenMetricsSection({
       doc.text("GreenMetric - Reporte completo", 40, 38);
       doc.setFontSize(9);
       doc.setTextColor(78, 103, 99);
-      doc.text(
-        `Generado: ${new Date().toLocaleString("es-AR")}`,
-        40,
-        52,
-      );
+      doc.text(`Generado: ${new Date().toLocaleString("es-AR")}`, 40, 52);
       doc.text(`Rango de datos: ${rangeLabel}`, 320, 52);
 
       autoTable(doc, {
@@ -452,24 +453,26 @@ export function GreenMetricsSection({
 
       autoTable(doc, {
         startY: (firstTableFinalY ?? 62) + 10,
-        head: [[
-          "#",
-          "Registro",
-          "Fecha cálculo",
-          "Área total campus (m2)",
-          "Área verde (m2)",
-          "Población campus",
-          "Área bosque denso (m2)",
-          "Área absorción lluvia (m2)",
-          "Presupuesto sostenibilidad",
-          "Presupuesto conservación",
-          "M1 (%)",
-          "M2 (m2/persona)",
-          "M3 (%)",
-          "M4 (%)",
-          "M5 (%)",
-          "M6 (%)",
-        ]],
+        head: [
+          [
+            "#",
+            "Registro",
+            "Fecha cálculo",
+            "Área total campus (m2)",
+            "Área verde (m2)",
+            "Población campus",
+            "Área bosque denso (m2)",
+            "Área absorción lluvia (m2)",
+            "Presupuesto sostenibilidad",
+            "Presupuesto conservación",
+            "M1 (%)",
+            "M2 (m2/persona)",
+            "M3 (%)",
+            "M4 (%)",
+            "M5 (%)",
+            "M6 (%)",
+          ],
+        ],
         body: sortedRecords.map((record, index) => [
           index + 1,
           `#${record.id}`,
@@ -521,7 +524,10 @@ export function GreenMetricsSection({
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
         const imageWidth = pageWidth - 80;
-        const imageHeight = Math.min(pageHeight - 100, (imageWidth * 560) / 1400);
+        const imageHeight = Math.min(
+          pageHeight - 100,
+          (imageWidth * 560) / 1400,
+        );
 
         doc.addImage(imageDataUrl, "PNG", 40, 70, imageWidth, imageHeight);
       }
@@ -571,14 +577,13 @@ export function GreenMetricsSection({
       return;
     }
 
-    const startLabel = new Date(`${reportStartDate}T00:00:00`).toLocaleDateString(
-      "es-AR",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      },
-    );
+    const startLabel = new Date(
+      `${reportStartDate}T00:00:00`,
+    ).toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
     const endLabel = new Date(`${reportEndDate}T00:00:00`).toLocaleDateString(
       "es-AR",
       {
@@ -712,7 +717,9 @@ export function GreenMetricsSection({
               ) : null}
             </>
           ) : (
-            <p className="muted">Se incluirán todos los registros disponibles.</p>
+            <p className="muted">
+              Se incluirán todos los registros disponibles.
+            </p>
           )}
 
           <div className="button-row">

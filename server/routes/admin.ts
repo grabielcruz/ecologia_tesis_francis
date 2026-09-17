@@ -205,11 +205,9 @@ router.put("/users/:id", async (req, res) => {
     String(currentRole?.getDataValue("role_name") || "") === "admin" &&
     roleId !== Number(user.getDataValue("role_id"))
   ) {
-    return res
-      .status(409)
-      .json({
-        error: "No se puede cambiar el rol del usuario administrador original",
-      });
+    return res.status(409).json({
+      error: "No se puede cambiar el rol del usuario administrador original",
+    });
   }
 
   if (!FIXED_ROLE_NAMES.has(String(role.getDataValue("role_name") || ""))) {
@@ -276,11 +274,9 @@ router.delete("/users/:id", async (req: AuthRequest, res) => {
     String(user.getDataValue("username") || "") === "admin" &&
     String(userRole?.getDataValue("role_name") || "") === "admin"
   ) {
-    return res
-      .status(409)
-      .json({
-        error: "No se puede eliminar el usuario administrador original",
-      });
+    return res.status(409).json({
+      error: "No se puede eliminar el usuario administrador original",
+    });
   }
 
   const [reviewCount, reportCount, proposalCount, voteCount] =

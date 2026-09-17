@@ -5,6 +5,7 @@ interface AppSidebarProps {
   isProjectsRoute: boolean;
   isReportsRoute: boolean;
   isGreenMetricsRoute: boolean;
+  isFindFlowerRoute: boolean;
   isTreeTypesRoute: boolean;
   isTreesRoute: boolean;
   answeredPolls: number;
@@ -19,6 +20,7 @@ interface AppSidebarProps {
   onNavigateProjects: () => void;
   onNavigateReports: () => void;
   onNavigateGreenMetrics: () => void;
+  onNavigateFindFlower: () => void;
   onNavigateTreeTypes: () => void;
   onNavigateTrees: () => void;
   onNavigateUsers: () => void;
@@ -35,6 +37,7 @@ export function AppSidebar({
   isProjectsRoute,
   isReportsRoute,
   isGreenMetricsRoute,
+  isFindFlowerRoute,
   isTreeTypesRoute,
   isTreesRoute,
   answeredPolls,
@@ -49,6 +52,7 @@ export function AppSidebar({
   onNavigateProjects,
   onNavigateReports,
   onNavigateGreenMetrics,
+  onNavigateFindFlower,
   onNavigateTreeTypes,
   onNavigateTrees,
   onNavigateUsers,
@@ -69,7 +73,9 @@ export function AppSidebar({
             }`}
             onClick={onToggleTheme}
             aria-label={
-              themeMode === "dark" ? "Activar modo claro" : "Activar modo oscuro"
+              themeMode === "dark"
+                ? "Activar modo claro"
+                : "Activar modo oscuro"
             }
             title={themeMode === "dark" ? "Modo claro" : "Modo oscuro"}
           >
@@ -166,6 +172,16 @@ export function AppSidebar({
           </button>
           <button
             type="button"
+            className={`nav-item ${isFindFlowerRoute ? "active" : ""}`}
+            onClick={onNavigateFindFlower}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              FL
+            </span>
+            <span>Encuentra la flor</span>
+          </button>
+          <button
+            type="button"
             className={`nav-item ${isTreeTypesRoute ? "active" : ""}`}
             onClick={onNavigateTreeTypes}
           >
@@ -201,7 +217,6 @@ export function AppSidebar({
             </button>
           </div>
         )}
-
       </nav>
       {userRole === "admin" && <span className="nav-badge">ADMIN</span>}
       <div className="sidebar-bottom-auth">
@@ -215,11 +230,17 @@ export function AppSidebar({
           </div>
         </div>
         {isAuthenticated ? (
-          <button className="logout-button sidebar-auth-button" onClick={onLogout}>
+          <button
+            className="logout-button sidebar-auth-button"
+            onClick={onLogout}
+          >
             Cerrar sesión
           </button>
         ) : (
-          <button className="logout-button sidebar-auth-button" onClick={onLogin}>
+          <button
+            className="logout-button sidebar-auth-button"
+            onClick={onLogin}
+          >
             Iniciar sesión
           </button>
         )}

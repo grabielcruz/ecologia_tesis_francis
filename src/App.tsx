@@ -19,6 +19,7 @@ import { ProposalsListSection } from "./components/proposals/ProposalsListSectio
 import { Report } from "./components/reports/Report";
 import { Reports } from "./components/reports/Reports";
 import { GreenMetricsSection } from "./components/greenMetrics/GreenMetricsSection";
+import { FindFlowerSection } from "./components/games/FindFlowerSection";
 import { AiChatWidget } from "./components/chatbot/AiChatWidget";
 import { TreeTypeDetailSection } from "./components/treeTypes/TreeTypeDetailSection";
 import { TreeTypesSection } from "./components/treeTypes/TreeTypesSection";
@@ -102,7 +103,6 @@ type SortDirection = "asc" | "desc";
 type ThemeMode = "light" | "dark";
 
 const THEME_STORAGE_KEY = "ecologia-theme-mode";
-
 const getInitialThemeMode = (): ThemeMode => {
   const storedValue = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (storedValue === "light" || storedValue === "dark") {
@@ -120,6 +120,13 @@ function App() {
 
   const getErrorMessage = (error: unknown, fallback: string) =>
     error instanceof Error && error.message ? error.message : fallback;
+
+  const isStrongPassword = (value: string) => {
+    const hasUppercase = /[A-Z]/.test(value);
+    const hasLowercase = /[a-z]/.test(value);
+    const hasDigit = /\d/.test(value);
+    return hasUppercase && hasLowercase && hasDigit;
+  };
 
   const parseJwtPayload = (jwtToken: string): { exp?: number } | null => {
     const segments = jwtToken.split(".");
@@ -313,6 +320,15 @@ function App() {
   const [submittedPollId, setSubmittedPollId] = useState<number | null>(null);
   const [pollAnswers, setPollAnswers] = useState<Record<number, string>>({});
   const [showPasswordField, setShowPasswordField] = useState(false);
+  const [recoveryIdentifier, setRecoveryIdentifier] = useState("");
+  const [isSendingRecoveryEmail, setIsSendingRecoveryEmail] = useState(false);
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [resetPasswordConfirmValue, setResetPasswordConfirmValue] =
+    useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isResetTokenValid, setIsResetTokenValid] = useState<boolean | null>(
+    null,
+  );
   const [showModal, setShowModal] = useState(false);
   const [pollTitle, setPollTitle] = useState("");
   const [pollDescription, setPollDescription] = useState("");
@@ -637,7 +653,11 @@ function App() {
   useEffect(() => {
     if (!authReady) return;
 
-    if (route === "/login" || route === "/register") {
+    if (
+      route === "/login" ||
+      route === "/register" ||
+      route === "/forgot-password"
+    ) {
       if (token) {
         navigate("/", true);
       }
@@ -841,6 +861,98 @@ function App() {
     }
   };
 
+  const requestPasswordRecovery = async () => {
+    setError(null);
+    setSuccessMessage(null);
+
+    const identifier = recoveryIdentifier.trim() || username.trim();
+    if (!identifier) {
+      setError(
+        "Ingresa tu correo o nombre de usuario para recuperar tu contraseña",
+      );
+      return;
+    }
+
+    setIsSendingRecoveryEmail(true);
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(
+          data.error || "No se pudo procesar la recuperación de contraseña",
+        );
+        return;
+      }
+
+      setSuccessMessage(
+        data.message ||
+          "Si la cuenta existe, recibirás un correo con instrucciones.",
+      );
+      setRecoveryIdentifier("");
+    } catch {
+      setError("No se pudo procesar la recuperación de contraseña");
+    } finally {
+      setIsSendingRecoveryEmail(false);
+    }
+  };
+
+  const resetPasswordWithToken = async (tokenFromUrl: string) => {
+    setError(null);
+    setSuccessMessage(null);
+
+    if (!tokenFromUrl) {
+      setError("El enlace de recuperación es inválido");
+      return;
+    }
+
+    if (!resetPasswordValue.trim() || !resetPasswordConfirmValue.trim()) {
+      setError("Completa ambos campos de contraseña");
+      return;
+    }
+
+    if (resetPasswordValue.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres");
+      return;
+    }
+
+    if (resetPasswordValue !== resetPasswordConfirmValue) {
+      setError("Las contraseñas no coinciden");
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: tokenFromUrl,
+          password: resetPasswordValue,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error || "No se pudo restablecer la contraseña");
+        return;
+      }
+
+      setSuccessMessage(data.message || "Contraseña actualizada correctamente");
+      setResetPasswordValue("");
+      setResetPasswordConfirmValue("");
+      navigate("/login", true);
+    } catch {
+      setError("No se pudo restablecer la contraseña");
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
   const login = async () => {
     setError(null);
     setSuccessMessage(null);
@@ -874,27 +986,64 @@ function App() {
 
   const register = async () => {
     setError(null);
-    const response = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: registerName, username, password, email }),
-    });
+    const trimmedName = registerName.trim();
+    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
 
-    if (!response.ok) {
-      setError("No se pudo crear la cuenta");
+    const missingFields: string[] = [];
+    if (!trimmedName) missingFields.push("nombre completo");
+    if (!trimmedUsername) missingFields.push("nombre de usuario");
+    if (!trimmedEmail) missingFields.push("correo");
+    if (!password) missingFields.push("contraseña");
+
+    if (missingFields.length > 0) {
+      setError(`Completa los campos obligatorios: ${missingFields.join(", ")}`);
       return;
     }
 
-    const data = await response.json();
-    const regUser = data;
-    setUser(regUser);
-    setToken(null);
-    setPassword("");
-    setRegisterName("");
-    setEmail("");
-    setUsername(data.username);
-    setSuccessMessage("Registro exitoso. Ahora ingresa con tu usuario.");
-    navigate("/login");
+    if (password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres");
+      return;
+    }
+
+    if (!isStrongPassword(password)) {
+      setError(
+        "La contraseña es muy débil. Usa al menos una mayúscula, una minúscula y un número",
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: trimmedName,
+          username: trimmedUsername,
+          password,
+          email: trimmedEmail,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setError(data.error || "No se pudo crear la cuenta");
+        return;
+      }
+
+      const regUser = data;
+      setUser(regUser);
+      setToken(null);
+      setPassword("");
+      setRegisterName("");
+      setEmail("");
+      setUsername(data.username);
+      setSuccessMessage("Registro exitoso. Ahora ingresa con tu usuario.");
+      navigate("/login");
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudo crear la cuenta"));
+    }
   };
 
   const logout = () => {
@@ -947,6 +1096,45 @@ function App() {
     Boolean(pollAnswers[survey.id]),
   ).length;
   const unansweredPolls = surveys.length - answeredPolls;
+  const isResetPasswordRoute = route.startsWith("/reset-password");
+  const resetPasswordToken = isResetPasswordRoute
+    ? new URLSearchParams(window.location.search).get("token") || ""
+    : "";
+
+  useEffect(() => {
+    if (!isResetPasswordRoute) {
+      setIsResetTokenValid(null);
+      return;
+    }
+
+    if (!resetPasswordToken) {
+      setIsResetTokenValid(false);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const validateToken = async () => {
+      try {
+        const response = await fetch(
+          `/api/auth/reset-password/validate?token=${encodeURIComponent(resetPasswordToken)}`,
+        );
+        if (isCancelled) return;
+        setIsResetTokenValid(response.ok);
+      } catch {
+        if (!isCancelled) {
+          setIsResetTokenValid(false);
+        }
+      }
+    };
+
+    validateToken();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isResetPasswordRoute, resetPasswordToken]);
+
   const filteredSurveys = surveys.filter((survey) => {
     if (answerFilter === "answered") {
       return Boolean(pollAnswers[survey.id]);
@@ -1008,6 +1196,7 @@ function App() {
     isProjectsRoute,
     isReportsRoute,
     isGreenMetricsRoute,
+    isFindFlowerRoute,
     isTreeTypesRoute,
     isTreesRoute,
   } = getRouteFlags(route);
@@ -1945,6 +2134,123 @@ function App() {
     }
   };
 
+  if (isResetPasswordRoute) {
+    return (
+      <div className="container">
+        <h1>Recuperar contraseña</h1>
+        <section className="box register-box">
+          <h2>Restablecer contraseña</h2>
+          {isResetTokenValid === null ? <p>Validando enlace...</p> : null}
+          {isResetTokenValid === false ? (
+            <>
+              <p className="error">
+                El enlace de recuperación es inválido o expiró.
+              </p>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => navigate("/login", true)}
+              >
+                Volver al login
+              </button>
+            </>
+          ) : null}
+          {isResetTokenValid ? (
+            <>
+              <label>
+                Nueva contraseña
+                <input
+                  type="password"
+                  placeholder="Mínimo 8 caracteres"
+                  value={resetPasswordValue}
+                  onChange={(event) =>
+                    setResetPasswordValue(event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Confirmar nueva contraseña
+                <input
+                  type="password"
+                  placeholder="Repite la contraseña"
+                  value={resetPasswordConfirmValue}
+                  onChange={(event) =>
+                    setResetPasswordConfirmValue(event.target.value)
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  void resetPasswordWithToken(resetPasswordToken);
+                }}
+                disabled={isResettingPassword}
+              >
+                {isResettingPassword ? "Guardando..." : "Actualizar contraseña"}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => navigate("/login", true)}
+              >
+                Volver al login
+              </button>
+            </>
+          ) : null}
+          {error && <p className="error">{error}</p>}
+          {successMessage && (
+            <p className={`success-message${successVisible ? " visible" : ""}`}>
+              {successMessage}
+            </p>
+          )}
+        </section>
+      </div>
+    );
+  }
+
+  if (route === "/forgot-password") {
+    return (
+      <div className="container">
+        <h1>Recuperar contraseña</h1>
+        <section className="box register-box">
+          <h2>Recibir enlace de recuperación</h2>
+          <div className="recover-password-panel">
+            <label>
+              Correo o usuario
+              <input
+                placeholder="Correo o usuario"
+                value={recoveryIdentifier}
+                onChange={(event) => setRecoveryIdentifier(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                void requestPasswordRecovery();
+              }}
+              disabled={isSendingRecoveryEmail}
+            >
+              {isSendingRecoveryEmail ? "Enviando..." : "Enviar enlace"}
+            </button>
+          </div>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => navigate("/login", true)}
+          >
+            Volver al login
+          </button>
+          {error && <p className="error">{error}</p>}
+          {successMessage && (
+            <p className={`success-message${successVisible ? " visible" : ""}`}>
+              {successMessage}
+            </p>
+          )}
+        </section>
+      </div>
+    );
+  }
+
   if (route === "/login") {
     return (
       <LoginView
@@ -1958,6 +2264,7 @@ function App() {
         onPasswordChange={setPassword}
         onTogglePassword={() => setShowPasswordField((visible) => !visible)}
         onLogin={login}
+        onGoForgotPassword={() => navigate("/forgot-password")}
         onGoRegister={() => navigate("/register")}
       />
     );
@@ -2841,7 +3148,9 @@ function App() {
       },
     ] as const;
     const validMetricRecords = [...greenMetricRecords]
-      .filter((record) => !Number.isNaN(new Date(record.calculationDate).getTime()))
+      .filter(
+        (record) => !Number.isNaN(new Date(record.calculationDate).getTime()),
+      )
       .sort(
         (left, right) =>
           new Date(left.calculationDate).getTime() -
@@ -2901,8 +3210,7 @@ function App() {
       return sourceRows
         .map((record, index) => {
           const value = record.metrics[metricKey];
-          const x =
-            paddingX + (index * (chartWidth - paddingX * 2)) / xSpan;
+          const x = paddingX + (index * (chartWidth - paddingX * 2)) / xSpan;
           const y =
             chartHeight -
             paddingY -
@@ -2983,8 +3291,7 @@ function App() {
           />
 
           {sourceRows.map((record, index) => {
-            const x =
-              paddingX + (index * (chartWidth - paddingX * 2)) / xSpan;
+            const x = paddingX + (index * (chartWidth - paddingX * 2)) / xSpan;
             const y =
               chartHeight -
               paddingY -
@@ -3039,207 +3346,223 @@ function App() {
     ];
     return (
       <>
-      <section className="box principal-box">
-        <div className="principal-summary-grid">
-          <article className="summary-item">
-            <span>Encuestas totales</span>
-            <strong>{totalPolls}</strong>
-          </article>
-          <article className="summary-item">
-            <span>Encuestas visibles</span>
-            <strong>{activePolls}</strong>
-          </article>
-          <article className="summary-item">
-            <span>Respuestas registradas</span>
-            <strong>{totalResponses}</strong>
-          </article>
-          <article className="summary-item">
-            <span>Areas verdes</span>
-            <strong>{greenSpaces.length}</strong>
-          </article>
-          <article className="summary-item">
-            <span>Superficie verde total</span>
-            <strong>{totalGreenArea.toFixed(0)} m2</strong>
-          </article>
-          <article className="summary-item">
-            <span>Arboles altos</span>
-            <strong>{totalTallTrees}</strong>
-          </article>
-          <article className="summary-item">
-            <span>Propuestas visibles</span>
-            <strong>{proposals.length}</strong>
-          </article>
-        </div>
+        <section className="box principal-box">
+          <div className="principal-summary-grid">
+            <article className="summary-item">
+              <span>Encuestas totales</span>
+              <strong>{totalPolls}</strong>
+            </article>
+            <article className="summary-item">
+              <span>Encuestas visibles</span>
+              <strong>{activePolls}</strong>
+            </article>
+            <article className="summary-item">
+              <span>Respuestas registradas</span>
+              <strong>{totalResponses}</strong>
+            </article>
+            <article className="summary-item">
+              <span>Areas verdes</span>
+              <strong>{greenSpaces.length}</strong>
+            </article>
+            <article className="summary-item">
+              <span>Superficie verde total</span>
+              <strong>{totalGreenArea.toFixed(0)} m2</strong>
+            </article>
+            <article className="summary-item">
+              <span>Arboles altos</span>
+              <strong>{totalTallTrees}</strong>
+            </article>
+            <article className="summary-item">
+              <span>Propuestas visibles</span>
+              <strong>{proposals.length}</strong>
+            </article>
+          </div>
 
-        <div className="principal-highlights">
-          {recentMetricRecords.length > 0 ? (
-            <article className="principal-panel principal-metrics-panel">
-              <h3>Indicadores GreenMetric (ultimos 4 registros)</h3>
+          <div className="principal-highlights">
+            {recentMetricRecords.length > 0 ? (
+              <article className="principal-panel principal-metrics-panel">
+                <h3>Indicadores GreenMetric (ultimos 4 registros)</h3>
+                <p className="muted">
+                  Haz clic en cada indicador para ver el gráfico ampliado y los
+                  datos que lo componen.
+                </p>
+                <div className="principal-metric-grid">
+                  {metricTrendDefinitions.map((metric) => {
+                    const latestValue =
+                      recentMetricRecords[recentMetricRecords.length - 1]
+                        ?.metrics[metric.key] ?? 0;
+                    const valueDelta =
+                      recentMetricRecords.length > 1
+                        ? latestValue -
+                          recentMetricRecords[0].metrics[metric.key]
+                        : 0;
+
+                    return (
+                      <button
+                        key={`principal-indicator-${metric.key}`}
+                        type="button"
+                        className="green-metric-chart-card principal-metric-chart-card principal-metric-card-button"
+                        onClick={() => openPrincipalMetricModal(metric.key)}
+                      >
+                        <div className="metric-card-header">
+                          <h4>{metric.label}</h4>
+                          <span className="metric-card-value">
+                            {formatMetricValue(latestValue)}
+                          </span>
+                        </div>
+                        <p className="muted metric-card-delta">
+                          Variación: {valueDelta >= 0 ? "+" : ""}
+                          {formatMetricValue(valueDelta)}
+                        </p>
+                        {renderMetricChart(
+                          metric,
+                          recentMetricRecords,
+                          680,
+                          148,
+                          44,
+                          20,
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </article>
+            ) : null}
+
+            <article className="principal-panel">
+              <h3>Accesos rápidos</h3>
               <p className="muted">
-                Haz clic en cada indicador para ver el gráfico ampliado y los datos
-                que lo componen.
+                Navega directo a los módulos clave para actualizar datos y
+                revisar reportes.
               </p>
-              <div className="principal-metric-grid">
-                {metricTrendDefinitions.map((metric) => {
-                  const latestValue =
-                    recentMetricRecords[recentMetricRecords.length - 1]
-                      ?.metrics[metric.key] ?? 0;
-                  const valueDelta =
-                    recentMetricRecords.length > 1
-                      ? latestValue - recentMetricRecords[0].metrics[metric.key]
-                      : 0;
-
-                  return (
-                    <button
-                      key={`principal-indicator-${metric.key}`}
-                      type="button"
-                      className="green-metric-chart-card principal-metric-chart-card principal-metric-card-button"
-                      onClick={() => openPrincipalMetricModal(metric.key)}
-                    >
-                      <div className="metric-card-header">
-                        <h4>{metric.label}</h4>
-                        <span className="metric-card-value">
-                          {formatMetricValue(latestValue)}
-                        </span>
-                      </div>
-                      <p className="muted metric-card-delta">
-                        Variación: {valueDelta >= 0 ? "+" : ""}
-                        {formatMetricValue(valueDelta)}
-                      </p>
-                      {renderMetricChart(metric, recentMetricRecords, 680, 148, 44, 20)}
-                    </button>
-                  );
-                })}
+              <div className="principal-quick-actions">
+                {principalQuickActions.map((action) => (
+                  <button
+                    key={action.id}
+                    type="button"
+                    className="quick-action-button"
+                    onClick={action.onClick}
+                  >
+                    <span className="quick-action-badge" aria-hidden="true">
+                      {action.badge}
+                    </span>
+                    <span className="quick-action-copy">
+                      <strong className="quick-action-title">
+                        {action.title}
+                      </strong>
+                      <small className="quick-action-hint">{action.hint}</small>
+                    </span>
+                  </button>
+                ))}
               </div>
             </article>
-          ) : null}
 
-          <article className="principal-panel">
-            <h3>Accesos rápidos</h3>
-            <p className="muted">
-              Navega directo a los módulos clave para actualizar datos y revisar
-              reportes.
-            </p>
-            <div className="principal-quick-actions">
-              {principalQuickActions.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  className="quick-action-button"
-                  onClick={action.onClick}
-                >
-                  <span className="quick-action-badge" aria-hidden="true">
-                    {action.badge}
-                  </span>
-                  <span className="quick-action-copy">
-                    <strong className="quick-action-title">{action.title}</strong>
-                    <small className="quick-action-hint">{action.hint}</small>
-                  </span>
-                </button>
+            <article className="principal-panel">
+              <h3>Encuestas recientes</h3>
+              {surveySource.slice(0, 4).map((survey) => (
+                <p key={survey.id}>
+                  <strong>{survey.title}</strong> ·{" "}
+                  {survey.summary?.totalResponses ?? 0} respuestas
+                </p>
               ))}
-            </div>
-          </article>
-
-          <article className="principal-panel">
-            <h3>Encuestas recientes</h3>
-            {surveySource.slice(0, 4).map((survey) => (
-              <p key={survey.id}>
-                <strong>{survey.title}</strong> ·{" "}
-                {survey.summary?.totalResponses ?? 0} respuestas
-              </p>
-            ))}
-            {surveySource.length === 0 && <p>No hay encuestas disponibles.</p>}
-          </article>
-          <article className="principal-panel">
-            <h3>Areas verdes destacadas</h3>
-            {greenSpaces.slice(0, 4).map((space) => (
-              <p key={space.id}>
-                <strong>{space.name}</strong> · {space.totalAreaM2} m2 ·{" "}
-                {space.tallTreeCount} arboles
-              </p>
-            ))}
-            {greenSpaces.length === 0 && (
-              <p>No hay areas verdes registradas.</p>
-            )}
-          </article>
-          <article className="principal-panel">
-            <h3>Estado de propuestas</h3>
-            <button
-              type="button"
-              className="summary-link-button"
-              onClick={() => openProposalsWithFilter("open")}
-            >
-              <strong>{openProposals}</strong> en votacion abierta
-            </button>
-            <button
-              type="button"
-              className="summary-link-button"
-              onClick={() => openProposalsWithFilter("approved")}
-            >
-              <strong>{approvedProposals}</strong> aprobadas por votacion
-            </button>
-            {user?.role === "admin" && (
+              {surveySource.length === 0 && (
+                <p>No hay encuestas disponibles.</p>
+              )}
+            </article>
+            <article className="principal-panel">
+              <h3>Areas verdes destacadas</h3>
+              {greenSpaces.slice(0, 4).map((space) => (
+                <p key={space.id}>
+                  <strong>{space.name}</strong> · {space.totalAreaM2} m2 ·{" "}
+                  {space.tallTreeCount} arboles
+                </p>
+              ))}
+              {greenSpaces.length === 0 && (
+                <p>No hay areas verdes registradas.</p>
+              )}
+            </article>
+            <article className="principal-panel">
+              <h3>Estado de propuestas</h3>
               <button
                 type="button"
                 className="summary-link-button"
-                onClick={() => openProposalsWithFilter("draft")}
+                onClick={() => openProposalsWithFilter("open")}
               >
-                <strong>{pendingProposals}</strong> pendientes de validacion
+                <strong>{openProposals}</strong> en votacion abierta
               </button>
-            )}
-            {proposals.length === 0 && <p>No hay propuestas disponibles.</p>}
-          </article>
-        </div>
-      </section>
-      <AppModal
-        isOpen={showPrincipalMetricModal && !!selectedPrincipalMetric}
-        onClose={() => {
-          setShowPrincipalMetricModal(false);
-          setSelectedPrincipalMetricKey(null);
-        }}
-        title={selectedPrincipalMetric?.label || "Detalle de indicador"}
-        description={selectedPrincipalMetric?.formula || ""}
-      >
-        {selectedPrincipalMetric && recentMetricRecords.length > 0 ? (
-          <div className="principal-metric-modal-content">
-            <div className="green-metric-chart-card principal-metric-modal-chart">
-              {renderMetricChart(
-                selectedPrincipalMetric,
-                recentMetricRecords,
-                760,
-                260,
-                52,
-                26,
-                false,
+              <button
+                type="button"
+                className="summary-link-button"
+                onClick={() => openProposalsWithFilter("approved")}
+              >
+                <strong>{approvedProposals}</strong> aprobadas por votacion
+              </button>
+              {user?.role === "admin" && (
+                <button
+                  type="button"
+                  className="summary-link-button"
+                  onClick={() => openProposalsWithFilter("draft")}
+                >
+                  <strong>{pendingProposals}</strong> pendientes de validacion
+                </button>
               )}
-            </div>
-            <div className="green-metric-table-wrap">
-              <table className="default-table">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Registro</th>
-                    <th>Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentMetricRecords.map((record) => (
-                    <tr key={`principal-modal-row-${selectedPrincipalMetric.key}-${record.id}`}>
-                      <td>{formatMetricDate(record.calculationDate)}</td>
-                      <td>#{record.id}</td>
-                      <td>
-                        {formatMetricValue(record.metrics[selectedPrincipalMetric.key])}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              {proposals.length === 0 && <p>No hay propuestas disponibles.</p>}
+            </article>
           </div>
-        ) : (
-          <p>No hay datos para este indicador.</p>
-        )}
-      </AppModal>
+        </section>
+        <AppModal
+          isOpen={showPrincipalMetricModal && !!selectedPrincipalMetric}
+          onClose={() => {
+            setShowPrincipalMetricModal(false);
+            setSelectedPrincipalMetricKey(null);
+          }}
+          title={selectedPrincipalMetric?.label || "Detalle de indicador"}
+          description={selectedPrincipalMetric?.formula || ""}
+        >
+          {selectedPrincipalMetric && recentMetricRecords.length > 0 ? (
+            <div className="principal-metric-modal-content">
+              <div className="green-metric-chart-card principal-metric-modal-chart">
+                {renderMetricChart(
+                  selectedPrincipalMetric,
+                  recentMetricRecords,
+                  760,
+                  260,
+                  52,
+                  26,
+                  false,
+                )}
+              </div>
+              <div className="green-metric-table-wrap">
+                <table className="default-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Registro</th>
+                      <th>Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentMetricRecords.map((record) => (
+                      <tr
+                        key={`principal-modal-row-${selectedPrincipalMetric.key}-${record.id}`}
+                      >
+                        <td>{formatMetricDate(record.calculationDate)}</td>
+                        <td>#{record.id}</td>
+                        <td>
+                          {formatMetricValue(
+                            record.metrics[selectedPrincipalMetric.key],
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <p>No hay datos para este indicador.</p>
+          )}
+        </AppModal>
       </>
     );
   };
@@ -3283,6 +3606,16 @@ function App() {
         userRole={user?.role}
         onSetFormValue={setGreenMetricFormValue}
         onSave={saveRecord}
+      />
+    );
+  };
+
+  const renderFindFlowerSection = () => {
+    return (
+      <FindFlowerSection
+        token={token}
+        isAuthenticated={isAuthenticated}
+        currentUsername={user?.username}
       />
     );
   };
@@ -3508,6 +3841,10 @@ function App() {
       return renderGreenMetricsSection();
     }
 
+    if (route === "/find-the-flower") {
+      return renderFindFlowerSection();
+    }
+
     if (route === "/tree-types") {
       return renderTreeTypesSection();
     }
@@ -3723,13 +4060,17 @@ function App() {
       {renderToast()}
       <button
         type="button"
-        className="mobile-menu-button"
+        className={`mobile-menu-button${sidebarOpen ? " open" : ""}`}
         onClick={() => setSidebarOpen((open) => !open)}
         aria-expanded={sidebarOpen}
         aria-controls="app-sidebar"
         aria-label={sidebarOpen ? "Cerrar menu" : "Abrir menu"}
       >
-        ☰
+        <span className="mobile-menu-icon" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
       </button>
       {sidebarOpen && (
         <button
@@ -3750,6 +4091,7 @@ function App() {
           isProjectsRoute={isProjectsRoute}
           isReportsRoute={isReportsRoute}
           isGreenMetricsRoute={isGreenMetricsRoute}
+          isFindFlowerRoute={isFindFlowerRoute}
           isTreeTypesRoute={isTreeTypesRoute}
           isTreesRoute={isTreesRoute}
           answeredPolls={answeredPolls}
@@ -3764,6 +4106,7 @@ function App() {
           onNavigateProjects={openProjects}
           onNavigateReports={() => navigate("/reports")}
           onNavigateGreenMetrics={() => navigate("/green-metrics")}
+          onNavigateFindFlower={() => navigate("/find-the-flower")}
           onNavigateTreeTypes={() => navigate("/tree-types")}
           onNavigateTrees={() => navigate("/trees")}
           onNavigateUsers={() => navigate("/admin-users")}

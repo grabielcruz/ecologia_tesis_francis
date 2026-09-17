@@ -13,3 +13,46 @@ Adicionalmente, los participantes o estudiantes podrán sugerir nuevos temas par
 que los administradores podrán revisar para generar nuevas encuestas
 Para el stack de desarrollo se utiliza nodejs, typescript, react, expressjs para el back, utilizando 
 vit. Para la base de datos se utiliza sqlite con el paquete sequelize
+
+## Configuración SMTP (Gmail) y recuperación de contraseña
+
+Agrega estas variables en tu archivo `.env` para habilitar el envío de correos
+de bienvenida y recuperación de contraseña:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASS=tu_app_password_de_gmail
+MAIL_FROM="Univerde <tu_correo@gmail.com>"
+APP_BASE_URL=http://localhost:5173
+JWT_SECRET=un_secreto_seguro
+PASSWORD_RESET_EXPIRATION_MINUTES=30
+```
+
+Notas:
+- Para Gmail, se recomienda usar App Password (no la contraseña normal).
+- Si no configuras SMTP, el backend omite el envío y registra una advertencia.
+- El enlace de recuperación usa `APP_BASE_URL/reset-password?token=...`.
+
+## Checklist de verificación (registro y recuperación)
+
+1. Registro con correo válido:
+	- Crear una cuenta desde la pantalla de registro.
+	- Confirmar que el usuario se crea y puede iniciar sesión.
+	- Verificar recepción del correo de bienvenida.
+2. Solicitud de recuperación:
+	- En login, usar "Correo o usuario" y pulsar "Enviar enlace".
+	- Confirmar mensaje genérico de seguridad (sin revelar existencia de cuenta).
+	- Verificar recepción del correo con enlace.
+3. Validación de token:
+	- Abrir el enlace recibido y confirmar que carga la pantalla de restablecimiento.
+	- Probar un token alterado o expirado y verificar mensaje de error.
+4. Restablecimiento de contraseña:
+	- Ingresar nueva contraseña y confirmación (mínimo 8 caracteres).
+	- Confirmar mensaje de éxito y redirección a login.
+	- Iniciar sesión con la nueva contraseña.
+5. Token de un solo estado válido:
+	- Restablecer contraseña y luego reintentar el mismo enlace.
+	- Confirmar que el token anterior ya no funciona (por cambio de hash de contraseña).

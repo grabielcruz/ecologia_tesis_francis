@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import {
+  FindFlowerScore,
   GreenMetricRecord,
   GreenSpace,
   GreenSpaceReview,
@@ -15,6 +16,7 @@ import {
   sequelize,
 } from "./models";
 import {
+  findFlowerScoreSeeds,
   greenMetricRecordSeeds,
   greenSpaceSeeds,
   greenSpaceReviewSeeds,
@@ -83,6 +85,26 @@ export async function seedDatabase() {
     userIdByUsername[user.username] = Number(
       createdUser.getDataValue("user_id"),
     );
+  }
+
+  for (const scoreSeed of findFlowerScoreSeeds) {
+    const userId = userIdByUsername[scoreSeed.username];
+    if (!userId) {
+      throw new Error(
+        `User not found for find flower score seed: ${scoreSeed.username}`,
+      );
+    }
+
+    const updatedAt = new Date(scoreSeed.updated_at);
+
+    await FindFlowerScore.create({
+      user_id: userId,
+      max_score: scoreSeed.max_score,
+      best_time_seconds: scoreSeed.best_time_seconds,
+      best_moves: scoreSeed.best_moves,
+      created_at: updatedAt,
+      updated_at: updatedAt,
+    });
   }
 
   for (const greenSpaceSeed of greenSpaceSeeds) {
@@ -384,7 +406,7 @@ export async function seedDatabase() {
   }
 
   console.log(
-    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${greenMetricRecordSeeds.length} green metric records, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
+    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${findFlowerScoreSeeds.length} find flower scores, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${greenMetricRecordSeeds.length} green metric records, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
   );
 }
 

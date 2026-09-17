@@ -3,6 +3,7 @@ export interface RouteFlags {
   isProjectsRoute: boolean;
   isReportsRoute: boolean;
   isGreenMetricsRoute: boolean;
+  isFindFlowerRoute: boolean;
   isTreeTypesRoute: boolean;
   isTreesRoute: boolean;
 }
@@ -26,6 +27,8 @@ export function getRouteFlags(route: string): RouteFlags {
     isReportsRoute: route === "/reports" || route.startsWith("/reports/"),
     isGreenMetricsRoute:
       route === "/green-metrics" || route.startsWith("/green-metrics/"),
+    isFindFlowerRoute:
+      route === "/find-the-flower" || route.startsWith("/find-the-flower/"),
     isTreeTypesRoute:
       route === "/tree-types" || route.startsWith("/tree-types/"),
     isTreesRoute:

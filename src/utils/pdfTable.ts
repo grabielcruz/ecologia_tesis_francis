@@ -54,5 +54,7 @@ export const downloadPdfTable = async ({
     },
   });
 
-  doc.save(`${fileName ? sanitizeFileName(fileName) : sanitizeFileName(title)}.pdf`);
+  doc.save(
+    `${fileName ? sanitizeFileName(fileName) : sanitizeFileName(title)}.pdf`,
+  );
 };

@@ -105,6 +105,14 @@ export interface GreenMetricRecordSeed {
   username: string;
 }
 
+export interface FindFlowerScoreSeed {
+  username: string;
+  max_score: number;
+  best_time_seconds: number;
+  best_moves: number;
+  updated_at: string;
+}
+
 export const roleSeeds: RoleSeed[] = [
   {
     role_name: "admin",
@@ -785,5 +793,43 @@ export const projectUpdateOfProposalSeeds: ProjectUpdateOfProposalSeed[] = [
     project_title: "Piloto de huerto comunitario",
     username: "daniela.t",
     created_at: "2026-09-01T09:30:00.000Z",
+  },
+];
+
+export const findFlowerScoreSeeds: FindFlowerScoreSeed[] = [
+  {
+    username: "admin",
+    max_score: 4010,
+    best_time_seconds: 74,
+    best_moves: 45,
+    updated_at: "2026-09-10T10:10:00.000Z",
+  },
+  {
+    username: "laura.campos",
+    max_score: 3840,
+    best_time_seconds: 83,
+    best_moves: 49,
+    updated_at: "2026-09-10T11:15:00.000Z",
+  },
+  {
+    username: "daniela.t",
+    max_score: 3720,
+    best_time_seconds: 88,
+    best_moves: 52,
+    updated_at: "2026-09-10T11:45:00.000Z",
+  },
+  {
+    username: "mateo.rios",
+    max_score: 3495,
+    best_time_seconds: 97,
+    best_moves: 58,
+    updated_at: "2026-09-10T12:12:00.000Z",
+  },
+  {
+    username: "regular.user",
+    max_score: 3360,
+    best_time_seconds: 105,
+    best_moves: 61,
+    updated_at: "2026-09-10T12:48:00.000Z",
   },
 ];

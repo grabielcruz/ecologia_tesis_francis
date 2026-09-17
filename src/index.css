@@ -230,6 +230,22 @@ label {
   margin-bottom: 0.85rem;
 }
 
+.recover-password-panel {
+  margin-top: 0.75rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  padding: 0.7rem;
+  background: var(--panel-soft);
+}
+
+.recover-password-panel label {
+  margin-bottom: 0.55rem;
+}
+
+.recover-password-panel button {
+  margin-top: 0;
+}
+
 input,
 select,
 textarea {
@@ -3089,6 +3105,239 @@ button.danger:hover {
   padding-inline: 0.95rem;
 }
 
+.find-flower-box {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.find-flower-header p {
+  margin: 0.35rem 0 0;
+}
+
+.find-flower-stats {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.find-flower-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.38rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #1b4b42;
+  background: rgba(99, 223, 186, 0.24);
+  border: 1px solid rgba(45, 169, 133, 0.35);
+}
+
+.find-flower-status {
+  margin: 0.8rem 0 0;
+  border-radius: 12px;
+  padding: 0.52rem 0.72rem;
+  border: 1px solid rgba(45, 169, 133, 0.28);
+  background: rgba(232, 255, 245, 0.9);
+  color: #1d5146;
+  font-weight: 700;
+}
+
+.find-flower-status.won {
+  border-color: rgba(28, 167, 98, 0.34);
+  background: rgba(225, 254, 236, 0.92);
+  color: #165e35;
+}
+
+.find-flower-status.lost {
+  border-color: rgba(189, 33, 33, 0.34);
+  background: rgba(255, 236, 236, 0.92);
+  color: #8f2121;
+}
+
+.find-flower-grid {
+  margin-top: 0.95rem;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.42rem;
+  max-width: 560px;
+}
+
+.find-flower-cell {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin: 0;
+  border-radius: 11px;
+  border: 1px solid rgba(36, 122, 100, 0.24);
+  background: linear-gradient(160deg, #d5f7e9 0%, #c2f2e4 100%);
+  box-shadow: 0 3px 0 rgba(27, 94, 77, 0.14);
+  font-weight: 800;
+  color: #1f6157;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0;
+  line-height: 1;
+  font-size: 1.05rem;
+}
+
+.find-flower-cell:hover {
+  transform: translateY(-1px);
+}
+
+.find-flower-cell.revealed {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 1px 2px rgba(16, 59, 51, 0.08);
+}
+
+.find-flower-cell.planted:not(.revealed) {
+  background: linear-gradient(160deg, #b7f2dc 0%, #98e8ca 100%);
+  color: #1a694f;
+}
+
+.find-flower-cell.flower {
+  background: linear-gradient(160deg, #ffd6d8 0%, #ffbdc1 100%);
+  border-color: rgba(199, 58, 58, 0.42);
+  color: #9c232b;
+}
+
+.find-flower-cell.n-1 {
+  color: #2a78d1;
+}
+
+.find-flower-cell.n-2 {
+  color: #26934a;
+}
+
+.find-flower-cell.n-3 {
+  color: #bb2828;
+}
+
+.find-flower-cell.n-4 {
+  color: #6836bf;
+}
+
+.find-flower-cell.n-5,
+.find-flower-cell.n-6,
+.find-flower-cell.n-7,
+.find-flower-cell.n-8 {
+  color: #8a4f0f;
+}
+
+.find-flower-actions {
+  margin-top: 0.8rem;
+}
+
+.find-flower-last-result {
+  margin: 0.7rem 0 0;
+  color: #1f5e50;
+  font-weight: 700;
+}
+
+.find-flower-feedback {
+  margin: 0.5rem 0 0;
+  color: #2b6f60;
+}
+
+.find-flower-ranking {
+  margin-top: 1rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  padding: 0.8rem;
+  background: var(--panel-soft);
+}
+
+.find-flower-ranking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.55rem;
+}
+
+.find-flower-ranking-header h3 {
+  margin: 0;
+}
+
+.find-flower-ranking-header button {
+  margin: 0;
+}
+
+.find-flower-ranking-table-wrap {
+  overflow-x: auto;
+}
+
+.find-flower-ranking-table {
+  min-width: 560px;
+}
+
+.find-flower-current-user {
+  background: rgba(218, 247, 61, 0.2);
+}
+
+:root[data-theme="dark"] .find-flower-pill {
+  color: #d7f4ee;
+  background: rgba(30, 94, 78, 0.6);
+  border-color: rgba(122, 207, 179, 0.42);
+}
+
+:root[data-theme="dark"] .find-flower-status {
+  border-color: rgba(122, 207, 179, 0.35);
+  background: rgba(18, 52, 45, 0.74);
+  color: #cff0e8;
+}
+
+:root[data-theme="dark"] .find-flower-status.won {
+  border-color: rgba(67, 190, 128, 0.42);
+  background: rgba(20, 63, 40, 0.76);
+  color: #d7f8e5;
+}
+
+:root[data-theme="dark"] .find-flower-status.lost {
+  border-color: rgba(220, 104, 104, 0.42);
+  background: rgba(79, 30, 33, 0.76);
+  color: #ffe0e0;
+}
+
+:root[data-theme="dark"] .find-flower-cell {
+  border-color: rgba(115, 196, 172, 0.38);
+  background: linear-gradient(160deg, #28584a 0%, #214c40 100%);
+  color: #d2f4ec;
+  box-shadow: 0 3px 0 rgba(1, 9, 7, 0.28);
+}
+
+:root[data-theme="dark"] .find-flower-cell.revealed {
+  background: rgba(25, 53, 48, 0.96);
+}
+
+:root[data-theme="dark"] .find-flower-cell.planted:not(.revealed) {
+  background: linear-gradient(160deg, #2a6a56 0%, #245a49 100%);
+}
+
+:root[data-theme="dark"] .find-flower-cell.flower {
+  background: linear-gradient(160deg, #7b3942 0%, #6c2f38 100%);
+  border-color: rgba(238, 154, 167, 0.52);
+  color: #ffdce1;
+}
+
+:root[data-theme="dark"] .find-flower-last-result {
+  color: #d7f4ec;
+}
+
+:root[data-theme="dark"] .find-flower-feedback {
+  color: #bdded5;
+}
+
+:root[data-theme="dark"] .find-flower-ranking {
+  background: rgba(24, 44, 44, 0.9);
+  border-color: #365454;
+}
+
+:root[data-theme="dark"] .find-flower-current-user {
+  background: rgba(150, 173, 36, 0.26);
+}
+
 @media (max-width: 1024px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -3103,16 +3352,50 @@ button.danger:hover {
     top: 0.75rem;
     left: 0.75rem;
     z-index: 95;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     margin: 0;
-    border-radius: 14px;
+    border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.55);
     background: linear-gradient(150deg, #53d3b0 0%, #2fae8a 100%);
     color: #f8fffd;
     box-shadow: 0 12px 24px rgba(20, 87, 74, 0.3);
-    font-size: 1.2rem;
-    line-height: 1;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .mobile-menu-button:active {
+    transform: scale(0.97);
+  }
+
+  .mobile-menu-icon {
+    width: 19px;
+    height: 15px;
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .mobile-menu-icon span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    transform-origin: center;
+    transition: transform 0.24s ease, opacity 0.2s ease;
+  }
+
+  .mobile-menu-button.open .mobile-menu-icon span:nth-child(1) {
+    transform: translateY(6.5px) rotate(45deg);
+  }
+
+  .mobile-menu-button.open .mobile-menu-icon span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0.1);
+  }
+
+  .mobile-menu-button.open .mobile-menu-icon span:nth-child(3) {
+    transform: translateY(-6.5px) rotate(-45deg);
   }
 
   .sidebar {
@@ -3204,6 +3487,10 @@ button.danger:hover {
 
   .ai-chatbox {
     width: min(350px, calc(100vw - 1rem));
+  }
+
+  .find-flower-grid {
+    gap: 0.35rem;
   }
 }
 

@@ -247,8 +247,12 @@ export function DefaultTable<T>({
                   return (
                     <tr
                       key={getRowId(row)}
-                      className={isClickable ? "table-clickable-row" : undefined}
-                      onClick={isClickable ? () => onRowClick?.(row) : undefined}
+                      className={
+                        isClickable ? "table-clickable-row" : undefined
+                      }
+                      onClick={
+                        isClickable ? () => onRowClick?.(row) : undefined
+                      }
                       onKeyDown={
                         isClickable
                           ? (event) => {
@@ -262,7 +266,9 @@ export function DefaultTable<T>({
                       tabIndex={isClickable ? 0 : undefined}
                     >
                       {columns.map((column) => (
-                        <td key={column.key}>{column.render(row, rowNumber)}</td>
+                        <td key={column.key}>
+                          {column.render(row, rowNumber)}
+                        </td>
                       ))}
                     </tr>
                   );
