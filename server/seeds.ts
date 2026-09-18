@@ -296,6 +296,11 @@ export async function seedDatabase() {
       minimum_votes_required: proposalSeed.minimum_votes_required ?? null,
       voting_starts: votingStarts,
       voting_ends: votingEnds,
+      approximate_execution_duration:
+        proposalSeed.approximate_execution_duration ?? null,
+      estimated_budget: proposalSeed.estimated_budget ?? null,
+      proposal_images: JSON.stringify(proposalSeed.proposal_images ?? []),
+      rejection_reason: proposalSeed.rejection_reason ?? null,
       user_id: userId,
       space_id: spaceId,
       created_at: new Date(),

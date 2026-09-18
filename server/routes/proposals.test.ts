@@ -55,6 +55,7 @@ const makeProposalRow = (
   votingStarts: Date = new Date(Date.now() - 1000 * 60),
   votingEnds: Date = new Date(Date.now() + 1000 * 60),
   minimumVotesRequired: number | null = 1,
+  createdByUserId = 2,
 ) => {
   const values: Record<string, unknown> = {
     proposal_of_green_area_id: 3,
@@ -65,7 +66,11 @@ const makeProposalRow = (
     minimum_votes_required: minimumVotesRequired,
     voting_starts: votingStarts,
     voting_ends: votingEnds,
-    user_id: 2,
+    approximate_execution_duration: "4 semanas",
+    estimated_budget: 2500,
+    proposal_images: JSON.stringify(["/uploads/proposals/demo.jpg"]),
+    rejection_reason: null,
+    user_id: createdByUserId,
     space_id: 10,
     created_at: new Date("2026-01-01T00:00:00.000Z"),
     updated_at: new Date("2026-01-01T00:00:00.000Z"),
@@ -319,6 +324,8 @@ describe("proposal routes", () => {
         votingStarts: new Date(Date.now() + 1000).toISOString(),
         votingEnds: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
         minimumVotesRequired: 3,
+        approximateExecutionDuration: "6 semanas",
+        projectBudget: 4800,
       });
 
     expect(response.status).toBe(200);
@@ -341,12 +348,62 @@ describe("proposal routes", () => {
     const response = await request(app)
       .patch("/api/proposals/3/decision")
       .set("Authorization", "Bearer any-token")
-      .send({ decision: "rejected" });
+      .send({
+        decision: "rejected",
+        rejectionReason: "No cumple con criterios técnicos mínimos",
+      });
 
     expect(response.status).toBe(200);
     expect(response.body.proposal.status).toBe("rejected");
     expect(response.body.project).toBeNull();
     expect(ProjectOfProposal.create).not.toHaveBeenCalled();
+  });
+
+  it("requires rejection reason when admin rejects a proposal", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const proposal = makeProposalRow("draft");
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+
+    const response = await request(app)
+      .patch("/api/proposals/3/decision")
+      .set("Authorization", "Bearer any-token")
+      .send({ decision: "rejected" });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: "Debes indicar el motivo de rechazo para la propuesta",
+    });
+  });
+
+  it("blocks non-owner regular user from viewing rejected proposal details", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 2,
+      role: "regular",
+    } as never);
+
+    const proposal = makeProposalRow(
+      "rejected",
+      new Date(Date.now() - 1000 * 60 * 60),
+      new Date(Date.now() - 1000),
+      1,
+      99,
+    );
+    vi.mocked(ProposalOfGreenArea.findByPk).mockResolvedValue(
+      proposal as never,
+    );
+
+    const response = await request(app)
+      .get("/api/proposals/3/project")
+      .set("Authorization", "Bearer any-token");
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: "No autorizado" });
   });
 
   it("requires voting window when admin accepts proposal", async () => {
@@ -389,6 +446,8 @@ describe("proposal routes", () => {
         decision: "accepted",
         votingStarts: new Date(Date.now() + 1000).toISOString(),
         votingEnds: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+        approximateExecutionDuration: "6 semanas",
+        projectBudget: 4800,
       });
 
     expect(response.status).toBe(400);

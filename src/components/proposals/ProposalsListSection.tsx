@@ -257,7 +257,7 @@ export function ProposalsListSection({
           getRowId={(proposal) => proposal.id}
           onRowClick={onOpenProposalDetailPage}
           getSearchText={(proposal) =>
-            `${proposal.title} ${proposal.description} ${proposal.status} ${getSpaceName(proposal.spaceId)}`
+            `${proposal.title} ${proposal.description} ${statusLabel[proposal.status]} ${getSpaceName(proposal.spaceId)}`
           }
           emptyMessage="No hay propuestas visibles por el momento."
           searchPlaceholder="Buscar por título, descripción o estado"

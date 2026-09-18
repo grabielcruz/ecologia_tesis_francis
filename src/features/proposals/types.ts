@@ -7,6 +7,10 @@ export interface Proposal {
   minimumVotesRequired: number | null;
   votingStarts: string | null;
   votingEnds: string | null;
+  approximateExecutionDuration?: string | null;
+  projectBudget?: number | null;
+  proposalImages?: string[];
+  rejectionReason?: string | null;
   userId: number;
   spaceId: number;
   createdAt: string | null;

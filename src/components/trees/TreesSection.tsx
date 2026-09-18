@@ -1,5 +1,9 @@
 import { ChangeEvent, FormEvent, useState } from "react";
-import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
+import {
+  DefaultTable,
+  DefaultTableColumn,
+  DefaultTableExportColumn,
+} from "../DefaultTable";
 import { TreeFormModal } from "./TreeFormModal";
 import {
   TreeInventoryItem,
@@ -206,6 +210,33 @@ export function TreesSection({
     },
   ];
 
+  const treeExportColumns: DefaultTableExportColumn<TreeInventoryItem>[] = [
+    {
+      label: "Árbol",
+      value: (tree) => tree.name,
+    },
+    {
+      label: "Estado de salud",
+      value: (tree) => healthLabel[tree.healthStatus],
+    },
+    {
+      label: "Validación",
+      value: (tree) => treeStatusLabel[tree.status],
+    },
+    {
+      label: "Tipo",
+      value: (tree) => tree.treeType?.name || "-",
+    },
+    {
+      label: "Área verde",
+      value: (tree) => tree.greenSpace?.name || "-",
+    },
+    {
+      label: "Actualizado",
+      value: (tree) => formatUpdatedAt(tree.updatedAt || undefined),
+    },
+  ];
+
   return (
     <section className="box reports-box">
       <article className="principal-panel">
@@ -249,6 +280,7 @@ export function TreesSection({
         )}
         <DefaultTable
           columns={treeColumns}
+          exportColumns={treeExportColumns}
           rows={trees}
           onRowClick={onOpenTreeDetail}
           getRowId={(tree) => tree.id}

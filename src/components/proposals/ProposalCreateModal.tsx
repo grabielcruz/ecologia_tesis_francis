@@ -1,4 +1,4 @@
-import { FormEvent } from "react";
+import { ChangeEvent, FormEvent } from "react";
 import { AppModal } from "../AppModal";
 
 interface GreenSpaceOption {
@@ -10,12 +10,16 @@ interface ProposalCreateModalProps {
   isOpen: boolean;
   proposalTitleInput: string;
   proposalDescriptionInput: string;
+  proposalImagesInput: string;
   proposalSpaceIdInput: number;
   greenSpaces: GreenSpaceOption[];
   isSubmittingProposal: boolean;
+  uploadingProposalImages: boolean;
   setProposalTitleInput: (value: string) => void;
   setProposalDescriptionInput: (value: string) => void;
+  setProposalImagesInput: (value: string) => void;
   setProposalSpaceIdInput: (value: number) => void;
+  onUploadProposalImages: (event: ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onClose: () => void;
 }
@@ -24,12 +28,16 @@ export function ProposalCreateModal({
   isOpen,
   proposalTitleInput,
   proposalDescriptionInput,
+  proposalImagesInput,
   proposalSpaceIdInput,
   greenSpaces,
   isSubmittingProposal,
+  uploadingProposalImages,
   setProposalTitleInput,
   setProposalDescriptionInput,
+  setProposalImagesInput,
   setProposalSpaceIdInput,
+  onUploadProposalImages,
   onSubmit,
   onClose,
 }: ProposalCreateModalProps) {
@@ -77,6 +85,29 @@ export function ProposalCreateModal({
             required
           />
         </label>
+        <label>
+          Imágenes relacionadas (una URL por línea)
+          <textarea
+            value={proposalImagesInput}
+            onChange={(e) => setProposalImagesInput(e.target.value)}
+            placeholder="/uploads/proposals/imagen-1.jpg"
+          />
+        </label>
+        <div className="field-row">
+          <label>
+            Subir imágenes de la propuesta
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={onUploadProposalImages}
+              disabled={uploadingProposalImages}
+            />
+          </label>
+        </div>
+        {uploadingProposalImages && (
+          <p className="small muted">Subiendo imágenes...</p>
+        )}
         <div className="button-row">
           <button
             type="submit"

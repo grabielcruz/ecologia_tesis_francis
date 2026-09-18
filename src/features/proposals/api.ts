@@ -10,12 +10,16 @@ interface ProposalDecisionPayload {
   votingStarts?: string;
   votingEnds?: string;
   minimumVotesRequired?: number;
+  approximateExecutionDuration?: string;
+  projectBudget?: number;
+  rejectionReason?: string;
 }
 
 interface CreateProposalPayload {
   title: string;
   description: string;
   spaceId: number;
+  images: string[];
 }
 
 interface CreateProjectUpdatePayload {
@@ -132,6 +136,29 @@ export const createProposalApi = async (
   }
 
   return (await response.json()) as Proposal;
+};
+
+export const uploadProposalImagesApi = async (
+  token: string,
+  files: FileList,
+): Promise<string[]> => {
+  const formData = new FormData();
+  Array.from(files).forEach((file) => formData.append("images", file));
+
+  const response = await fetch("/api/proposals/images", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    await readResponseError(response, "No se pudieron subir las imágenes");
+  }
+
+  const data = await response.json();
+  return Array.isArray(data.images)
+    ? data.images.map((image: string) => image.trim()).filter(Boolean)
+    : [];
 };
 
 export const voteProposalApi = async (

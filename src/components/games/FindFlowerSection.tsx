@@ -123,7 +123,11 @@ const placeFlowers = (
   computeAdjacentFlowers(board);
 };
 
-const revealConnectedCells = (board: FlowerCell[][], row: number, col: number) => {
+const revealConnectedCells = (
+  board: FlowerCell[][],
+  row: number,
+  col: number,
+) => {
   const queue: Array<[number, number]> = [[row, col]];
 
   while (queue.length > 0) {
@@ -168,7 +172,8 @@ const countRevealedSafeCells = (board: FlowerCell[][]) =>
 
 const countPlantedCells = (board: FlowerCell[][]) =>
   board.reduce(
-    (total, row) => total + row.reduce((count, cell) => count + (cell.isPlanted ? 1 : 0), 0),
+    (total, row) =>
+      total + row.reduce((count, cell) => count + (cell.isPlanted ? 1 : 0), 0),
     0,
   );
 
@@ -213,7 +218,10 @@ export function FindFlowerSection({
   const [rankingError, setRankingError] = useState<string | null>(null);
   const [scoreFeedback, setScoreFeedback] = useState<string | null>(null);
 
-  const revealedSafeCells = useMemo(() => countRevealedSafeCells(board), [board]);
+  const revealedSafeCells = useMemo(
+    () => countRevealedSafeCells(board),
+    [board],
+  );
   const plantedCells = useMemo(() => countPlantedCells(board), [board]);
 
   const loadRanking = async () => {
@@ -378,10 +386,10 @@ export function FindFlowerSection({
   return (
     <section className="box find-flower-box">
       <div className="find-flower-header">
-        <h2>Encuentra la flor</h2>
+        <h2>Busca Flores</h2>
         <p>
-          Versión ecológica de buscaminas: marca con banderas y evita abrir flores
-          ocultas.
+          Versión ecológica de buscaminas: marca con banderas y evita abrir
+          flores ocultas.
         </p>
       </div>
 
@@ -399,7 +407,8 @@ export function FindFlowerSection({
       <p className={`find-flower-status ${gameStatus}`}>{statusMessage}</p>
       {latestResult && (
         <p className="find-flower-last-result">
-          Puntaje: <strong>{latestResult.score}</strong> · Tiempo: {latestResult.timeSeconds}s · Movimientos: {latestResult.moves}
+          Puntaje: <strong>{latestResult.score}</strong> · Tiempo:{" "}
+          {latestResult.timeSeconds}s · Movimientos: {latestResult.moves}
         </p>
       )}
       {scoreFeedback && <p className="find-flower-feedback">{scoreFeedback}</p>}
@@ -407,7 +416,7 @@ export function FindFlowerSection({
       <div
         className="find-flower-grid"
         role="grid"
-        aria-label="Tablero Encuentra la flor"
+        aria-label="Tablero Busca Flores"
       >
         {board.map((row, rowIndex) =>
           row.map((cell, colIndex) => {
@@ -426,7 +435,9 @@ export function FindFlowerSection({
                 }${cell.isRevealed && cell.hasFlower ? " flower" : ""}${numberClass}`}
                 aria-label={`Fila ${rowIndex + 1}, columna ${colIndex + 1}`}
                 onClick={() => revealCell(rowIndex, colIndex)}
-                onContextMenu={(event) => togglePlant(event, rowIndex, colIndex)}
+                onContextMenu={(event) =>
+                  togglePlant(event, rowIndex, colIndex)
+                }
               >
                 {getCellLabel(cell)}
               </button>
@@ -448,7 +459,11 @@ export function FindFlowerSection({
       <div className="find-flower-ranking">
         <div className="find-flower-ranking-header">
           <h3>Ranking de puntajes máximos</h3>
-          <button type="button" className="secondary" onClick={() => void loadRanking()}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => void loadRanking()}
+          >
             Actualizar
           </button>
         </div>
@@ -480,7 +495,9 @@ export function FindFlowerSection({
                   return (
                     <tr
                       key={`ranking-${entry.id}`}
-                      className={isCurrentUser ? "find-flower-current-user" : ""}
+                      className={
+                        isCurrentUser ? "find-flower-current-user" : ""
+                      }
                     >
                       <td>{index + 1}</td>
                       <td>{entry.user?.username || "usuario"}</td>

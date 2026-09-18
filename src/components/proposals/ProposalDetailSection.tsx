@@ -1,7 +1,10 @@
+import { useState } from "react";
 import {
   Proposal,
   ProposalProjectDetails,
 } from "../../features/proposals/types";
+import { AppModal } from "../AppModal";
+import { ImageCarousel } from "../ImageCarousel";
 
 interface ProposalDetailSectionProps {
   selectedProposalId: number | null;
@@ -13,15 +16,22 @@ interface ProposalDetailSectionProps {
   votingStart: string;
   votingEnd: string;
   minimumVotesRequired: string;
+  approximateExecutionDuration: string;
+  projectBudget: string;
+  rejectionReason: string;
   onChangeVotingStart: (value: string) => void;
   onChangeVotingEnd: (value: string) => void;
   onChangeMinimumVotesRequired: (value: string) => void;
+  onChangeApproximateExecutionDuration: (value: string) => void;
+  onChangeProjectBudget: (value: string) => void;
+  onChangeRejectionReason: (value: string) => void;
   onVoteProposal: (proposalId: number) => void;
   onAcceptProposal: (proposalId: number) => void;
   onRejectProposal: (proposalId: number) => void;
   onFinalizeProposal: (proposalId: number) => void;
   onDeleteRejectedProposal: (proposalId: number) => void;
   onOpenProject: (projectId: number) => void;
+  resolveAssetUrl: (assetPath: string) => string;
   onBack: () => void;
 }
 
@@ -35,17 +45,43 @@ export function ProposalDetailSection({
   votingStart,
   votingEnd,
   minimumVotesRequired,
+  approximateExecutionDuration,
+  projectBudget,
+  rejectionReason,
   onChangeVotingStart,
   onChangeVotingEnd,
   onChangeMinimumVotesRequired,
+  onChangeApproximateExecutionDuration,
+  onChangeProjectBudget,
+  onChangeRejectionReason,
   onVoteProposal,
   onAcceptProposal,
   onRejectProposal,
   onFinalizeProposal,
   onDeleteRejectedProposal,
   onOpenProject,
+  resolveAssetUrl,
   onBack,
 }: ProposalDetailSectionProps) {
+  const [showRejectModal, setShowRejectModal] = useState(false);
+
+  const proposalStatusLabel: Record<Proposal["status"], string> = {
+    draft: "Pendiente de validación",
+    open: "Votación abierta",
+    closed: "Cerrada sin aprobación",
+    approved: "Aprobada por votación",
+    rejected: "Rechazada por administración",
+  };
+
+  const projectCompletionStatusLabel: Record<
+    NonNullable<ProposalProjectDetails["project"]>["completedStatus"],
+    string
+  > = {
+    planned: "Planificado",
+    in_progress: "En progreso",
+    completed: "Completado",
+  };
+
   if (!proposal || !selectedProposalId) {
     return (
       <section className="box">
@@ -93,9 +129,36 @@ export function ProposalDetailSection({
     });
   };
 
+  const minVotingStart = (() => {
+    const now = new Date();
+    const timezoneOffsetInMs = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - timezoneOffsetInMs)
+      .toISOString()
+      .slice(0, 16);
+  })();
+
+  const formatUsdCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(value);
+
   const project = projectDetails?.project || null;
   const voters = projectDetails?.voters || [];
   const currentUserHasVoted = Boolean(projectDetails?.currentUserHasVoted);
+
+  const openRejectModal = () => {
+    setShowRejectModal(true);
+  };
+
+  const closeRejectModal = () => {
+    setShowRejectModal(false);
+  };
+
+  const confirmRejectProposal = () => {
+    onRejectProposal(proposal.id);
+    setShowRejectModal(false);
+  };
 
   return (
     <section className="box admin-box">
@@ -110,6 +173,15 @@ export function ProposalDetailSection({
       </div>
 
       <article className="principal-panel">
+        {proposal.proposalImages && proposal.proposalImages.length > 0 ? (
+          <ImageCarousel
+            images={proposal.proposalImages}
+            title={proposal.title}
+            resolveAssetUrl={resolveAssetUrl}
+            className="detail-carousel"
+          />
+        ) : null}
+
         <div className="details-grid">
           <div className="details-item full-width">
             <span>Descripción</span>
@@ -117,7 +189,7 @@ export function ProposalDetailSection({
           </div>
           <div className="details-item">
             <span>Estado</span>
-            <strong>{proposal.status}</strong>
+            <strong>{proposalStatusLabel[proposal.status]}</strong>
           </div>
           <div className="details-item">
             <span>Votos</span>
@@ -141,6 +213,28 @@ export function ProposalDetailSection({
                 : `${proposal.totalVotes} votos`}
             </strong>
           </div>
+          <div className="details-item">
+            <span>Duración aproximada del proyecto</span>
+            <strong>
+              {proposal.approximateExecutionDuration || "No definida"}
+            </strong>
+          </div>
+          {userRole === "admin" && (
+            <div className="details-item">
+              <span>Presupuesto del proyecto (USD)</span>
+              <strong>
+                {proposal.projectBudget != null
+                  ? formatUsdCurrency(Number(proposal.projectBudget))
+                  : "No definido"}
+              </strong>
+            </div>
+          )}
+          {proposal.rejectionReason ? (
+            <div className="details-item full-width">
+              <span>Motivo de rechazo</span>
+              <strong>{proposal.rejectionReason}</strong>
+            </div>
+          ) : null}
           <div className="details-item full-width">
             <span>Estado de aprobación por votos</span>
             <strong>
@@ -185,9 +279,36 @@ export function ProposalDetailSection({
             </div>
             <div className="field-row">
               <label>
+                Duración aproximada de ejecución
+                <input
+                  type="text"
+                  value={approximateExecutionDuration}
+                  onChange={(e) =>
+                    onChangeApproximateExecutionDuration(e.target.value)
+                  }
+                  placeholder="Ejemplo: 4 semanas"
+                  required
+                />
+              </label>
+              <label>
+                Presupuesto del proyecto (USD)
+                <input
+                  type="number"
+                  min={1}
+                  step="0.01"
+                  value={projectBudget}
+                  onChange={(e) => onChangeProjectBudget(e.target.value)}
+                  placeholder="Ejemplo: 2500.00"
+                  required
+                />
+              </label>
+            </div>
+            <div className="field-row">
+              <label>
                 Inicio de votación
                 <input
                   type="datetime-local"
+                  min={minVotingStart}
                   value={votingStart}
                   onChange={(e) => onChangeVotingStart(e.target.value)}
                 />
@@ -196,6 +317,7 @@ export function ProposalDetailSection({
                 Fin de votación
                 <input
                   type="datetime-local"
+                  min={votingStart || minVotingStart}
                   value={votingEnd}
                   onChange={(e) => onChangeVotingEnd(e.target.value)}
                 />
@@ -212,7 +334,7 @@ export function ProposalDetailSection({
               <button
                 type="button"
                 className="danger"
-                onClick={() => onRejectProposal(proposal.id)}
+                onClick={openRejectModal}
                 disabled={proposalActionLoadingId === proposal.id}
               >
                 Rechazar propuesta
@@ -220,6 +342,52 @@ export function ProposalDetailSection({
             </div>
           </div>
         )}
+
+        <AppModal
+          isOpen={
+            userRole === "admin" &&
+            proposal.status === "draft" &&
+            showRejectModal
+          }
+          onClose={closeRejectModal}
+          title="Motivo de rechazo"
+          description="Explica por qué esta propuesta debe rechazarse antes de enviarla."
+        >
+          <div className="admin-form">
+            <div className="field-row">
+              <label>
+                Motivo de rechazo
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => onChangeRejectionReason(e.target.value)}
+                  placeholder="Explica por qué la propuesta no puede aprobarse"
+                  rows={4}
+                  required
+                />
+              </label>
+            </div>
+            <div className="button-row">
+              <button
+                type="button"
+                className="secondary"
+                onClick={closeRejectModal}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={confirmRejectProposal}
+                disabled={
+                  proposalActionLoadingId === proposal.id ||
+                  !rejectionReason.trim()
+                }
+              >
+                Confirmar rechazo
+              </button>
+            </div>
+          </div>
+        </AppModal>
 
         {userRole === "admin" && proposal.status === "open" && (
           <div className="button-row">
@@ -294,7 +462,9 @@ export function ProposalDetailSection({
               </div>
               <div className="details-item">
                 <span>Estado de proyecto</span>
-                <strong>{project.completedStatus}</strong>
+                <strong>
+                  {projectCompletionStatusLabel[project.completedStatus]}
+                </strong>
               </div>
             </div>
             <div className="button-row">

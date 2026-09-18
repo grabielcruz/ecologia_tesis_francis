@@ -12,6 +12,7 @@ import {
   finalizeProposalApi,
   updateProjectActivityUpdateApi,
   updateProjectCompletedStatusApi,
+  uploadProposalImagesApi,
   uploadProjectActivityImagesApi,
   voteProposalApi,
 } from "../features/proposals/api";
@@ -38,7 +39,10 @@ export const useProposalActions = (token: string | null) =>
         title: string;
         description: string;
         spaceId: number;
+        images: string[];
       }) => createProposalApi(requireToken(token), payload),
+      uploadProposalImages: (files: FileList) =>
+        uploadProposalImagesApi(requireToken(token), files),
       voteProposal: (proposalId: number) =>
         voteProposalApi(requireToken(token), proposalId),
       decideProposal: (
@@ -48,6 +52,9 @@ export const useProposalActions = (token: string | null) =>
           votingStarts?: string;
           votingEnds?: string;
           minimumVotesRequired?: number;
+          approximateExecutionDuration?: string;
+          projectBudget?: number;
+          rejectionReason?: string;
         },
       ) => decideProposalApi(requireToken(token), proposalId, payload),
       finalizeProposal: (proposalId: number) =>

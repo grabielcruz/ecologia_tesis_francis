@@ -622,6 +622,26 @@ ProposalOfGreenArea.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    approximate_execution_duration: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    estimated_budget: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    proposal_images: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    },
+    rejection_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+    },
     user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -1013,9 +1033,53 @@ const enforceFixedRoles = async () => {
   }
 };
 
+const ensureProposalValidationColumns = async () => {
+  const queryInterface = sequelize.getQueryInterface();
+  const proposalTable = await queryInterface.describeTable(
+    "ProposalOfGreenArea",
+  );
+
+  if (!("approximate_execution_duration" in proposalTable)) {
+    await queryInterface.addColumn(
+      "ProposalOfGreenArea",
+      "approximate_execution_duration",
+      {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+      },
+    );
+  }
+
+  if (!("estimated_budget" in proposalTable)) {
+    await queryInterface.addColumn("ProposalOfGreenArea", "estimated_budget", {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+      defaultValue: null,
+    });
+  }
+
+  if (!("proposal_images" in proposalTable)) {
+    await queryInterface.addColumn("ProposalOfGreenArea", "proposal_images", {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    });
+  }
+
+  if (!("rejection_reason" in proposalTable)) {
+    await queryInterface.addColumn("ProposalOfGreenArea", "rejection_reason", {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+    });
+  }
+};
+
 export const initializeDatabase = async () => {
   try {
     await sequelize.sync();
+    await ensureProposalValidationColumns();
     await enforceFixedRoles();
   } catch (err) {
     console.error("Database sync failed:", err);

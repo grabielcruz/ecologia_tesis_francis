@@ -66,6 +66,10 @@ export interface ProposalSeed {
   minimum_votes_required?: number | null;
   voting_starts: string | null;
   voting_ends: string | null;
+  approximate_execution_duration?: string | null;
+  estimated_budget?: number | null;
+  proposal_images?: string[];
+  rejection_reason?: string | null;
   username: string;
   green_space_name: string;
 }

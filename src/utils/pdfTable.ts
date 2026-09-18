@@ -5,6 +5,11 @@ interface DownloadPdfTableParams {
   fileName?: string;
 }
 
+const LONG_TEXT_LABEL_MATCHER =
+  /descripcion|descripci[oó]n|description|[aá]rea verde|nombre|t[ií]tulo|detalle|comentario/i;
+
+const toSpanishOrdinal = (value: number) => `${value}.`;
+
 const sanitizeFileName = (value: string) =>
   value
     .trim()
@@ -32,14 +37,42 @@ export const downloadPdfTable = async ({
   doc.setFontSize(14);
   doc.text(title, 40, 38);
 
+  const tableColumns = ["N°", ...columns];
+  const tableRows = rows.map((row, index) => [
+    toSpanishOrdinal(index + 1),
+    ...row,
+  ]);
+
+  const columnStyles: Record<
+    number,
+    {
+      cellWidth?: number | "auto" | "wrap";
+      halign?: "left" | "center" | "right";
+    }
+  > = {
+    0: { cellWidth: 40, halign: "center" },
+  };
+
+  tableColumns.forEach((column, index) => {
+    if (LONG_TEXT_LABEL_MATCHER.test(column)) {
+      columnStyles[index] = {
+        ...(columnStyles[index] || {}),
+        cellWidth: 260,
+        halign: "left",
+      };
+    }
+  });
+
   autoTable(doc, {
     startY: 52,
-    head: [columns],
-    body: rows,
+    head: [tableColumns],
+    body: tableRows,
     styles: {
       fontSize: 8,
       cellPadding: 5,
       overflow: "linebreak",
+      valign: "top",
+      lineWidth: 0.2,
     },
     headStyles: {
       fillColor: [63, 173, 147],
@@ -52,6 +85,7 @@ export const downloadPdfTable = async ({
       left: 28,
       right: 28,
     },
+    columnStyles,
   });
 
   doc.save(

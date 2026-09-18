@@ -506,10 +506,12 @@ function App() {
     projectEntries,
     proposalTitleInput,
     proposalDescriptionInput,
+    proposalImagesInput,
     proposalSpaceIdInput,
     proposalActionLoadingId,
     proposalWindows,
     isSubmittingProposal,
+    uploadingProposalImages,
     showProposalModal,
     proposalProjectDetails,
     proposalProjectLoadingId,
@@ -527,6 +529,7 @@ function App() {
     selectedProjectEntry,
     setProposalTitleInput,
     setProposalDescriptionInput,
+    setProposalImagesInput,
     setProposalSpaceIdInput,
     setProjectUpdateTitleInput,
     setProjectUpdateDescriptionInput,
@@ -551,7 +554,11 @@ function App() {
     setProposalVotingStart,
     setProposalVotingEnd,
     setProposalMinimumVotesRequired,
+    setProposalApproximateExecutionDuration,
+    setProposalProjectBudget,
+    setProposalRejectionReason,
     submitProposal,
+    uploadProposalImages,
     voteProposal,
     decideProposal,
     finalizeProposal,
@@ -2661,12 +2668,16 @@ function App() {
         isOpen={showProposalModal}
         proposalTitleInput={proposalTitleInput}
         proposalDescriptionInput={proposalDescriptionInput}
+        proposalImagesInput={proposalImagesInput}
         proposalSpaceIdInput={proposalSpaceIdInput}
         greenSpaces={greenSpaces}
         isSubmittingProposal={isSubmittingProposal}
+        uploadingProposalImages={uploadingProposalImages}
         setProposalTitleInput={setProposalTitleInput}
         setProposalDescriptionInput={setProposalDescriptionInput}
+        setProposalImagesInput={setProposalImagesInput}
         setProposalSpaceIdInput={setProposalSpaceIdInput}
+        onUploadProposalImages={uploadProposalImages}
         onSubmit={submitProposal}
         onClose={closeCreateProposalModal}
       />
@@ -2690,8 +2701,22 @@ function App() {
           minimumVotesRequired: proposal?.minimumVotesRequired
             ? String(proposal.minimumVotesRequired)
             : "",
+          approximateExecutionDuration:
+            proposal?.approximateExecutionDuration || "",
+          projectBudget:
+            proposal?.projectBudget != null
+              ? String(proposal.projectBudget)
+              : "",
+          rejectionReason: proposal?.rejectionReason || "",
         }
-      : { start: "", end: "", minimumVotesRequired: "" };
+      : {
+          start: "",
+          end: "",
+          minimumVotesRequired: "",
+          approximateExecutionDuration: "",
+          projectBudget: "",
+          rejectionReason: "",
+        };
 
     return (
       <ProposalDetailSection
@@ -2704,6 +2729,9 @@ function App() {
         votingStart={votingWindow.start}
         votingEnd={votingWindow.end}
         minimumVotesRequired={votingWindow.minimumVotesRequired}
+        approximateExecutionDuration={votingWindow.approximateExecutionDuration}
+        projectBudget={votingWindow.projectBudget}
+        rejectionReason={votingWindow.rejectionReason}
         onChangeVotingStart={(value) => {
           if (!selectedProposalId) return;
           setProposalVotingStart(selectedProposalId, value);
@@ -2715,6 +2743,18 @@ function App() {
         onChangeMinimumVotesRequired={(value) => {
           if (!selectedProposalId) return;
           setProposalMinimumVotesRequired(selectedProposalId, value);
+        }}
+        onChangeApproximateExecutionDuration={(value) => {
+          if (!selectedProposalId) return;
+          setProposalApproximateExecutionDuration(selectedProposalId, value);
+        }}
+        onChangeProjectBudget={(value) => {
+          if (!selectedProposalId) return;
+          setProposalProjectBudget(selectedProposalId, value);
+        }}
+        onChangeRejectionReason={(value) => {
+          if (!selectedProposalId) return;
+          setProposalRejectionReason(selectedProposalId, value);
         }}
         onVoteProposal={voteProposal}
         onAcceptProposal={(proposalId) => {
@@ -2728,6 +2768,7 @@ function App() {
           void deleteProposal(proposalId);
         }}
         onOpenProject={(projectId) => navigate(`/projects/${projectId}`)}
+        resolveAssetUrl={resolveAssetUrl}
         onBack={() => navigate("/proposals")}
       />
     );

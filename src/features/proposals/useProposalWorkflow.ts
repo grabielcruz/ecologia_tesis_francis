@@ -44,14 +44,26 @@ export function useProposalWorkflow({
   const [projectEntries, setProjectEntries] = useState<ProjectListEntry[]>([]);
   const [proposalTitleInput, setProposalTitleInput] = useState("");
   const [proposalDescriptionInput, setProposalDescriptionInput] = useState("");
+  const [proposalImagesInput, setProposalImagesInput] = useState("");
   const [proposalSpaceIdInput, setProposalSpaceIdInput] = useState(0);
   const [proposalActionLoadingId, setProposalActionLoadingId] = useState<
     number | null
   >(null);
   const [proposalWindows, setProposalWindows] = useState<
-    Record<number, { start: string; end: string; minimumVotesRequired: string }>
+    Record<
+      number,
+      {
+        start: string;
+        end: string;
+        minimumVotesRequired: string;
+        approximateExecutionDuration: string;
+        projectBudget: string;
+        rejectionReason: string;
+      }
+    >
   >({});
   const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
+  const [uploadingProposalImages, setUploadingProposalImages] = useState(false);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [proposalProjectDetails, setProposalProjectDetails] = useState<
     Record<number, ProposalProjectDetails>
@@ -410,6 +422,7 @@ export function useProposalWorkflow({
   const openCreateProposalModal = () => {
     setProposalTitleInput("");
     setProposalDescriptionInput("");
+    setProposalImagesInput("");
     setShowProposalModal(true);
   };
 
@@ -440,6 +453,10 @@ export function useProposalWorkflow({
         start: value,
         end: prev[proposalId]?.end || "",
         minimumVotesRequired: prev[proposalId]?.minimumVotesRequired || "",
+        approximateExecutionDuration:
+          prev[proposalId]?.approximateExecutionDuration || "",
+        projectBudget: prev[proposalId]?.projectBudget || "",
+        rejectionReason: prev[proposalId]?.rejectionReason || "",
       },
     }));
   };
@@ -451,6 +468,10 @@ export function useProposalWorkflow({
         start: prev[proposalId]?.start || "",
         end: value,
         minimumVotesRequired: prev[proposalId]?.minimumVotesRequired || "",
+        approximateExecutionDuration:
+          prev[proposalId]?.approximateExecutionDuration || "",
+        projectBudget: prev[proposalId]?.projectBudget || "",
+        rejectionReason: prev[proposalId]?.rejectionReason || "",
       },
     }));
   };
@@ -465,6 +486,57 @@ export function useProposalWorkflow({
         start: prev[proposalId]?.start || "",
         end: prev[proposalId]?.end || "",
         minimumVotesRequired: value,
+        approximateExecutionDuration:
+          prev[proposalId]?.approximateExecutionDuration || "",
+        projectBudget: prev[proposalId]?.projectBudget || "",
+        rejectionReason: prev[proposalId]?.rejectionReason || "",
+      },
+    }));
+  };
+
+  const setProposalApproximateExecutionDuration = (
+    proposalId: number,
+    value: string,
+  ) => {
+    setProposalWindows((prev) => ({
+      ...prev,
+      [proposalId]: {
+        start: prev[proposalId]?.start || "",
+        end: prev[proposalId]?.end || "",
+        minimumVotesRequired: prev[proposalId]?.minimumVotesRequired || "",
+        approximateExecutionDuration: value,
+        projectBudget: prev[proposalId]?.projectBudget || "",
+        rejectionReason: prev[proposalId]?.rejectionReason || "",
+      },
+    }));
+  };
+
+  const setProposalProjectBudget = (proposalId: number, value: string) => {
+    setProposalWindows((prev) => ({
+      ...prev,
+      [proposalId]: {
+        start: prev[proposalId]?.start || "",
+        end: prev[proposalId]?.end || "",
+        minimumVotesRequired: prev[proposalId]?.minimumVotesRequired || "",
+        approximateExecutionDuration:
+          prev[proposalId]?.approximateExecutionDuration || "",
+        projectBudget: value,
+        rejectionReason: prev[proposalId]?.rejectionReason || "",
+      },
+    }));
+  };
+
+  const setProposalRejectionReason = (proposalId: number, value: string) => {
+    setProposalWindows((prev) => ({
+      ...prev,
+      [proposalId]: {
+        start: prev[proposalId]?.start || "",
+        end: prev[proposalId]?.end || "",
+        minimumVotesRequired: prev[proposalId]?.minimumVotesRequired || "",
+        approximateExecutionDuration:
+          prev[proposalId]?.approximateExecutionDuration || "",
+        projectBudget: prev[proposalId]?.projectBudget || "",
+        rejectionReason: value,
       },
     }));
   };
@@ -472,6 +544,11 @@ export function useProposalWorkflow({
   const submitProposal = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token) return;
+
+    const images = proposalImagesInput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
 
     if (!proposalTitleInput.trim() || !proposalDescriptionInput.trim()) {
       setError("Completa título y descripción de la propuesta");
@@ -490,10 +567,12 @@ export function useProposalWorkflow({
         title: proposalTitleInput.trim(),
         description: proposalDescriptionInput.trim(),
         spaceId: proposalSpaceIdInput,
+        images,
       });
 
       setProposalTitleInput("");
       setProposalDescriptionInput("");
+      setProposalImagesInput("");
       setShowProposalModal(false);
       setSuccessMessage(
         "Propuesta enviada. Queda pendiente de validación administrativa.",
@@ -503,6 +582,36 @@ export function useProposalWorkflow({
       setError(getErrorMessage(error, "No se pudo registrar la propuesta"));
     } finally {
       setIsSubmittingProposal(false);
+    }
+  };
+
+  const uploadProposalImages = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    if (!token) return;
+
+    setUploadingProposalImages(true);
+    setError(null);
+
+    try {
+      const uploadedPaths = await proposalActions.uploadProposalImages(files);
+
+      if (uploadedPaths.length > 0) {
+        setProposalImagesInput((prev) => {
+          const current = prev
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+          const merged = [...new Set([...current, ...uploadedPaths])];
+          return merged.join("\n");
+        });
+      }
+
+      event.target.value = "";
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudieron subir las imágenes"));
+    } finally {
+      setUploadingProposalImages(false);
     }
   };
 
@@ -527,31 +636,95 @@ export function useProposalWorkflow({
     decision: "accepted" | "rejected",
   ) => {
     if (!token) return;
-    setProposalActionLoadingId(proposalId);
-    setError(null);
+
     const windowInput = proposalWindows[proposalId] || {
       start: "",
       end: "",
       minimumVotesRequired: "",
+      approximateExecutionDuration: "",
+      projectBudget: "",
+      rejectionReason: "",
     };
+
+    if (decision === "accepted") {
+      const startDate = windowInput.start ? new Date(windowInput.start) : null;
+      const endDate = windowInput.end ? new Date(windowInput.end) : null;
+      const projectBudget = Number.parseFloat(
+        String(windowInput.projectBudget || "").trim(),
+      );
+
+      if (startDate && Number.isNaN(startDate.getTime())) {
+        setError("La fecha de inicio de votación no es válida.");
+        return;
+      }
+
+      if (endDate && Number.isNaN(endDate.getTime())) {
+        setError("La fecha de fin de votación no es válida.");
+        return;
+      }
+
+      if (startDate && endDate && startDate.getTime() > endDate.getTime()) {
+        setError(
+          "La fecha de inicio de votación no puede ser mayor que la fecha de fin.",
+        );
+        return;
+      }
+
+      if (startDate && startDate.getTime() < Date.now()) {
+        setError(
+          "No puedes establecer un inicio de votación anterior a la fecha y hora actual.",
+        );
+        return;
+      }
+      if (!windowInput.approximateExecutionDuration.trim()) {
+        setError(
+          "Debes indicar la duración aproximada de ejecución del proyecto.",
+        );
+        return;
+      }
+
+      if (!Number.isFinite(projectBudget) || projectBudget <= 0) {
+        setError("Debes indicar un presupuesto del proyecto válido.");
+        return;
+      }
+    } else if (!windowInput.rejectionReason.trim()) {
+      setError("Debes indicar el motivo de rechazo para la propuesta.");
+      return;
+    }
+
+    setProposalActionLoadingId(proposalId);
+    setError(null);
 
     const decisionPayload: {
       decision: "accepted" | "rejected";
       votingStarts?: string;
       votingEnds?: string;
       minimumVotesRequired?: number;
+      approximateExecutionDuration?: string;
+      projectBudget?: number;
+      rejectionReason?: string;
     } = { decision };
 
     if (decision === "accepted") {
       decisionPayload.votingStarts = windowInput.start;
       decisionPayload.votingEnds = windowInput.end;
+      decisionPayload.approximateExecutionDuration =
+        windowInput.approximateExecutionDuration.trim();
       const parsedMinimumVotes = Number.parseInt(
         String(windowInput.minimumVotesRequired || "").trim(),
         10,
       );
+      const parsedProjectBudget = Number.parseFloat(
+        String(windowInput.projectBudget || "").trim(),
+      );
       if (Number.isFinite(parsedMinimumVotes)) {
         decisionPayload.minimumVotesRequired = parsedMinimumVotes;
       }
+      if (Number.isFinite(parsedProjectBudget)) {
+        decisionPayload.projectBudget = parsedProjectBudget;
+      }
+    } else {
+      decisionPayload.rejectionReason = windowInput.rejectionReason.trim();
     }
 
     try {
@@ -610,10 +783,12 @@ export function useProposalWorkflow({
     setProjectEntries([]);
     setProposalTitleInput("");
     setProposalDescriptionInput("");
+    setProposalImagesInput("");
     setProposalSpaceIdInput(0);
     setProposalActionLoadingId(null);
     setProposalWindows({});
     setIsSubmittingProposal(false);
+    setUploadingProposalImages(false);
     setShowProposalModal(false);
     setProposalProjectDetails({});
     setProposalProjectLoadingId(null);
@@ -633,10 +808,12 @@ export function useProposalWorkflow({
     projectEntries,
     proposalTitleInput,
     proposalDescriptionInput,
+    proposalImagesInput,
     proposalSpaceIdInput,
     proposalActionLoadingId,
     proposalWindows,
     isSubmittingProposal,
+    uploadingProposalImages,
     showProposalModal,
     proposalProjectDetails,
     proposalProjectLoadingId,
@@ -654,6 +831,7 @@ export function useProposalWorkflow({
     selectedProjectEntry,
     setProposalTitleInput,
     setProposalDescriptionInput,
+    setProposalImagesInput,
     setProposalSpaceIdInput,
     setProjectUpdateTitleInput,
     setProjectUpdateDescriptionInput,
@@ -678,7 +856,11 @@ export function useProposalWorkflow({
     setProposalVotingStart,
     setProposalVotingEnd,
     setProposalMinimumVotesRequired,
+    setProposalApproximateExecutionDuration,
+    setProposalProjectBudget,
+    setProposalRejectionReason,
     submitProposal,
+    uploadProposalImages,
     voteProposal,
     decideProposal,
     finalizeProposal,

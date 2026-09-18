@@ -1,5 +1,9 @@
 import { ChangeEvent, FormEvent, useState } from "react";
-import { DefaultTable, DefaultTableColumn } from "../DefaultTable";
+import {
+  DefaultTable,
+  DefaultTableColumn,
+  DefaultTableExportColumn,
+} from "../DefaultTable";
 import { TreeTypeFormModal } from "./TreeTypeFormModal";
 import { TreeType } from "../../features/treeTypes/types";
 
@@ -104,6 +108,25 @@ export function TreeTypesSection({
     },
   ];
 
+  const treeTypeExportColumns: DefaultTableExportColumn<TreeType>[] = [
+    {
+      label: "Tipo de árbol",
+      value: (treeType) => treeType.name,
+    },
+    {
+      label: "Descripción",
+      value: (treeType) => treeType.description,
+    },
+    {
+      label: "Referencias",
+      value: (treeType) => treeType.referenceImages.length,
+    },
+    {
+      label: "Actualizado",
+      value: (treeType) => formatUpdatedAt(treeType.updatedAt || undefined),
+    },
+  ];
+
   return (
     <section className="box reports-box">
       <article className="principal-panel">
@@ -121,6 +144,7 @@ export function TreeTypesSection({
         )}
         <DefaultTable
           columns={treeTypeColumns}
+          exportColumns={treeTypeExportColumns}
           rows={treeTypes}
           onRowClick={onOpenTreeTypeDetail}
           getRowId={(treeType) => treeType.id}

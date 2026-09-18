@@ -4,6 +4,7 @@ import multer from "multer";
 import sharp from "sharp";
 import fs from "fs";
 import path from "path";
+import { Op } from "sequelize";
 import {
   GreenSpace,
   ProjectOfProposal,
@@ -21,9 +22,18 @@ const projectUpdatesUploadsDir = path.resolve(
   "uploads",
   "project-updates",
 );
+const proposalsUploadsDir = path.resolve(
+  process.cwd(),
+  "public",
+  "uploads",
+  "proposals",
+);
 
 if (!fs.existsSync(projectUpdatesUploadsDir)) {
   fs.mkdirSync(projectUpdatesUploadsDir, { recursive: true });
+}
+if (!fs.existsSync(proposalsUploadsDir)) {
+  fs.mkdirSync(proposalsUploadsDir, { recursive: true });
 }
 
 interface AuthRequest extends Request {
@@ -106,6 +116,17 @@ const uploadProjectUpdateImages = multer({
   },
 });
 
+const uploadProposalImages = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Solo se permiten imágenes") as any, false);
+    }
+    cb(null, true);
+  },
+});
+
 const toIsoStringOrNull = (value: unknown) => {
   if (!value) {
     return null;
@@ -144,7 +165,10 @@ const parseStringArray = (value: unknown): string[] => {
   }
 };
 
-const serializeProposal = (proposal: ProposalOfGreenArea) => ({
+const serializeProposal = (
+  proposal: ProposalOfGreenArea,
+  options?: { includeBudget?: boolean },
+) => ({
   id: proposal.getDataValue("proposal_of_green_area_id"),
   title: proposal.getDataValue("title"),
   description: proposal.getDataValue("description"),
@@ -153,11 +177,54 @@ const serializeProposal = (proposal: ProposalOfGreenArea) => ({
   minimumVotesRequired: proposal.getDataValue("minimum_votes_required"),
   votingStarts: toIsoStringOrNull(proposal.getDataValue("voting_starts")),
   votingEnds: toIsoStringOrNull(proposal.getDataValue("voting_ends")),
+  approximateExecutionDuration:
+    String(proposal.getDataValue("approximate_execution_duration") || "") ||
+    null,
+  projectBudget: options?.includeBudget
+    ? proposal.getDataValue("estimated_budget")
+    : null,
+  proposalImages: parseStringArray(proposal.getDataValue("proposal_images")),
+  rejectionReason:
+    String(proposal.getDataValue("rejection_reason") || "") || null,
   userId: proposal.getDataValue("user_id"),
   spaceId: proposal.getDataValue("space_id"),
   createdAt: toIsoStringOrNull(proposal.getDataValue("created_at")),
   updatedAt: toIsoStringOrNull(proposal.getDataValue("updated_at")),
 });
+
+router.post(
+  "/images",
+  authenticate,
+  uploadProposalImages.array("images", 10),
+  async (_req: AuthRequest, res: Response) => {
+    const files = (_req.files as Express.Multer.File[]) || [];
+    if (!files.length) {
+      return res.status(400).json({ error: "No se recibieron imágenes" });
+    }
+
+    try {
+      const savedUrls: string[] = [];
+
+      for (const [index, file] of files.entries()) {
+        const filename = `proposal-${Date.now()}-${index}.jpg`;
+        const outputPath = path.join(proposalsUploadsDir, filename);
+
+        await sharp(file.buffer)
+          .resize(1800, 1400, { fit: "inside", withoutEnlargement: true })
+          .jpeg({ quality: 84 })
+          .toFile(outputPath);
+
+        savedUrls.push(`/uploads/proposals/${filename}`);
+      }
+
+      return res.status(201).json({ images: savedUrls });
+    } catch {
+      return res
+        .status(500)
+        .json({ error: "No se pudieron subir las imágenes" });
+    }
+  },
+);
 
 const serializeProject = (project: ProjectOfProposal) => ({
   id: project.getDataValue("project_of_proposal_id"),
@@ -276,7 +343,23 @@ const finalizeOpenProposal = async (proposal: ProposalOfGreenArea) => {
 
 router.get("/", optionalAuthenticate, async (_req, res) => {
   const authReq = _req as AuthRequest;
-  const whereClause = authReq.user?.role === "admin" ? {} : { status: "open" };
+  const whereClause =
+    authReq.user?.role === "admin"
+      ? {}
+      : authReq.user
+        ? {
+            [Op.or]: [
+              { status: "open" },
+              {
+                [Op.and]: [
+                  { user_id: authReq.user.user_id },
+                  { status: { [Op.in]: ["draft", "rejected"] } },
+                ],
+              },
+            ],
+          }
+        : { status: "open" };
+  const includeBudget = authReq.user?.role === "admin";
 
   const proposals = await ProposalOfGreenArea.findAll({
     where: whereClause,
@@ -288,7 +371,7 @@ router.get("/", optionalAuthenticate, async (_req, res) => {
 
   res.json(
     proposals.map((proposal) =>
-      serializeProposal(proposal as ProposalOfGreenArea),
+      serializeProposal(proposal as ProposalOfGreenArea, { includeBudget }),
     ),
   );
 });
@@ -296,6 +379,7 @@ router.get("/", optionalAuthenticate, async (_req, res) => {
 router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
   const title = String(req.body?.title || "").trim();
   const description = String(req.body?.description || "").trim();
+  const images = parseStringArray(req.body?.images);
   const spaceId = Number(req.body?.spaceId);
 
   if (!req.user) {
@@ -325,13 +409,21 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
     minimum_votes_required: null,
     voting_starts: null,
     voting_ends: null,
+    approximate_execution_duration: null,
+    estimated_budget: null,
+    proposal_images: JSON.stringify(images),
+    rejection_reason: null,
     user_id: req.user.user_id,
     space_id: spaceId,
     created_at: new Date(),
     updated_at: new Date(),
   });
 
-  return res.status(201).json(serializeProposal(proposal));
+  return res
+    .status(201)
+    .json(
+      serializeProposal(proposal, { includeBudget: req.user.role === "admin" }),
+    );
 });
 
 router.post(
@@ -459,6 +551,11 @@ router.patch(
 
     const votingStartsRaw = String(req.body?.votingStarts || "").trim();
     const votingEndsRaw = String(req.body?.votingEnds || "").trim();
+    const rejectionReason = String(req.body?.rejectionReason || "").trim();
+    const approximateExecutionDuration = String(
+      req.body?.approximateExecutionDuration || "",
+    ).trim();
+    const estimatedBudgetRaw = Number(req.body?.projectBudget);
     const minimumVotesRequiredRaw = Number(req.body?.minimumVotesRequired);
 
     const proposal = await ProposalOfGreenArea.findByPk(proposalId);
@@ -476,22 +573,31 @@ router.patch(
         where: { proposal_of_green_area_id: proposalId },
       });
       return res.json({
-        proposal: serializeProposal(proposal),
+        proposal: serializeProposal(proposal, { includeBudget: true }),
         project: project ? serializeProject(project) : null,
       });
     }
 
     if (decision === "rejected") {
+      if (!rejectionReason) {
+        return res.status(400).json({
+          error: "Debes indicar el motivo de rechazo para la propuesta",
+        });
+      }
+
       await proposal.update({
         status: "rejected",
         minimum_votes_required: null,
         voting_starts: null,
         voting_ends: null,
+        approximate_execution_duration: null,
+        estimated_budget: null,
+        rejection_reason: rejectionReason,
         updated_at: new Date(),
       });
 
       return res.json({
-        proposal: serializeProposal(proposal),
+        proposal: serializeProposal(proposal, { includeBudget: true }),
         project: null,
       });
     }
@@ -517,16 +623,31 @@ router.patch(
       });
     }
 
+    if (!approximateExecutionDuration) {
+      return res.status(400).json({
+        error: "La duración aproximada de ejecución es obligatoria",
+      });
+    }
+
+    if (!Number.isFinite(estimatedBudgetRaw) || estimatedBudgetRaw <= 0) {
+      return res.status(400).json({
+        error: "El presupuesto del proyecto es inválido",
+      });
+    }
+
     await proposal.update({
       status: "open",
       minimum_votes_required: minimumVotesRequiredRaw,
       voting_starts: votingStarts,
       voting_ends: votingEnds,
+      approximate_execution_duration: approximateExecutionDuration,
+      estimated_budget: estimatedBudgetRaw,
+      rejection_reason: null,
       updated_at: new Date(),
     });
 
     return res.json({
-      proposal: serializeProposal(proposal),
+      proposal: serializeProposal(proposal, { includeBudget: true }),
       project: null,
     });
   },
@@ -623,6 +744,17 @@ router.get(
       return res.status(404).json({ error: "Propuesta no encontrada" });
     }
 
+    const status = String(proposal.getDataValue("status") || "");
+    const createdByUserId = Number(proposal.getDataValue("user_id"));
+    const isPrivateStatus = status === "draft" || status === "rejected";
+    const canReadPrivateStatus =
+      req.user?.role === "admin" ||
+      (req.user && req.user.user_id === createdByUserId);
+
+    if (isPrivateStatus && !canReadPrivateStatus) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
+
     const voters =
       req.user?.role === "admin"
         ? await VoteOfProposal.findAll({
@@ -653,7 +785,9 @@ router.get(
 
     if (!project) {
       return res.json({
-        proposal: serializeProposal(proposal),
+        proposal: serializeProposal(proposal, {
+          includeBudget: req.user?.role === "admin",
+        }),
         project: null,
         updates: [],
         voters: voters.map((entry) =>
@@ -674,7 +808,9 @@ router.get(
     });
 
     return res.json({
-      proposal: serializeProposal(proposal),
+      proposal: serializeProposal(proposal, {
+        includeBudget: req.user?.role === "admin",
+      }),
       project: serializeProject(project),
       updates: updates.map((entry) =>
         serializeProjectUpdate(entry as ProjectUpdateOfProposal),
@@ -725,7 +861,9 @@ router.get(
     });
 
     return res.json({
-      proposal: serializeProposal(proposal),
+      proposal: serializeProposal(proposal, {
+        includeBudget: req.user?.role === "admin",
+      }),
       project: serializeProject(project),
       updates: updates.map((entry) =>
         serializeProjectUpdate(entry as ProjectUpdateOfProposal),

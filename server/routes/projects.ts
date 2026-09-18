@@ -74,7 +74,35 @@ const toIsoStringOrNull = (value: unknown) => {
   return dateValue.toISOString();
 };
 
-const serializeProposal = (proposal: ProposalOfGreenArea) => ({
+const parseStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .filter((entry): entry is string => typeof entry === "string")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed)
+      ? parsed
+          .filter((entry): entry is string => typeof entry === "string")
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const serializeProposal = (
+  proposal: ProposalOfGreenArea,
+  options?: { includeBudget?: boolean },
+) => ({
   id: proposal.getDataValue("proposal_of_green_area_id"),
   title: proposal.getDataValue("title"),
   description: proposal.getDataValue("description"),
@@ -83,6 +111,13 @@ const serializeProposal = (proposal: ProposalOfGreenArea) => ({
   minimumVotesRequired: proposal.getDataValue("minimum_votes_required"),
   votingStarts: toIsoStringOrNull(proposal.getDataValue("voting_starts")),
   votingEnds: toIsoStringOrNull(proposal.getDataValue("voting_ends")),
+  approximateExecutionDuration:
+    String(proposal.getDataValue("approximate_execution_duration") || "") ||
+    null,
+  projectBudget: options?.includeBudget
+    ? proposal.getDataValue("estimated_budget")
+    : null,
+  proposalImages: parseStringArray(proposal.getDataValue("proposal_images")),
   userId: proposal.getDataValue("user_id"),
   spaceId: proposal.getDataValue("space_id"),
   createdAt: toIsoStringOrNull(proposal.getDataValue("created_at")),
@@ -122,6 +157,7 @@ router.get(
   "/",
   optionalAuthenticate,
   async (_req: AuthRequest, res: Response) => {
+    const includeBudget = _req.user?.role === "admin";
     const projects = await ProjectOfProposal.findAll({
       order: [
         ["updated_at", "DESC"],
@@ -159,7 +195,9 @@ router.get(
         });
 
         return {
-          proposal: serializeProposal(proposal as ProposalOfGreenArea),
+          proposal: serializeProposal(proposal as ProposalOfGreenArea, {
+            includeBudget,
+          }),
           project: serializeProject(project as ProjectOfProposal),
           latestUpdate: latestUpdate
             ? serializeLatestUpdate(latestUpdate as ProjectUpdateOfProposal)

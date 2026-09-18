@@ -178,7 +178,7 @@ export function AppSidebar({
             <span className="nav-icon" aria-hidden="true">
               FL
             </span>
-            <span>Encuentra la flor</span>
+            <span>Busca Flores</span>
           </button>
           <button
             type="button"
