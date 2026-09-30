@@ -885,6 +885,111 @@ FindFlowerScore.init(
   },
 );
 
+export class Event extends Model {}
+Event.init(
+  {
+    event_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "",
+    },
+    status: {
+      type: DataTypes.ENUM("open", "closed"),
+      allowNull: false,
+      defaultValue: "open",
+    },
+    closure_description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    closure_images: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    },
+    created_by_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "Event",
+    tableName: "Event",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
+export class EventEnrollment extends Model {}
+EventEnrollment.init(
+  {
+    event_enrollment_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    event_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "Event",
+        key: "event_id",
+      },
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "EventEnrollment",
+    tableName: "EventEnrollment",
+    freezeTableName: true,
+    timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ["event_id", "user_id"],
+      },
+    ],
+  },
+);
+
 Role.hasMany(User, { foreignKey: "role_id" });
 User.belongsTo(Role, { foreignKey: "role_id" });
 
@@ -931,6 +1036,21 @@ VoteOfProposal.belongsTo(User, { foreignKey: "user_id" });
 
 User.hasOne(FindFlowerScore, { foreignKey: "user_id" });
 FindFlowerScore.belongsTo(User, { foreignKey: "user_id" });
+
+User.hasMany(Event, { foreignKey: "created_by_user_id" });
+Event.belongsTo(User, {
+  foreignKey: "created_by_user_id",
+  as: "CreatedBy",
+});
+
+Event.hasMany(EventEnrollment, { foreignKey: "event_id" });
+EventEnrollment.belongsTo(Event, { foreignKey: "event_id" });
+
+User.hasMany(EventEnrollment, { foreignKey: "user_id" });
+EventEnrollment.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "Participant",
+});
 
 GreenSpace.hasMany(ProjectOfProposal, { foreignKey: "space_id" });
 ProjectOfProposal.belongsTo(GreenSpace, { foreignKey: "space_id" });

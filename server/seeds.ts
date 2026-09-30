@@ -1,5 +1,7 @@
 import bcrypt from "bcryptjs";
 import {
+  Event,
+  EventEnrollment,
   FindFlowerScore,
   GreenMetricRecord,
   GreenSpace,
@@ -16,6 +18,8 @@ import {
   sequelize,
 } from "./models";
 import {
+  eventEnrollmentSeeds,
+  eventSeeds,
   findFlowerScoreSeeds,
   greenMetricRecordSeeds,
   greenSpaceSeeds,
@@ -50,6 +54,7 @@ export async function seedDatabase() {
   const projectIdByTitle: Record<string, number> = {};
   const proposalById: Record<number, ProposalOfGreenArea> = {};
   const treeTypeIdByName: Record<string, number> = {};
+  const eventIdByTitle: Record<string, number> = {};
 
   const normalizeTreeNameKey = (value: string) =>
     value
@@ -104,6 +109,53 @@ export async function seedDatabase() {
       best_moves: scoreSeed.best_moves,
       created_at: updatedAt,
       updated_at: updatedAt,
+    });
+  }
+
+  for (const eventSeed of eventSeeds) {
+    const creatorId = userIdByUsername[eventSeed.created_by_username];
+    if (!creatorId) {
+      throw new Error(
+        `User not found for event seed: ${eventSeed.created_by_username}`,
+      );
+    }
+
+    const createdAt = new Date(eventSeed.created_at);
+    const createdEvent = await Event.create({
+      title: eventSeed.title,
+      description: eventSeed.description,
+      status: eventSeed.status,
+      closure_description: eventSeed.closure_description ?? null,
+      closure_images: JSON.stringify(eventSeed.closure_images ?? []),
+      created_by_user_id: creatorId,
+      created_at: createdAt,
+      updated_at: createdAt,
+    });
+
+    eventIdByTitle[eventSeed.title] = Number(
+      createdEvent.getDataValue("event_id"),
+    );
+  }
+
+  for (const enrollmentSeed of eventEnrollmentSeeds) {
+    const eventId = eventIdByTitle[enrollmentSeed.event_title];
+    if (!eventId) {
+      throw new Error(
+        `Event not found for enrollment seed: ${enrollmentSeed.event_title}`,
+      );
+    }
+
+    const userId = userIdByUsername[enrollmentSeed.username];
+    if (!userId) {
+      throw new Error(
+        `User not found for enrollment seed: ${enrollmentSeed.username}`,
+      );
+    }
+
+    await EventEnrollment.create({
+      event_id: eventId,
+      user_id: userId,
+      created_at: new Date(enrollmentSeed.created_at),
     });
   }
 
@@ -411,7 +463,7 @@ export async function seedDatabase() {
   }
 
   console.log(
-    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${findFlowerScoreSeeds.length} find flower scores, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${greenMetricRecordSeeds.length} green metric records, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
+    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${findFlowerScoreSeeds.length} find flower scores, ${eventSeeds.length} events, ${eventEnrollmentSeeds.length} event enrollments, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${greenMetricRecordSeeds.length} green metric records, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
   );
 }
 

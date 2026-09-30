@@ -117,6 +117,22 @@ export interface FindFlowerScoreSeed {
   updated_at: string;
 }
 
+export interface EventSeed {
+  title: string;
+  description: string;
+  status: "open" | "closed";
+  closure_description?: string | null;
+  closure_images?: string[];
+  created_by_username: string;
+  created_at: string;
+}
+
+export interface EventEnrollmentSeed {
+  event_title: string;
+  username: string;
+  created_at: string;
+}
+
 export const roleSeeds: RoleSeed[] = [
   {
     role_name: "admin",
@@ -835,5 +851,70 @@ export const findFlowerScoreSeeds: FindFlowerScoreSeed[] = [
     best_time_seconds: 105,
     best_moves: 61,
     updated_at: "2026-09-10T12:48:00.000Z",
+  },
+];
+
+export const eventSeeds: EventSeed[] = [
+  {
+    title: "Jornada de siembra en Jardín Central",
+    description:
+      "Actividad colaborativa para plantar especies nativas y fortalecer cobertura vegetal.",
+    status: "open",
+    closure_description: null,
+    closure_images: [],
+    created_by_username: "admin",
+    created_at: "2026-09-20T09:00:00.000Z",
+  },
+  {
+    title: "Limpieza ecológica de Sendero Verde",
+    description:
+      "Recorrido de recolección de residuos, separación y clasificación para reciclaje.",
+    status: "closed",
+    closure_description:
+      "La actividad finalizó con 37 participantes y se recolectaron 18 bolsas de residuos clasificadas.",
+    closure_images: [
+      "/green-spaces/bosque-ingenieria-1.svg",
+      "/green-spaces/bosque-ingenieria-2.svg",
+    ],
+    created_by_username: "admin",
+    created_at: "2026-09-05T08:30:00.000Z",
+  },
+  {
+    title: "Taller de compostaje universitario",
+    description:
+      "Capacitación práctica para transformar residuos orgánicos en compost utilizable en campus.",
+    status: "open",
+    closure_description: null,
+    closure_images: [],
+    created_by_username: "admin",
+    created_at: "2026-09-22T14:00:00.000Z",
+  },
+];
+
+export const eventEnrollmentSeeds: EventEnrollmentSeed[] = [
+  {
+    event_title: "Jornada de siembra en Jardín Central",
+    username: "regular.user",
+    created_at: "2026-09-21T09:15:00.000Z",
+  },
+  {
+    event_title: "Jornada de siembra en Jardín Central",
+    username: "daniela.t",
+    created_at: "2026-09-21T09:18:00.000Z",
+  },
+  {
+    event_title: "Limpieza ecológica de Sendero Verde",
+    username: "mateo.rios",
+    created_at: "2026-09-06T08:55:00.000Z",
+  },
+  {
+    event_title: "Limpieza ecológica de Sendero Verde",
+    username: "laura.campos",
+    created_at: "2026-09-06T09:05:00.000Z",
+  },
+  {
+    event_title: "Taller de compostaje universitario",
+    username: "regular.user",
+    created_at: "2026-09-23T14:10:00.000Z",
   },
 ];

@@ -3,6 +3,7 @@ export interface RouteFlags {
   isProjectsRoute: boolean;
   isReportsRoute: boolean;
   isGreenMetricsRoute: boolean;
+  isEventsRoute: boolean;
   isFindFlowerRoute: boolean;
   isTreeTypesRoute: boolean;
   isTreesRoute: boolean;
@@ -12,6 +13,7 @@ export interface SelectedRouteIds {
   selectedGreenSpaceId: number | null;
   selectedTreeTypeId: number | null;
   selectedTreeId: number | null;
+  selectedEventId: number | null;
 }
 
 export interface PageHeaderMeta {
@@ -27,6 +29,10 @@ export function getRouteFlags(route: string): RouteFlags {
     isReportsRoute: route === "/reports" || route.startsWith("/reports/"),
     isGreenMetricsRoute:
       route === "/green-metrics" || route.startsWith("/green-metrics/"),
+    isEventsRoute:
+      route === "/events" ||
+      route.startsWith("/events?") ||
+      route.startsWith("/events/"),
     isFindFlowerRoute:
       route === "/find-the-flower" || route.startsWith("/find-the-flower/"),
     isTreeTypesRoute:
@@ -59,10 +65,18 @@ export function getSelectedRouteIds(route: string): SelectedRouteIds {
     return Number.isFinite(id) ? id : null;
   })();
 
+  const selectedEventId = (() => {
+    if (!route.startsWith("/events/")) return null;
+    const pathOnly = route.split("?")[0] || route;
+    const id = Number(pathOnly.split("/")[2]);
+    return Number.isFinite(id) ? id : null;
+  })();
+
   return {
     selectedGreenSpaceId,
     selectedTreeTypeId,
     selectedTreeId,
+    selectedEventId,
   };
 }
 
@@ -87,6 +101,8 @@ export function getPageHeaderMeta(
                   ? "Detalle de tipo de árbol"
                   : route.startsWith("/trees/")
                     ? "Detalle de árbol"
+                    : route.startsWith("/events/")
+                      ? "Detalle de evento"
                     : route === "/proposals"
                       ? "Propuestas"
                       : route === "/projects"
@@ -95,6 +111,9 @@ export function getPageHeaderMeta(
                           ? "Reportes de áreas verdes"
                           : route === "/green-metrics"
                             ? "Métricas GreenMetric"
+                            : route === "/events" ||
+                                route.startsWith("/events?")
+                              ? "Eventos"
                             : route === "/tree-types"
                               ? "Tipos de árboles"
                               : route === "/trees" ||
@@ -125,6 +144,8 @@ export function getPageHeaderMeta(
                   ? "Descripción completa, imágenes referenciales y árboles registrados por ubicación"
                   : route.startsWith("/trees/")
                     ? "Información completa del árbol, tipo y ubicación en área verde"
+                    : route.startsWith("/events/")
+                      ? "Consulta participantes y evidencias publicadas al cierre del evento"
                     : route === "/proposals"
                       ? "Consulta, valida y vota propuestas de mejora para áreas verdes"
                       : route === "/projects"
@@ -133,6 +154,9 @@ export function getPageHeaderMeta(
                           ? "Registra, actualiza y sigue reportes de quejas o sugerencias"
                           : route === "/green-metrics"
                             ? "Carga datos por fecha de cálculo y revisa el histórico de indicadores de sostenibilidad"
+                            : route === "/events" ||
+                                route.startsWith("/events?")
+                              ? "Crea eventos, gestiona inscripciones y publica evidencias al cerrar la actividad"
                             : route === "/tree-types"
                               ? "Catálogo oficial de especies y flujo de sugerencias de nuevos tipos"
                               : route === "/trees" ||

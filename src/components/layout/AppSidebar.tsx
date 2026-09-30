@@ -5,6 +5,7 @@ interface AppSidebarProps {
   isProjectsRoute: boolean;
   isReportsRoute: boolean;
   isGreenMetricsRoute: boolean;
+  isEventsRoute: boolean;
   isFindFlowerRoute: boolean;
   isTreeTypesRoute: boolean;
   isTreesRoute: boolean;
@@ -20,6 +21,7 @@ interface AppSidebarProps {
   onNavigateProjects: () => void;
   onNavigateReports: () => void;
   onNavigateGreenMetrics: () => void;
+  onNavigateEvents: () => void;
   onNavigateFindFlower: () => void;
   onNavigateTreeTypes: () => void;
   onNavigateTrees: () => void;
@@ -37,6 +39,7 @@ export function AppSidebar({
   isProjectsRoute,
   isReportsRoute,
   isGreenMetricsRoute,
+  isEventsRoute,
   isFindFlowerRoute,
   isTreeTypesRoute,
   isTreesRoute,
@@ -52,6 +55,7 @@ export function AppSidebar({
   onNavigateProjects,
   onNavigateReports,
   onNavigateGreenMetrics,
+  onNavigateEvents,
   onNavigateFindFlower,
   onNavigateTreeTypes,
   onNavigateTrees,
@@ -169,6 +173,16 @@ export function AppSidebar({
               GM
             </span>
             <span>Métricas GreenMetric</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${isEventsRoute ? "active" : ""}`}
+            onClick={onNavigateEvents}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              EV
+            </span>
+            <span>Eventos</span>
           </button>
           <button
             type="button"

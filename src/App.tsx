@@ -19,6 +19,8 @@ import { ProposalsListSection } from "./components/proposals/ProposalsListSectio
 import { Report } from "./components/reports/Report";
 import { Reports } from "./components/reports/Reports";
 import { GreenMetricsSection } from "./components/greenMetrics/GreenMetricsSection";
+import { EventsSection } from "./components/events/EventsSection";
+import { EventDetailSection } from "./components/events/EventDetailSection";
 import { FindFlowerSection } from "./components/games/FindFlowerSection";
 import { AiChatWidget } from "./components/chatbot/AiChatWidget";
 import { TreeTypeDetailSection } from "./components/treeTypes/TreeTypeDetailSection";
@@ -31,6 +33,7 @@ import { UserDetailsModal } from "./components/users/UserDetailsModal";
 import { useProposalWorkflow } from "./features/proposals/useProposalWorkflow";
 import { useGreenMetrics } from "./features/greenMetrics/useGreenMetrics";
 import { useReports } from "./features/reports/useReports";
+import { useEvents } from "./features/events/useEvents";
 import {
   getRouteFlags,
   getSelectedRouteIds,
@@ -418,6 +421,35 @@ function App() {
     setFormValue: setGreenMetricFormValue,
     saveRecord,
   } = useGreenMetrics({
+    token,
+    route,
+    userRole: user?.role,
+    setError,
+    setSuccessMessage,
+  });
+  const {
+    events,
+    selectedEventDetail,
+    eventTitleInput,
+    eventDescriptionInput,
+    closureDescriptionInput,
+    closureImagesInput,
+    selectedEventForClosure,
+    isSubmittingEvent,
+    isSubmittingClosure,
+    isUploadingEventImages,
+    setEventTitleInput,
+    setEventDescriptionInput,
+    setClosureDescriptionInput,
+    setClosureImagesInput,
+    openClosureForm,
+    closeClosureForm,
+    uploadEventImages,
+    createEvent,
+    enrollEvent,
+    withdrawEnrollment,
+    closeEvent,
+  } = useEvents({
     token,
     route,
     userRole: user?.role,
@@ -1203,12 +1235,17 @@ function App() {
     isProjectsRoute,
     isReportsRoute,
     isGreenMetricsRoute,
+    isEventsRoute,
     isFindFlowerRoute,
     isTreeTypesRoute,
     isTreesRoute,
   } = getRouteFlags(route);
-  const { selectedGreenSpaceId, selectedTreeTypeId, selectedTreeId } =
-    getSelectedRouteIds(route);
+  const {
+    selectedGreenSpaceId,
+    selectedTreeTypeId,
+    selectedTreeId,
+    selectedEventId,
+  } = getSelectedRouteIds(route);
   const selectedProjectUpdateId = (() => {
     if (!route.startsWith("/projects/")) return null;
     const pathOnly = route.split("?")[0] || route;
@@ -3651,6 +3688,61 @@ function App() {
     );
   };
 
+  const renderEventsSection = () => {
+    return (
+      <EventsSection
+        events={events}
+        route={route}
+        userRole={user?.role}
+        isAuthenticated={isAuthenticated}
+        eventTitleInput={eventTitleInput}
+        eventDescriptionInput={eventDescriptionInput}
+        closureDescriptionInput={closureDescriptionInput}
+        closureImagesInput={closureImagesInput}
+        selectedEventForClosure={selectedEventForClosure}
+        isSubmittingEvent={isSubmittingEvent}
+        isSubmittingClosure={isSubmittingClosure}
+        isUploadingEventImages={isUploadingEventImages}
+        resolveAssetUrl={resolveAssetUrl}
+        formatUpdatedAt={formatUpdatedAt}
+        setEventTitleInput={setEventTitleInput}
+        setEventDescriptionInput={setEventDescriptionInput}
+        setClosureDescriptionInput={setClosureDescriptionInput}
+        setClosureImagesInput={setClosureImagesInput}
+        onOpenClosureForm={openClosureForm}
+        onCloseClosureForm={closeClosureForm}
+        onUploadEventImages={(event) => {
+          void uploadEventImages(event);
+        }}
+        onCreateEvent={createEvent}
+        onEnrollEvent={(eventId) => {
+          void enrollEvent(eventId);
+        }}
+        onWithdrawEnrollment={(eventId) => {
+          void withdrawEnrollment(eventId);
+        }}
+        onCloseEvent={closeEvent}
+        onOpenEventDetail={(event) => navigate(`/events/${event.id}`)}
+        onNavigateEventsWithQuery={(query) =>
+          navigate(query ? `/events?${query}` : "/events", true)
+        }
+      />
+    );
+  };
+
+  const renderEventDetailSection = () => {
+    return (
+      <EventDetailSection
+        selectedEventId={selectedEventId}
+        selectedEvent={selectedEventDetail}
+        userRole={user?.role}
+        resolveAssetUrl={resolveAssetUrl}
+        formatUpdatedAt={formatUpdatedAt}
+        onBack={() => navigate("/events")}
+      />
+    );
+  };
+
   const renderFindFlowerSection = () => {
     return (
       <FindFlowerSection
@@ -3862,6 +3954,10 @@ function App() {
       return renderTreeDetailSection();
     }
 
+    if (route.startsWith("/events/")) {
+      return renderEventDetailSection();
+    }
+
     if (route === "/green-spaces") {
       return renderGreenSpacesSection();
     }
@@ -3880,6 +3976,10 @@ function App() {
 
     if (route === "/green-metrics") {
       return renderGreenMetricsSection();
+    }
+
+    if (route === "/events" || route.startsWith("/events?")) {
+      return renderEventsSection();
     }
 
     if (route === "/find-the-flower") {
@@ -4132,6 +4232,7 @@ function App() {
           isProjectsRoute={isProjectsRoute}
           isReportsRoute={isReportsRoute}
           isGreenMetricsRoute={isGreenMetricsRoute}
+          isEventsRoute={isEventsRoute}
           isFindFlowerRoute={isFindFlowerRoute}
           isTreeTypesRoute={isTreeTypesRoute}
           isTreesRoute={isTreesRoute}
@@ -4147,6 +4248,7 @@ function App() {
           onNavigateProjects={openProjects}
           onNavigateReports={() => navigate("/reports")}
           onNavigateGreenMetrics={() => navigate("/green-metrics")}
+          onNavigateEvents={() => navigate("/events")}
           onNavigateFindFlower={() => navigate("/find-the-flower")}
           onNavigateTreeTypes={() => navigate("/tree-types")}
           onNavigateTrees={() => navigate("/trees")}
