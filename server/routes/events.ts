@@ -148,6 +148,7 @@ const serializeEvent = (
     id: Number(event.getDataValue("event_id")),
     title: String(event.getDataValue("title") || ""),
     description: String(event.getDataValue("description") || ""),
+    eventDate: toIsoStringOrNull(event.getDataValue("event_date")),
     status: String(event.getDataValue("status") || "open") as "open" | "closed",
     closureDescription:
       String(event.getDataValue("closure_description") || "") || null,
@@ -339,16 +340,25 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     const title = String(req.body?.title || "").trim();
     const description = String(req.body?.description || "").trim();
+    const eventDateRaw = String(req.body?.eventDate || "").trim();
+    const eventDate = eventDateRaw ? new Date(eventDateRaw) : null;
 
-    if (!title || !description) {
+    if (!title || !description || !eventDateRaw) {
       return res.status(400).json({
-        error: "Debes completar título y descripción del evento",
+        error: "Debes completar título, descripción y fecha del evento",
+      });
+    }
+
+    if (!eventDate || Number.isNaN(eventDate.getTime())) {
+      return res.status(400).json({
+        error: "La fecha del evento no es válida",
       });
     }
 
     const created = await Event.create({
       title,
       description,
+      event_date: eventDate,
       status: "open",
       closure_description: null,
       closure_images: "[]",
@@ -358,6 +368,59 @@ router.post(
     });
 
     return res.status(201).json(serializeEvent(created as Event, 0, false));
+  },
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const eventId = Number(req.params.id);
+    if (!Number.isFinite(eventId)) {
+      return res.status(400).json({ error: "Evento inválido" });
+    }
+
+    const event = await Event.findByPk(eventId);
+    if (!event) {
+      return res.status(404).json({ error: "Evento no encontrado" });
+    }
+
+    if (String(event.getDataValue("status")) !== "open") {
+      return res.status(409).json({
+        error: "Solo se pueden editar eventos abiertos",
+      });
+    }
+
+    const title = String(req.body?.title || "").trim();
+    const description = String(req.body?.description || "").trim();
+    const eventDateRaw = String(req.body?.eventDate || "").trim();
+    const eventDate = eventDateRaw ? new Date(eventDateRaw) : null;
+
+    if (!title || !description || !eventDateRaw) {
+      return res.status(400).json({
+        error: "Debes completar título, descripción y fecha del evento",
+      });
+    }
+
+    if (!eventDate || Number.isNaN(eventDate.getTime())) {
+      return res.status(400).json({
+        error: "La fecha del evento no es válida",
+      });
+    }
+
+    await event.update({
+      title,
+      description,
+      event_date: eventDate,
+      updated_at: new Date(),
+    });
+
+    const enrollmentCount = await EventEnrollment.count({
+      where: { event_id: eventId },
+    });
+
+    return res.json(serializeEvent(event as Event, enrollmentCount, false));
   },
 );
 
@@ -510,6 +573,89 @@ router.patch(
     });
 
     return res.json(serializeEvent(event as Event, enrollmentCount, false));
+  },
+);
+
+router.patch(
+  "/:id/closure",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const eventId = Number(req.params.id);
+    if (!Number.isFinite(eventId)) {
+      return res.status(400).json({ error: "Evento inválido" });
+    }
+
+    const event = await Event.findByPk(eventId);
+    if (!event) {
+      return res.status(404).json({ error: "Evento no encontrado" });
+    }
+
+    if (String(event.getDataValue("status")) !== "closed") {
+      return res.status(409).json({
+        error: "Solo se puede editar el cierre de eventos cerrados",
+      });
+    }
+
+    const closureDescription = String(
+      req.body?.closureDescription || "",
+    ).trim();
+    const closureImages = Array.isArray(req.body?.closureImages)
+      ? req.body.closureImages
+          .filter(
+            (entry: unknown): entry is string => typeof entry === "string",
+          )
+          .map((entry: string) => entry.trim())
+          .filter((entry: string) => entry.length > 0)
+      : [];
+
+    if (!closureDescription) {
+      return res.status(400).json({
+        error: "Debes registrar una descripción de cierre",
+      });
+    }
+
+    await event.update({
+      closure_description: closureDescription,
+      closure_images: JSON.stringify(closureImages),
+      updated_at: new Date(),
+    });
+
+    const enrollmentCount = await EventEnrollment.count({
+      where: { event_id: eventId },
+    });
+
+    return res.json(serializeEvent(event as Event, enrollmentCount, false));
+  },
+);
+
+router.delete(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const eventId = Number(req.params.id);
+    if (!Number.isFinite(eventId)) {
+      return res.status(400).json({ error: "Evento inválido" });
+    }
+
+    const event = await Event.findByPk(eventId);
+    if (!event) {
+      return res.status(404).json({ error: "Evento no encontrado" });
+    }
+
+    if (String(event.getDataValue("status")) !== "closed") {
+      return res.status(409).json({
+        error: "Solo se pueden eliminar eventos cerrados",
+      });
+    }
+
+    await EventEnrollment.destroy({
+      where: { event_id: eventId },
+    });
+    await event.destroy();
+
+    return res.status(204).end();
   },
 );
 

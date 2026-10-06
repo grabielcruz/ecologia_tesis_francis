@@ -22,6 +22,7 @@ vi.mock("../models", () => ({
     findOne: vi.fn(),
     findAll: vi.fn(),
     create: vi.fn(),
+    destroy: vi.fn(),
   },
   User: {},
 }));
@@ -35,6 +36,7 @@ const makeEventRow = (status: "open" | "closed" = "open") => {
     event_id: 7,
     title: "Jornada de siembra",
     description: "Actividad para plantar nuevos arboles",
+    event_date: "2030-01-01T12:00:00.000Z",
     status,
     closure_description: null,
     closure_images: JSON.stringify([]),
@@ -60,6 +62,7 @@ const makeEventRow = (status: "open" | "closed" = "open") => {
       Object.assign(values, payload);
       return null;
     }),
+    destroy: vi.fn(async () => null),
   };
 };
 
@@ -129,6 +132,7 @@ describe("event routes", () => {
     expect(response.body[0]).toMatchObject({
       id: 7,
       title: "Jornada de siembra",
+      eventDate: "2030-01-01T12:00:00.000Z",
       status: "open",
       enrollmentCount: 0,
       isEnrolled: false,
@@ -149,6 +153,7 @@ describe("event routes", () => {
       .send({
         title: "Jornada de siembra",
         description: "Actividad para plantar nuevos arboles",
+        eventDate: "2026-12-10T15:30",
       });
 
     expect(response.status).toBe(201);
@@ -168,6 +173,7 @@ describe("event routes", () => {
       .send({
         title: "Jornada",
         description: "Actividad",
+        eventDate: "2026-12-10T15:30",
       });
 
     expect(response.status).toBe(403);
@@ -240,6 +246,157 @@ describe("event routes", () => {
       enrollmentCount: 5,
       closureDescription: "Se completó la jornada con éxito",
       closureImages: ["/uploads/events/foto-1.jpg"],
+    });
+  });
+
+  it("allows admin to edit open event base data", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const event = makeEventRow("open");
+    vi.mocked(Event.findByPk).mockResolvedValue(event as never);
+    vi.mocked(EventEnrollment.count).mockResolvedValue(3 as never);
+
+    const response = await request(app)
+      .patch("/api/events/7")
+      .set("Authorization", "Bearer admin-token")
+      .send({
+        title: "Jornada editada",
+        description: "Descripción actualizada",
+        eventDate: "2027-01-02T09:30",
+      });
+
+    expect(response.status).toBe(200);
+    expect(event.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Jornada editada",
+        description: "Descripción actualizada",
+      }),
+    );
+    expect(response.body).toMatchObject({
+      id: 7,
+      title: "Jornada editada",
+      description: "Descripción actualizada",
+      enrollmentCount: 3,
+    });
+  });
+
+  it("rejects editing base data of closed event", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    vi.mocked(Event.findByPk).mockResolvedValue(makeEventRow("closed") as never);
+
+    const response = await request(app)
+      .patch("/api/events/7")
+      .set("Authorization", "Bearer admin-token")
+      .send({
+        title: "No debería",
+        description: "Cambiar",
+        eventDate: "2027-01-02T09:30",
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      error: "Solo se pueden editar eventos abiertos",
+    });
+  });
+
+  it("allows admin to edit closure data of closed event", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const event = makeEventRow("closed");
+    vi.mocked(Event.findByPk).mockResolvedValue(event as never);
+    vi.mocked(EventEnrollment.count).mockResolvedValue(4 as never);
+
+    const response = await request(app)
+      .patch("/api/events/7/closure")
+      .set("Authorization", "Bearer admin-token")
+      .send({
+        closureDescription: "Cierre actualizado",
+        closureImages: ["/uploads/events/foto-edicion.jpg"],
+      });
+
+    expect(response.status).toBe(200);
+    expect(event.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        closure_description: "Cierre actualizado",
+        closure_images: JSON.stringify(["/uploads/events/foto-edicion.jpg"]),
+      }),
+    );
+    expect(response.body).toMatchObject({
+      id: 7,
+      status: "closed",
+      closureDescription: "Cierre actualizado",
+      closureImages: ["/uploads/events/foto-edicion.jpg"],
+      enrollmentCount: 4,
+    });
+  });
+
+  it("rejects editing closure data of open event", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    vi.mocked(Event.findByPk).mockResolvedValue(makeEventRow("open") as never);
+
+    const response = await request(app)
+      .patch("/api/events/7/closure")
+      .set("Authorization", "Bearer admin-token")
+      .send({
+        closureDescription: "Intento inválido",
+        closureImages: [],
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      error: "Solo se puede editar el cierre de eventos cerrados",
+    });
+  });
+
+  it("allows admin to delete closed event", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const event = makeEventRow("closed");
+    vi.mocked(Event.findByPk).mockResolvedValue(event as never);
+
+    const response = await request(app)
+      .delete("/api/events/7")
+      .set("Authorization", "Bearer admin-token");
+
+    expect(response.status).toBe(204);
+    expect(EventEnrollment.destroy).toHaveBeenCalledWith({
+      where: { event_id: 7 },
+    });
+    expect(event.destroy).toHaveBeenCalled();
+  });
+
+  it("rejects deleting open event", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    vi.mocked(Event.findByPk).mockResolvedValue(makeEventRow("open") as never);
+
+    const response = await request(app)
+      .delete("/api/events/7")
+      .set("Authorization", "Bearer admin-token");
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      error: "Solo se pueden eliminar eventos cerrados",
     });
   });
 });

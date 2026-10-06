@@ -122,6 +122,7 @@ export interface FindFlowerScoreSeed {
 export interface EventSeed {
   title: string;
   description: string;
+  event_date: string;
   status: "open" | "closed";
   closure_description?: string | null;
   closure_images?: string[];
@@ -873,6 +874,7 @@ export const eventSeeds: EventSeed[] = [
     title: "Jornada de siembra en Jardín Central",
     description:
       "Actividad colaborativa para plantar especies nativas y fortalecer cobertura vegetal.",
+    event_date: "2026-10-20T09:00:00.000Z",
     status: "open",
     closure_description: null,
     closure_images: [],
@@ -883,6 +885,7 @@ export const eventSeeds: EventSeed[] = [
     title: "Limpieza ecológica de Sendero Verde",
     description:
       "Recorrido de recolección de residuos, separación y clasificación para reciclaje.",
+    event_date: "2026-09-05T08:30:00.000Z",
     status: "closed",
     closure_description:
       "La actividad finalizó con 37 participantes y se recolectaron 18 bolsas de residuos clasificadas.",
@@ -897,6 +900,7 @@ export const eventSeeds: EventSeed[] = [
     title: "Taller de compostaje universitario",
     description:
       "Capacitación práctica para transformar residuos orgánicos en compost utilizable en campus.",
+    event_date: "2026-10-22T14:00:00.000Z",
     status: "open",
     closure_description: null,
     closure_images: [],

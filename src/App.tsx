@@ -432,16 +432,30 @@ function App() {
     selectedEventDetail,
     eventTitleInput,
     eventDescriptionInput,
+    eventDateInput,
+    editEventTitleInput,
+    editEventDescriptionInput,
+    editEventDateInput,
     closureDescriptionInput,
     closureImagesInput,
+    closureFormMode,
     selectedEventForClosure,
+    selectedEventForEdit,
     isSubmittingEvent,
     isSubmittingClosure,
+    isSubmittingEventEdit,
     isUploadingEventImages,
+    isDeletingEvent,
     setEventTitleInput,
     setEventDescriptionInput,
+    setEventDateInput,
+    setEditEventTitleInput,
+    setEditEventDescriptionInput,
+    setEditEventDateInput,
     setClosureDescriptionInput,
     setClosureImagesInput,
+    openEditEventForm,
+    closeEditEventForm,
     openClosureForm,
     closeClosureForm,
     uploadEventImages,
@@ -449,6 +463,8 @@ function App() {
     enrollEvent,
     withdrawEnrollment,
     closeEvent,
+    editOpenEvent,
+    deleteClosedEvent,
   } = useEvents({
     token,
     route,
@@ -743,9 +759,15 @@ function App() {
       return;
     }
 
-    fetchGreenSpaces();
-    fetchProposals();
-    fetchProjects();
+    const routePath = route.split("?")[0] || route;
+    const isEventsRoute =
+      routePath === "/events" || routePath.startsWith("/events/");
+
+    if (!isEventsRoute) {
+      fetchGreenSpaces();
+      fetchProposals();
+      fetchProjects();
+    }
 
     if (token && user?.role === "admin" && route === "/admin-users") {
       fetchAdminRoles();
@@ -3701,23 +3723,12 @@ function App() {
         isAuthenticated={isAuthenticated}
         eventTitleInput={eventTitleInput}
         eventDescriptionInput={eventDescriptionInput}
-        closureDescriptionInput={closureDescriptionInput}
-        closureImagesInput={closureImagesInput}
-        selectedEventForClosure={selectedEventForClosure}
+        eventDateInput={eventDateInput}
         isSubmittingEvent={isSubmittingEvent}
-        isSubmittingClosure={isSubmittingClosure}
-        isUploadingEventImages={isUploadingEventImages}
-        resolveAssetUrl={resolveAssetUrl}
         formatUpdatedAt={formatUpdatedAt}
         setEventTitleInput={setEventTitleInput}
         setEventDescriptionInput={setEventDescriptionInput}
-        setClosureDescriptionInput={setClosureDescriptionInput}
-        setClosureImagesInput={setClosureImagesInput}
-        onOpenClosureForm={openClosureForm}
-        onCloseClosureForm={closeClosureForm}
-        onUploadEventImages={(event) => {
-          void uploadEventImages(event);
-        }}
+        setEventDateInput={setEventDateInput}
         onCreateEvent={createEvent}
         onEnrollEvent={(eventId) => {
           void enrollEvent(eventId);
@@ -3725,7 +3736,6 @@ function App() {
         onWithdrawEnrollment={(eventId) => {
           void withdrawEnrollment(eventId);
         }}
-        onCloseEvent={closeEvent}
         onOpenEventDetail={(event) => navigate(`/events/${event.id}`)}
         onNavigateEventsWithQuery={(query) =>
           navigate(query ? `/events?${query}` : "/events", true)
@@ -3740,8 +3750,41 @@ function App() {
         selectedEventId={selectedEventId}
         selectedEvent={selectedEventDetail}
         userRole={user?.role}
+        editEventTitleInput={editEventTitleInput}
+        editEventDescriptionInput={editEventDescriptionInput}
+        editEventDateInput={editEventDateInput}
+        closureDescriptionInput={closureDescriptionInput}
+        closureImagesInput={closureImagesInput}
+        closureFormMode={closureFormMode}
+        selectedEventForClosure={selectedEventForClosure}
+        selectedEventForEdit={selectedEventForEdit}
+        isSubmittingClosure={isSubmittingClosure}
+        isSubmittingEventEdit={isSubmittingEventEdit}
+        isUploadingEventImages={isUploadingEventImages}
+        isDeletingEvent={isDeletingEvent}
         resolveAssetUrl={resolveAssetUrl}
         formatUpdatedAt={formatUpdatedAt}
+        setEditEventTitleInput={setEditEventTitleInput}
+        setEditEventDescriptionInput={setEditEventDescriptionInput}
+        setEditEventDateInput={setEditEventDateInput}
+        setClosureDescriptionInput={setClosureDescriptionInput}
+        setClosureImagesInput={setClosureImagesInput}
+        onOpenEditEventForm={openEditEventForm}
+        onCloseEditEventForm={closeEditEventForm}
+        onOpenClosureForm={openClosureForm}
+        onCloseClosureForm={closeClosureForm}
+        onUploadEventImages={(event) => {
+          void uploadEventImages(event);
+        }}
+        onCloseEvent={closeEvent}
+        onEditOpenEvent={editOpenEvent}
+        onDeleteClosedEvent={async (eventId) => {
+          const deleted = await deleteClosedEvent(eventId);
+          if (deleted) {
+            navigate("/events");
+          }
+          return deleted;
+        }}
         onBack={() => navigate("/events")}
       />
     );

@@ -1,11 +1,10 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   DefaultTable,
   DefaultTableColumn,
   DefaultTableExportColumn,
 } from "../DefaultTable";
 import { AppModal } from "../AppModal";
-import { ImageCarousel } from "../ImageCarousel";
 import { CampusEvent } from "../../features/events/types";
 
 interface EventsSectionProps {
@@ -15,25 +14,15 @@ interface EventsSectionProps {
   isAuthenticated: boolean;
   eventTitleInput: string;
   eventDescriptionInput: string;
-  closureDescriptionInput: string;
-  closureImagesInput: string;
-  selectedEventForClosure: CampusEvent | null;
+  eventDateInput: string;
   isSubmittingEvent: boolean;
-  isSubmittingClosure: boolean;
-  isUploadingEventImages: boolean;
-  resolveAssetUrl: (assetPath: string) => string;
   formatUpdatedAt: (value?: string | null) => string;
   setEventTitleInput: (value: string) => void;
   setEventDescriptionInput: (value: string) => void;
-  setClosureDescriptionInput: (value: string) => void;
-  setClosureImagesInput: (value: string) => void;
-  onOpenClosureForm: (event: CampusEvent) => void;
-  onCloseClosureForm: () => void;
-  onUploadEventImages: (event: ChangeEvent<HTMLInputElement>) => void;
+  setEventDateInput: (value: string) => void;
   onCreateEvent: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
   onEnrollEvent: (eventId: number) => void;
   onWithdrawEnrollment: (eventId: number) => void;
-  onCloseEvent: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
   onOpenEventDetail: (event: CampusEvent) => void;
   onNavigateEventsWithQuery: (query: string) => void;
 }
@@ -45,25 +34,15 @@ export function EventsSection({
   isAuthenticated,
   eventTitleInput,
   eventDescriptionInput,
-  closureDescriptionInput,
-  closureImagesInput,
-  selectedEventForClosure,
+  eventDateInput,
   isSubmittingEvent,
-  isSubmittingClosure,
-  isUploadingEventImages,
-  resolveAssetUrl,
   formatUpdatedAt,
   setEventTitleInput,
   setEventDescriptionInput,
-  setClosureDescriptionInput,
-  setClosureImagesInput,
-  onOpenClosureForm,
-  onCloseClosureForm,
-  onUploadEventImages,
+  setEventDateInput,
   onCreateEvent,
   onEnrollEvent,
   onWithdrawEnrollment,
-  onCloseEvent,
   onOpenEventDetail,
   onNavigateEventsWithQuery,
 }: EventsSectionProps) {
@@ -98,8 +77,20 @@ export function EventsSection({
       params.set("mine", "1");
     }
 
-    onNavigateEventsWithQuery(params.toString());
-  }, [statusFilter, onlyMyEnrollments, userRole, onNavigateEventsWithQuery]);
+    const nextQuery = params.toString();
+    const currentQuery = route.includes("?") ? route.split("?")[1] || "" : "";
+    if (nextQuery === currentQuery) {
+      return;
+    }
+
+    onNavigateEventsWithQuery(nextQuery);
+  }, [
+    statusFilter,
+    onlyMyEnrollments,
+    userRole,
+    route,
+    onNavigateEventsWithQuery,
+  ]);
 
   const sortedEvents = useMemo(
     () =>
@@ -158,11 +149,11 @@ export function EventsSection({
       render: (event) => event.enrollmentCount,
     },
     {
-      key: "updatedAt",
-      label: "Actualizado",
+      key: "eventDate",
+      label: "Fecha del evento",
       sortable: true,
-      sortValue: (event) => event.updatedAt || event.createdAt || "",
-      render: (event) => formatUpdatedAt(event.updatedAt || event.createdAt),
+      sortValue: (event) => event.eventDate || event.createdAt || "",
+      render: (event) => formatUpdatedAt(event.eventDate || event.createdAt),
     },
     {
       key: "actions",
@@ -195,17 +186,6 @@ export function EventsSection({
               )}
             </>
           )}
-          {userRole === "admin" && event.status === "open" && (
-            <button
-              type="button"
-              onClick={(clickEvent) => {
-                clickEvent.stopPropagation();
-                onOpenClosureForm(event);
-              }}
-            >
-              Cerrar evento
-            </button>
-          )}
         </div>
       ),
     },
@@ -227,8 +207,8 @@ export function EventsSection({
         event.createdBy?.name || event.createdBy?.username || "-",
     },
     {
-      label: "Actualizado",
-      value: (event) => formatUpdatedAt(event.updatedAt || event.createdAt),
+      label: "Fecha del evento",
+      value: (event) => formatUpdatedAt(event.eventDate || event.createdAt),
     },
   ];
 
@@ -309,7 +289,7 @@ export function EventsSection({
       </article>
 
       <AppModal
-        open={showCreateModal}
+        isOpen={showCreateModal}
         title="Crear evento"
         onClose={() => setShowCreateModal(false)}
       >
@@ -320,6 +300,15 @@ export function EventsSection({
               value={eventTitleInput}
               onChange={(event) => setEventTitleInput(event.target.value)}
               placeholder="Ej. Jornada de limpieza del bosque"
+              required
+            />
+          </label>
+          <label>
+            Fecha del evento
+            <input
+              type="datetime-local"
+              value={eventDateInput}
+              onChange={(event) => setEventDateInput(event.target.value)}
               required
             />
           </label>
@@ -341,81 +330,6 @@ export function EventsSection({
               type="button"
               className="secondary"
               onClick={() => setShowCreateModal(false)}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      </AppModal>
-
-      <AppModal
-        open={Boolean(selectedEventForClosure)}
-        title="Cerrar evento"
-        onClose={onCloseClosureForm}
-      >
-        <form className="profile-form" onSubmit={onCloseEvent}>
-          <p className="small muted">
-            Evento: <strong>{selectedEventForClosure?.title || "-"}</strong>
-          </p>
-          <label>
-            Descripción final
-            <textarea
-              value={closureDescriptionInput}
-              onChange={(event) =>
-                setClosureDescriptionInput(event.target.value)
-              }
-              placeholder="Resumen de lo realizado y resultados"
-              rows={4}
-              required
-            />
-          </label>
-          <label>
-            Fotos del evento
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={onUploadEventImages}
-              disabled={isUploadingEventImages}
-            />
-          </label>
-          <label>
-            URLs de fotos (una por línea)
-            <textarea
-              value={closureImagesInput}
-              onChange={(event) => setClosureImagesInput(event.target.value)}
-              placeholder="/uploads/events/foto-1.jpg"
-              rows={4}
-            />
-          </label>
-
-          {closureImagesInput
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0).length > 0 && (
-            <ImageCarousel
-              images={closureImagesInput
-                .split("\n")
-                .map((line) => line.trim())
-                .filter((line) => line.length > 0)}
-              title={
-                selectedEventForClosure
-                  ? `Cierre: ${selectedEventForClosure.title}`
-                  : "Cierre de evento"
-              }
-              resolveAssetUrl={resolveAssetUrl}
-              className="report-carousel"
-            />
-          )}
-
-          <div className="button-row">
-            <button type="submit" disabled={isSubmittingClosure}>
-              {isSubmittingClosure ? "Cerrando..." : "Cerrar y publicar"}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={onCloseClosureForm}
             >
               Cancelar
             </button>

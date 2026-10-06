@@ -910,6 +910,11 @@ Event.init(
       allowNull: false,
       defaultValue: "",
     },
+    event_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
     status: {
       type: DataTypes.ENUM("open", "closed"),
       allowNull: false,
@@ -1204,10 +1209,24 @@ const ensureProposalValidationColumns = async () => {
   }
 };
 
+const ensureEventColumns = async () => {
+  const queryInterface = sequelize.getQueryInterface();
+  const eventTable = await queryInterface.describeTable("Event");
+
+  if (!("event_date" in eventTable)) {
+    await queryInterface.addColumn("Event", "event_date", {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    });
+  }
+};
+
 export const initializeDatabase = async () => {
   try {
     await sequelize.sync();
     await ensureProposalValidationColumns();
+    await ensureEventColumns();
     await enforceFixedRoles();
   } catch (err) {
     console.error("Database sync failed:", err);

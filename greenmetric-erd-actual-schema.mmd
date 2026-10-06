@@ -159,6 +159,26 @@ erDiagram
         datetime created_at
     }
 
+    Event {
+        int event_id PK
+        string title
+        text description
+        datetime event_date "nullable"
+        enum status "open|closed"
+        text closure_description "nullable"
+        text closure_images
+        int created_by_user_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
+    EventEnrollment {
+        int event_enrollment_id PK
+        int event_id FK
+        int user_id FK
+        datetime created_at
+    }
+
     %% Relationships defined in Sequelize associations
     Role ||--o{ User : assigns
 
@@ -175,6 +195,10 @@ erDiagram
 
     ProposalOfGreenArea ||--o{ VoteOfProposal : receives
     User ||--o{ VoteOfProposal : casts
+
+    User ||--o{ Event : creates
+    Event ||--o{ EventEnrollment : has
+    User ||--o{ EventEnrollment : joins
 
     ProposalOfGreenArea ||--o{ ProjectOfProposal : generates
     GreenSpace ||--o{ ProjectOfProposal : has

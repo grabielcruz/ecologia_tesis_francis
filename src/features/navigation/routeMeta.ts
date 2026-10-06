@@ -115,10 +115,10 @@ export function getPageHeaderMeta(
                                   route.startsWith("/events?")
                                 ? "Eventos"
                                 : route === "/tree-types"
-                                  ? "Tipos de árboles"
+                                  ? "Especies de árboles"
                                   : route === "/trees" ||
                                       route.startsWith("/trees?")
-                                    ? "Árboles"
+                                    ? "Listado de árboles"
                                     : route === "/admin-users"
                                       ? "Usuarios"
                                       : route.startsWith("/green-spaces/")

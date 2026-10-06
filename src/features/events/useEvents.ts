@@ -21,13 +21,25 @@ export function useEvents({
     useState<CampusEventDetail | null>(null);
   const [eventTitleInput, setEventTitleInput] = useState("");
   const [eventDescriptionInput, setEventDescriptionInput] = useState("");
+  const [eventDateInput, setEventDateInput] = useState("");
   const [closureDescriptionInput, setClosureDescriptionInput] = useState("");
   const [closureImagesInput, setClosureImagesInput] = useState("");
+  const [closureFormMode, setClosureFormMode] = useState<"close" | "edit">(
+    "close",
+  );
   const [selectedEventForClosure, setSelectedEventForClosure] =
     useState<CampusEvent | null>(null);
+  const [selectedEventForEdit, setSelectedEventForEdit] =
+    useState<CampusEvent | null>(null);
+  const [editEventTitleInput, setEditEventTitleInput] = useState("");
+  const [editEventDescriptionInput, setEditEventDescriptionInput] =
+    useState("");
+  const [editEventDateInput, setEditEventDateInput] = useState("");
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
   const [isSubmittingClosure, setIsSubmittingClosure] = useState(false);
+  const [isSubmittingEventEdit, setIsSubmittingEventEdit] = useState(false);
   const [isUploadingEventImages, setIsUploadingEventImages] = useState(false);
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false);
 
   const parseImagesInput = (value: string) =>
     value
@@ -83,18 +95,47 @@ export function useEvents({
   const resetEventForm = () => {
     setEventTitleInput("");
     setEventDescriptionInput("");
+    setEventDateInput("");
   };
 
   const openClosureForm = (event: CampusEvent) => {
+    setClosureFormMode(event.status === "closed" ? "edit" : "close");
     setSelectedEventForClosure(event);
     setClosureDescriptionInput(event.closureDescription || "");
     setClosureImagesInput((event.closureImages || []).join("\n"));
   };
 
   const closeClosureForm = () => {
+    setClosureFormMode("close");
     setSelectedEventForClosure(null);
     setClosureDescriptionInput("");
     setClosureImagesInput("");
+  };
+
+  const formatDateTimeLocalValue = (value?: string | null) => {
+    if (!value) return "";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    const hours = String(parsed.getHours()).padStart(2, "0");
+    const minutes = String(parsed.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const openEditEventForm = (event: CampusEvent) => {
+    setSelectedEventForEdit(event);
+    setEditEventTitleInput(event.title);
+    setEditEventDescriptionInput(event.description);
+    setEditEventDateInput(formatDateTimeLocalValue(event.eventDate));
+  };
+
+  const closeEditEventForm = () => {
+    setSelectedEventForEdit(null);
+    setEditEventTitleInput("");
+    setEditEventDescriptionInput("");
+    setEditEventDateInput("");
   };
 
   const uploadEventImages = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -154,8 +195,9 @@ export function useEvents({
 
     const title = eventTitleInput.trim();
     const description = eventDescriptionInput.trim();
-    if (!title || !description) {
-      setError("Debes completar título y descripción");
+    const eventDate = eventDateInput.trim();
+    if (!title || !description || !eventDate) {
+      setError("Debes completar título, descripción y fecha del evento");
       return false;
     }
 
@@ -172,6 +214,7 @@ export function useEvents({
         body: JSON.stringify({
           title,
           description,
+          eventDate,
         }),
       });
 
@@ -268,7 +311,9 @@ export function useEvents({
 
     try {
       const response = await fetch(
-        `/api/events/${selectedEventForClosure.id}/close`,
+        closureFormMode === "edit"
+          ? `/api/events/${selectedEventForClosure.id}/closure`
+          : `/api/events/${selectedEventForClosure.id}/close`,
         {
           method: "PATCH",
           headers: {
@@ -284,19 +329,146 @@ export function useEvents({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "No se pudo cerrar el evento");
+        setError(
+          data.error ||
+            (closureFormMode === "edit"
+              ? "No se pudo actualizar el cierre del evento"
+              : "No se pudo cerrar el evento"),
+        );
         return false;
       }
 
-      setSuccessMessage("Evento cerrado y publicado correctamente.");
+      setSuccessMessage(
+        closureFormMode === "edit"
+          ? "Cierre del evento actualizado correctamente."
+          : "Evento cerrado y publicado correctamente.",
+      );
       closeClosureForm();
       await fetchEvents();
+      if (route.startsWith("/events/")) {
+        const eventId = Number((route.split("?")[0] || route).split("/")[2]);
+        if (Number.isFinite(eventId)) {
+          await fetchEventById(eventId);
+        }
+      }
       return true;
     } catch {
-      setError("No se pudo cerrar el evento");
+      setError(
+        closureFormMode === "edit"
+          ? "No se pudo actualizar el cierre del evento"
+          : "No se pudo cerrar el evento",
+      );
       return false;
     } finally {
       setIsSubmittingClosure(false);
+    }
+  };
+
+  const editOpenEvent = async (formEvent: FormEvent<HTMLFormElement>) => {
+    formEvent.preventDefault();
+
+    if (!token || userRole !== "admin" || !selectedEventForEdit) {
+      setError("Solo administradores pueden editar eventos abiertos");
+      return false;
+    }
+
+    const title = editEventTitleInput.trim();
+    const description = editEventDescriptionInput.trim();
+    const eventDate = editEventDateInput.trim();
+
+    if (!title || !description || !eventDate) {
+      setError("Debes completar título, descripción y fecha del evento");
+      return false;
+    }
+
+    setIsSubmittingEventEdit(true);
+    setError(null);
+
+    try {
+      const authHeaders = getAuthHeaders();
+      if (!authHeaders) {
+        setError("No autorizado");
+        return false;
+      }
+
+      const response = await fetch(`/api/events/${selectedEventForEdit.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          eventDate,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || "No se pudo actualizar el evento");
+        return false;
+      }
+
+      setSuccessMessage("Evento actualizado correctamente.");
+      closeEditEventForm();
+      await fetchEvents();
+      if (route.startsWith("/events/")) {
+        const eventId = Number((route.split("?")[0] || route).split("/")[2]);
+        if (Number.isFinite(eventId)) {
+          await fetchEventById(eventId);
+        }
+      }
+      return true;
+    } catch {
+      setError("No se pudo actualizar el evento");
+      return false;
+    } finally {
+      setIsSubmittingEventEdit(false);
+    }
+  };
+
+  const deleteClosedEvent = async (eventId: number) => {
+    if (!token || userRole !== "admin") {
+      setError("Solo administradores pueden eliminar eventos cerrados");
+      return false;
+    }
+
+    setIsDeletingEvent(true);
+    setError(null);
+
+    try {
+      const authHeaders = getAuthHeaders();
+      if (!authHeaders) {
+        setError("No autorizado");
+        return false;
+      }
+
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || "No se pudo eliminar el evento");
+        return false;
+      }
+
+      setSuccessMessage("Evento cerrado eliminado correctamente.");
+      if (
+        selectedEventDetail &&
+        Number(selectedEventDetail.id) === Number(eventId)
+      ) {
+        setSelectedEventDetail(null);
+      }
+      await fetchEvents();
+      return true;
+    } catch {
+      setError("No se pudo eliminar el evento");
+      return false;
+    } finally {
+      setIsDeletingEvent(false);
     }
   };
 
@@ -326,25 +498,41 @@ export function useEvents({
     selectedEventDetail,
     eventTitleInput,
     eventDescriptionInput,
+    eventDateInput,
     closureDescriptionInput,
     closureImagesInput,
+    closureFormMode,
     selectedEventForClosure,
+    selectedEventForEdit,
+    editEventTitleInput,
+    editEventDescriptionInput,
+    editEventDateInput,
     isSubmittingEvent,
     isSubmittingClosure,
+    isSubmittingEventEdit,
     isUploadingEventImages,
+    isDeletingEvent,
     setEventTitleInput,
     setEventDescriptionInput,
+    setEventDateInput,
     setClosureDescriptionInput,
     setClosureImagesInput,
+    setEditEventTitleInput,
+    setEditEventDescriptionInput,
+    setEditEventDateInput,
     fetchEvents,
     fetchEventById,
     resetEventForm,
     openClosureForm,
     closeClosureForm,
+    openEditEventForm,
+    closeEditEventForm,
     uploadEventImages,
     createEvent,
     enrollEvent,
     withdrawEnrollment,
     closeEvent,
+    editOpenEvent,
+    deleteClosedEvent,
   };
 }

@@ -201,7 +201,7 @@ export function TreeTypeDetailSection({
     <section className="box reports-box">
       <div className="button-row">
         <button type="button" className="secondary" onClick={onBack}>
-          Volver a tipos de árboles
+          Volver a glosario de árboles
         </button>
         {userRole === "admin" && (
           <>

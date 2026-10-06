@@ -182,7 +182,7 @@ export function TreeDetailSection({
           className="secondary"
           onClick={() => (onOpenTrees ? onOpenTrees() : onBack())}
         >
-          Árboles
+          Listado de árboles
         </button>
         <span className="small muted">/</span>
         <span className="small muted">Detalle</span>
@@ -190,7 +190,7 @@ export function TreeDetailSection({
 
       <div className="button-row">
         <button type="button" className="secondary" onClick={onBack}>
-          Volver a árboles
+          Volver a listado de árboles
         </button>
         {userRole === "admin" && (
           <>

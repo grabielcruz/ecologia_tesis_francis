@@ -130,7 +130,7 @@ export function TreeTypesSection({
   return (
     <section className="box reports-box">
       <article className="principal-panel">
-        <h3>Catálogo de tipos de árboles</h3>
+        <h3>Especies de árboles</h3>
         <p>
           Referencias de especies para su uso posterior en el inventario real de
           árboles por área verde.
@@ -153,7 +153,7 @@ export function TreeTypesSection({
           }
           emptyMessage="No hay tipos de árboles registrados."
           searchPlaceholder="Buscar por nombre, descripción o referencia"
-          exportTitle="Catálogo de tipos de árboles"
+          exportTitle="Especies de árboles"
           exportFileName="tipos-de-arboles"
         />
       </article>

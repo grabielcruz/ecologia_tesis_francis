@@ -121,9 +121,11 @@ export async function seedDatabase() {
     }
 
     const createdAt = new Date(eventSeed.created_at);
+    const eventDate = new Date(eventSeed.event_date);
     const createdEvent = await Event.create({
       title: eventSeed.title,
       description: eventSeed.description,
+      event_date: eventDate,
       status: eventSeed.status,
       closure_description: eventSeed.closure_description ?? null,
       closure_images: JSON.stringify(eventSeed.closure_images ?? []),

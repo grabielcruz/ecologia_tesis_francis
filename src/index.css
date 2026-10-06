@@ -1899,7 +1899,7 @@ button.danger:hover {
   gap: 0.75rem;
 }
 
-.report-carousel img {
+.report-carousel .green-space-carousel-main img {
   height: clamp(280px, 50vh, 560px);
 }
 
@@ -2594,6 +2594,23 @@ button.danger:hover {
   background: #5f4c1f;
   border-color: #9c7f35;
   color: #ffe9b2;
+}
+
+:root[data-theme="dark"] .star-button {
+  border: none;
+  background: transparent;
+  color: #8ca19c;
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .star-button:hover {
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+:root[data-theme="dark"] .star-button.filled {
+  color: #f4b845;
 }
 
 :root[data-theme="dark"] .proposal-status.draft,

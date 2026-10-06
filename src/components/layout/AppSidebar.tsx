@@ -202,7 +202,7 @@ export function AppSidebar({
             <span className="nav-icon" aria-hidden="true">
               TT
             </span>
-            <span>Tipos de árboles</span>
+            <span>Especies de árboles</span>
           </button>
           <button
             type="button"
@@ -212,7 +212,7 @@ export function AppSidebar({
             <span className="nav-icon" aria-hidden="true">
               AR
             </span>
-            <span>Árboles</span>
+            <span>Listado de árboles</span>
           </button>
         </div>
 

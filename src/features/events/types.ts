@@ -5,6 +5,7 @@ export interface CampusEvent {
   title: string;
   description: string;
   status: EventStatus;
+  eventDate: string | null;
   closureDescription: string | null;
   closureImages: string[];
   enrollmentCount: number;
