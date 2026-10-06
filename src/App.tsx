@@ -486,6 +486,8 @@ function App() {
     treeHealthStatusInput,
     treeTypeIdInput,
     treeSpaceIdInput,
+    treeLatitudeInput,
+    treeLongitudeInput,
     treeImagesInput,
     editingTreeId,
     isSubmittingTree,
@@ -495,6 +497,8 @@ function App() {
     setTreeHealthStatusInput,
     setTreeTypeIdInput,
     setTreeSpaceIdInput,
+    setTreeLatitudeInput,
+    setTreeLongitudeInput,
     setTreeImagesInput,
     resetTreeForm,
     uploadTreeImages,
@@ -3854,6 +3858,8 @@ function App() {
         treeHealthStatusInput={treeHealthStatusInput}
         treeTypeIdInput={treeTypeIdInput}
         treeSpaceIdInput={treeSpaceIdInput}
+        treeLatitudeInput={treeLatitudeInput}
+        treeLongitudeInput={treeLongitudeInput}
         treeImagesInput={treeImagesInput}
         isSubmittingTree={isSubmittingTree}
         uploadingTreeImages={uploadingTreeImages}
@@ -3864,6 +3870,8 @@ function App() {
         setTreeHealthStatusInput={setTreeHealthStatusInput}
         setTreeTypeIdInput={setTreeTypeIdInput}
         setTreeSpaceIdInput={setTreeSpaceIdInput}
+        setTreeLatitudeInput={setTreeLatitudeInput}
+        setTreeLongitudeInput={setTreeLongitudeInput}
         setTreeImagesInput={setTreeImagesInput}
         onResetTreeForm={resetTreeForm}
         onOpenTreeDetail={(tree) => navigate(`/trees/${tree.id}`)}
@@ -3893,6 +3901,8 @@ function App() {
         treeHealthStatusInput={treeHealthStatusInput}
         treeTypeIdInput={treeTypeIdInput}
         treeSpaceIdInput={treeSpaceIdInput}
+        treeLatitudeInput={treeLatitudeInput}
+        treeLongitudeInput={treeLongitudeInput}
         treeImagesInput={treeImagesInput}
         isSubmittingTree={isSubmittingTree}
         uploadingTreeImages={uploadingTreeImages}
@@ -3900,6 +3910,8 @@ function App() {
         setTreeHealthStatusInput={setTreeHealthStatusInput}
         setTreeTypeIdInput={setTreeTypeIdInput}
         setTreeSpaceIdInput={setTreeSpaceIdInput}
+        setTreeLatitudeInput={setTreeLatitudeInput}
+        setTreeLongitudeInput={setTreeLongitudeInput}
         setTreeImagesInput={setTreeImagesInput}
         onResetTreeForm={resetTreeForm}
         onStartEditTree={startEditTree}

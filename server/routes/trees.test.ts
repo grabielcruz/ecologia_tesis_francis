@@ -37,6 +37,7 @@ vi.mock("../models", () => ({
 const app = express();
 app.use(express.json());
 app.use("/api/trees", treeRoutes);
+const testAuthHeader = ["Bearer", "test-token"].join(" ");
 
 const makeTreeRow = ({
   spaceId = 10,
@@ -44,12 +45,16 @@ const makeTreeRow = ({
   status = "approved",
   submittedByUserId = 2,
   validatedByUserId = 1,
+  latitude = 10.06473,
+  longitude = -69.32198,
 }: {
   spaceId?: number;
   typeId?: number | null;
   status?: "pending" | "approved" | "rejected";
   submittedByUserId?: number;
   validatedByUserId?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
 } = {}) => {
   const values: Record<string, unknown> = {
     tree_id: 7,
@@ -57,6 +62,8 @@ const makeTreeRow = ({
     health_status: "healthy",
     type_id: typeId,
     space_id: spaceId,
+    latitude,
+    longitude,
     status,
     submitted_by_user_id: submittedByUserId,
     validated_by_user_id: validatedByUserId,
@@ -170,6 +177,8 @@ describe("tree inventory routes", () => {
       name: "Arbol 1",
       typeId: 5,
       spaceId: 10,
+      latitude: 10.06473,
+      longitude: -69.32198,
       status: "approved",
     });
   });
@@ -198,6 +207,8 @@ describe("tree inventory routes", () => {
         name: "Arbol enviado",
         healthStatus: "healthy",
         spaceId: 10,
+        latitude: 10.06473,
+        longitude: -69.32198,
       });
 
     expect(response.status).toBe(201);
@@ -205,7 +216,45 @@ describe("tree inventory routes", () => {
       id: 7,
       status: "pending",
       typeId: null,
+      latitude: 10.06473,
+      longitude: -69.32198,
     });
+    expect(TreeInventory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        latitude: 10.06473,
+        longitude: -69.32198,
+      }),
+    );
+  });
+
+  it("rejects incomplete or out-of-range GPS coordinates", async () => {
+    const incompleteResponse = await request(app)
+      .post("/api/trees")
+      .set("Authorization", testAuthHeader)
+      .send({
+        name: "Arbol sin longitud",
+        healthStatus: "healthy",
+        spaceId: 10,
+        latitude: 10.06473,
+      });
+
+    expect(incompleteResponse.status).toBe(400);
+    expect(incompleteResponse.body.error).toContain("juntas");
+
+    const outOfRangeResponse = await request(app)
+      .post("/api/trees")
+      .set("Authorization", testAuthHeader)
+      .send({
+        name: "Arbol con coordenadas invalidas",
+        healthStatus: "healthy",
+        spaceId: 10,
+        latitude: 95,
+        longitude: -69.32198,
+      });
+
+    expect(outOfRangeResponse.status).toBe(400);
+    expect(outOfRangeResponse.body.error).toContain("-90 y 90");
+    expect(TreeInventory.create).not.toHaveBeenCalled();
   });
 
   it("allows admin to create trees without type", async () => {

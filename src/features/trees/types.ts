@@ -7,6 +7,8 @@ export interface TreeInventoryItem {
   healthStatus: TreeHealthStatus;
   typeId: number | null;
   spaceId: number;
+  latitude: number | null;
+  longitude: number | null;
   status: TreeInventoryStatus;
   submittedByUserId: number;
   validatedByUserId: number | null;

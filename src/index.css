@@ -1171,6 +1171,23 @@ button.danger:hover {
   gap: 0.8rem;
 }
 
+.gps-fields {
+  margin: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.gps-fields legend {
+  padding: 0 0.35rem;
+  color: var(--heading);
+  font-weight: 800;
+}
+
+.gps-fields .small {
+  margin: 0.35rem 0 0;
+}
+
 .field-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1398,6 +1415,23 @@ button.danger:hover {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.6rem;
+}
+
+.tree-location-panel {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+}
+
+.tree-location-panel h4 {
+  margin: 0;
+}
+
+.tree-location-map {
+  width: 100%;
+  height: 240px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
 }
 
 .details-item {

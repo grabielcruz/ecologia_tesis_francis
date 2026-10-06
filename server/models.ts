@@ -364,6 +364,14 @@ TreeInventory.init(
         key: "type_id",
       },
     },
+    latitude: {
+      type: DataTypes.DOUBLE,
+      allowNull: true,
+    },
+    longitude: {
+      type: DataTypes.DOUBLE,
+      allowNull: true,
+    },
     status: {
       type: DataTypes.ENUM("pending", "approved", "rejected"),
       allowNull: false,

@@ -58,6 +58,8 @@ erDiagram
         enum health_status "healthy|regular|sick|dead"
         int space_id FK
         int type_id FK "nullable"
+        double latitude "nullable"
+        double longitude "nullable"
         enum status "pending|approved|rejected"
         int submitted_by_user_id FK
         int validated_by_user_id FK "nullable"

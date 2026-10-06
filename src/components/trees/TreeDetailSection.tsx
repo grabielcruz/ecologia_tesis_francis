@@ -23,6 +23,8 @@ interface TreeDetailSectionProps {
   treeHealthStatusInput: TreeHealthStatus;
   treeTypeIdInput: number;
   treeSpaceIdInput: number;
+  treeLatitudeInput: string;
+  treeLongitudeInput: string;
   treeImagesInput: string;
   isSubmittingTree: boolean;
   uploadingTreeImages: boolean;
@@ -30,6 +32,8 @@ interface TreeDetailSectionProps {
   setTreeHealthStatusInput: (value: TreeHealthStatus) => void;
   setTreeTypeIdInput: (value: number) => void;
   setTreeSpaceIdInput: (value: number) => void;
+  setTreeLatitudeInput: (value: string) => void;
+  setTreeLongitudeInput: (value: string) => void;
   setTreeImagesInput: (value: string) => void;
   onResetTreeForm: () => void;
   onStartEditTree: (tree: TreeInventoryItem) => void;
@@ -61,6 +65,8 @@ export function TreeDetailSection({
   treeHealthStatusInput,
   treeTypeIdInput,
   treeSpaceIdInput,
+  treeLatitudeInput,
+  treeLongitudeInput,
   treeImagesInput,
   isSubmittingTree,
   uploadingTreeImages,
@@ -68,6 +74,8 @@ export function TreeDetailSection({
   setTreeHealthStatusInput,
   setTreeTypeIdInput,
   setTreeSpaceIdInput,
+  setTreeLatitudeInput,
+  setTreeLongitudeInput,
   setTreeImagesInput,
   onResetTreeForm,
   onStartEditTree,
@@ -138,6 +146,23 @@ export function TreeDetailSection({
       </section>
     );
   }
+
+  const hasGpsLocation =
+    selectedTree.latitude !== null && selectedTree.longitude !== null;
+  const mapUrl = hasGpsLocation
+    ? (() => {
+        const latitude = selectedTree.latitude!;
+        const longitude = selectedTree.longitude!;
+        const offset = 0.0025;
+        const bounds = [
+          longitude - offset,
+          latitude - offset,
+          longitude + offset,
+          latitude + offset,
+        ].join(",");
+        return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bounds)}&layer=mapnik&marker=${encodeURIComponent(`${latitude},${longitude}`)}`;
+      })()
+    : null;
 
   return (
     <section className="box reports-box">
@@ -228,6 +253,35 @@ export function TreeDetailSection({
             </strong>
           </div>
         </div>
+        <div className="tree-location-panel">
+          <h4>Ubicación GPS</h4>
+          {mapUrl && selectedTree.latitude !== null && selectedTree.longitude !== null ? (
+            <>
+              <iframe
+                className="tree-location-map"
+                src={mapUrl}
+                title={`Ubicación de ${selectedTree.name}`}
+                loading="lazy"
+              />
+              <div className="button-row compact">
+                <span className="small muted">
+                  {selectedTree.latitude.toFixed(6)},{" "}
+                  {selectedTree.longitude.toFixed(6)}
+                </span>
+                <a
+                  className="button-link secondary"
+                  href={`https://www.openstreetmap.org/?mlat=${selectedTree.latitude}&mlon=${selectedTree.longitude}#map=18/${selectedTree.latitude}/${selectedTree.longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Abrir mapa
+                </a>
+              </div>
+            </>
+          ) : (
+            <p className="muted">La ubicación GPS de este árbol no está registrada.</p>
+          )}
+        </div>
       </article>
 
       {userRole === "admin" && (
@@ -241,6 +295,8 @@ export function TreeDetailSection({
           treeHealthStatusInput={treeHealthStatusInput}
           treeTypeIdInput={treeTypeIdInput}
           treeSpaceIdInput={treeSpaceIdInput}
+          treeLatitudeInput={treeLatitudeInput}
+          treeLongitudeInput={treeLongitudeInput}
           treeImagesInput={treeImagesInput}
           isSubmittingTree={isSubmittingTree}
           uploadingTreeImages={uploadingTreeImages}
@@ -248,6 +304,8 @@ export function TreeDetailSection({
           setTreeHealthStatusInput={setTreeHealthStatusInput}
           setTreeTypeIdInput={setTreeTypeIdInput}
           setTreeSpaceIdInput={setTreeSpaceIdInput}
+          setTreeLatitudeInput={setTreeLatitudeInput}
+          setTreeLongitudeInput={setTreeLongitudeInput}
           setTreeImagesInput={setTreeImagesInput}
           onUploadTreeImages={onUploadTreeImages}
           onSaveTree={onSaveTree}

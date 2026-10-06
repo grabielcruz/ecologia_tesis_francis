@@ -18,6 +18,8 @@ interface TreeFormModalProps {
   treeHealthStatusInput: TreeHealthStatus;
   treeTypeIdInput: number;
   treeSpaceIdInput: number;
+  treeLatitudeInput: string;
+  treeLongitudeInput: string;
   treeImagesInput: string;
   isSubmittingTree: boolean;
   uploadingTreeImages: boolean;
@@ -25,6 +27,8 @@ interface TreeFormModalProps {
   setTreeHealthStatusInput: (value: TreeHealthStatus) => void;
   setTreeTypeIdInput: (value: number) => void;
   setTreeSpaceIdInput: (value: number) => void;
+  setTreeLatitudeInput: (value: string) => void;
+  setTreeLongitudeInput: (value: string) => void;
   setTreeImagesInput: (value: string) => void;
   onUploadTreeImages: (event: ChangeEvent<HTMLInputElement>) => void;
   onSaveTree: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
@@ -42,6 +46,8 @@ export function TreeFormModal({
   treeHealthStatusInput,
   treeTypeIdInput,
   treeSpaceIdInput,
+  treeLatitudeInput,
+  treeLongitudeInput,
   treeImagesInput,
   isSubmittingTree,
   uploadingTreeImages,
@@ -49,6 +55,8 @@ export function TreeFormModal({
   setTreeHealthStatusInput,
   setTreeTypeIdInput,
   setTreeSpaceIdInput,
+  setTreeLatitudeInput,
+  setTreeLongitudeInput,
   setTreeImagesInput,
   onUploadTreeImages,
   onSaveTree,
@@ -161,6 +169,39 @@ export function TreeFormModal({
             ))}
           </select>
         </label>
+
+        <fieldset className="gps-fields">
+          <legend>Ubicación GPS (opcional)</legend>
+          <div className="field-row">
+            <label>
+              Latitud
+              <input
+                type="number"
+                min="-90"
+                max="90"
+                step="any"
+                value={treeLatitudeInput}
+                onChange={(e) => setTreeLatitudeInput(e.target.value)}
+                placeholder="10.06473"
+              />
+            </label>
+            <label>
+              Longitud
+              <input
+                type="number"
+                min="-180"
+                max="180"
+                step="any"
+                value={treeLongitudeInput}
+                onChange={(e) => setTreeLongitudeInput(e.target.value)}
+                placeholder="-69.32198"
+              />
+            </label>
+          </div>
+          <p className="small muted">
+            Completa ambas coordenadas o deja ambos campos vacíos.
+          </p>
+        </fieldset>
 
         <label>
           Galería de imágenes (una URL por línea)

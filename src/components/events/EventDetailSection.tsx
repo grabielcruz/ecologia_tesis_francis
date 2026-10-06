@@ -63,18 +63,31 @@ export function EventDetailSection({
             </span>
           </div>
           <p>
-            Participantes inscritos: <strong>{selectedEvent.enrollmentCount}</strong>
+            Participantes inscritos:{" "}
+            <strong>{selectedEvent.enrollmentCount}</strong>
           </p>
           <p>
-            Creado por: <strong>{selectedEvent.createdBy?.name || selectedEvent.createdBy?.username || "-"}</strong>
+            Creado por:{" "}
+            <strong>
+              {selectedEvent.createdBy?.name ||
+                selectedEvent.createdBy?.username ||
+                "-"}
+            </strong>
           </p>
-          <p>Actualizado: {formatUpdatedAt(selectedEvent.updatedAt || selectedEvent.createdAt)}</p>
+          <p>
+            Actualizado:{" "}
+            {formatUpdatedAt(
+              selectedEvent.updatedAt || selectedEvent.createdAt,
+            )}
+          </p>
         </div>
 
         {selectedEvent.status === "closed" && (
           <div className="report-detail-content">
             <h4>Cierre del evento</h4>
-            <p>{selectedEvent.closureDescription || "Sin descripción final."}</p>
+            <p>
+              {selectedEvent.closureDescription || "Sin descripción final."}
+            </p>
             {selectedEvent.closureImages.length > 0 ? (
               <ImageCarousel
                 images={selectedEvent.closureImages}
@@ -91,7 +104,8 @@ export function EventDetailSection({
         {userRole === "admin" && (
           <div className="report-detail-content">
             <h4>Lista de participantes</h4>
-            {!selectedEvent.participants || selectedEvent.participants.length === 0 ? (
+            {!selectedEvent.participants ||
+            selectedEvent.participants.length === 0 ? (
               <p>No hay participantes inscritos.</p>
             ) : (
               <div className="standard-table-wrap">
@@ -105,7 +119,9 @@ export function EventDetailSection({
                   </thead>
                   <tbody>
                     {selectedEvent.participants.map((participant) => (
-                      <tr key={`${participant.id}-${participant.enrolledAt || ""}`}>
+                      <tr
+                        key={`${participant.id}-${participant.enrolledAt || ""}`}
+                      >
                         <td>{participant.name}</td>
                         <td>{participant.username}</td>
                         <td>{formatUpdatedAt(participant.enrolledAt)}</td>

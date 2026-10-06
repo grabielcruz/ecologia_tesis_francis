@@ -102,6 +102,13 @@ describe("seedData", () => {
       expect(spaceNames.has(tree.green_space_name)).toBe(true);
       expect(treeTypeNames.has(tree.tree_type_name)).toBe(true);
       expect(allowedHealthStates.has(tree.health_status)).toBe(true);
+      expect(tree.latitude === null).toBe(tree.longitude === null);
+      if (tree.latitude !== null && tree.longitude !== null) {
+        expect(tree.latitude).toBeGreaterThanOrEqual(-90);
+        expect(tree.latitude).toBeLessThanOrEqual(90);
+        expect(tree.longitude).toBeGreaterThanOrEqual(-180);
+        expect(tree.longitude).toBeLessThanOrEqual(180);
+      }
       expect(tree.image_urls.length).toBeGreaterThan(0);
       for (const imageUrl of tree.image_urls) {
         expect(imageUrl.startsWith("https://")).toBe(true);

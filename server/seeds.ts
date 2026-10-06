@@ -233,6 +233,8 @@ export async function seedDatabase() {
       health_status: inventorySeed.health_status,
       space_id: spaceId,
       type_id: typeId,
+      latitude: inventorySeed.latitude,
+      longitude: inventorySeed.longitude,
       status: "approved",
       submitted_by_user_id: userIdByUsername.admin,
       validated_by_user_id: userIdByUsername.admin,

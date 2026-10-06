@@ -81,27 +81,25 @@ describe("event routes", () => {
     const event = makeEventRow("open");
     vi.mocked(Event.findByPk).mockResolvedValue(event as never);
     vi.mocked(EventEnrollment.count).mockResolvedValue(2 as never);
-    vi.mocked(EventEnrollment.findAll).mockResolvedValue(
-      [
-        {
-          getDataValue: vi.fn((key: string) => {
-            if (key === "created_at") return new Date("2026-01-02T10:00:00.000Z");
-            return null;
-          }),
-          get: vi.fn((key: string) => {
-            if (key !== "Participant") return undefined;
-            return {
-              getDataValue: (nestedKey: string) => {
-                if (nestedKey === "user_id") return 2;
-                if (nestedKey === "username") return "regular.user";
-                if (nestedKey === "name") return "Regular User";
-                return undefined;
-              },
-            } as User;
-          }),
-        },
-      ] as never,
-    );
+    vi.mocked(EventEnrollment.findAll).mockResolvedValue([
+      {
+        getDataValue: vi.fn((key: string) => {
+          if (key === "created_at") return new Date("2026-01-02T10:00:00.000Z");
+          return null;
+        }),
+        get: vi.fn((key: string) => {
+          if (key !== "Participant") return undefined;
+          return {
+            getDataValue: (nestedKey: string) => {
+              if (nestedKey === "user_id") return 2;
+              if (nestedKey === "username") return "regular.user";
+              if (nestedKey === "name") return "Regular User";
+              return undefined;
+            },
+          } as User;
+        }),
+      },
+    ] as never);
 
     const response = await request(app)
       .get("/api/events/7")

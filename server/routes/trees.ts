@@ -127,6 +127,43 @@ const toIsoStringOrNull = (value: unknown) => {
   return dateValue.toISOString();
 };
 
+const parseCoordinates = (
+  latitudeValue: unknown,
+  longitudeValue: unknown,
+):
+  | { latitude: number | null; longitude: number | null }
+  | { error: string } => {
+  const hasLatitude =
+    latitudeValue !== null &&
+    typeof latitudeValue !== "undefined" &&
+    String(latitudeValue).trim() !== "";
+  const hasLongitude =
+    longitudeValue !== null &&
+    typeof longitudeValue !== "undefined" &&
+    String(longitudeValue).trim() !== "";
+
+  if (!hasLatitude && !hasLongitude) {
+    return { latitude: null, longitude: null };
+  }
+
+  if (!hasLatitude || !hasLongitude) {
+    return { error: "La latitud y la longitud deben indicarse juntas" };
+  }
+
+  const latitude = Number(latitudeValue);
+  const longitude = Number(longitudeValue);
+
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+    return { error: "La latitud debe estar entre -90 y 90" };
+  }
+
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    return { error: "La longitud debe estar entre -180 y 180" };
+  }
+
+  return { latitude, longitude };
+};
+
 const applyTreeCountDelta = async (spaceId: number, delta: number) => {
   if (!Number.isFinite(spaceId) || spaceId <= 0) {
     return;
@@ -159,6 +196,14 @@ const serializeTree = (row: TreeInventory) => {
     healthStatus: String(row.getDataValue("health_status") || "healthy"),
     typeId: rawTypeId ? Number(rawTypeId) : null,
     spaceId: Number(row.getDataValue("space_id")),
+    latitude:
+      row.getDataValue("latitude") === null
+        ? null
+        : Number(row.getDataValue("latitude")),
+    longitude:
+      row.getDataValue("longitude") === null
+        ? null
+        : Number(row.getDataValue("longitude")),
     status: String(row.getDataValue("status") || "approved"),
     submittedByUserId: Number(row.getDataValue("submitted_by_user_id")),
     validatedByUserId: row.getDataValue("validated_by_user_id")
@@ -353,6 +398,10 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
   const hasTypeId = Number.isFinite(typeId) && typeId > 0;
   const spaceId = Number(req.body?.spaceId);
   const imageUrls = parseStringArray(req.body?.imageUrls);
+  const coordinates = parseCoordinates(
+    req.body?.latitude,
+    req.body?.longitude,
+  );
 
   if (!name) {
     return res
@@ -366,6 +415,10 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
 
   if (!Number.isFinite(spaceId) || spaceId <= 0) {
     return res.status(400).json({ error: "Área verde inválida" });
+  }
+
+  if ("error" in coordinates) {
+    return res.status(400).json({ error: coordinates.error });
   }
 
   if (hasTypeId) {
@@ -385,6 +438,8 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
     health_status: healthStatus,
     type_id: hasTypeId ? typeId : null,
     space_id: spaceId,
+    latitude: coordinates.latitude,
+    longitude: coordinates.longitude,
     status: req.user.role === "admin" ? "approved" : "pending",
     submitted_by_user_id: req.user.user_id,
     validated_by_user_id: req.user.role === "admin" ? req.user.user_id : null,
@@ -498,6 +553,22 @@ router.put(
 
     if (typeof req.body?.imageUrls !== "undefined") {
       payload.images = JSON.stringify(parseStringArray(req.body.imageUrls));
+    }
+
+    if (
+      typeof req.body?.latitude !== "undefined" ||
+      typeof req.body?.longitude !== "undefined"
+    ) {
+      const coordinates = parseCoordinates(
+        req.body?.latitude,
+        req.body?.longitude,
+      );
+      if ("error" in coordinates) {
+        return res.status(400).json({ error: coordinates.error });
+      }
+
+      payload.latitude = coordinates.latitude;
+      payload.longitude = coordinates.longitude;
     }
 
     await row.update(payload);

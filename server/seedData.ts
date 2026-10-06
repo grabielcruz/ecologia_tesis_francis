@@ -45,6 +45,8 @@ export interface TreeInventorySeed {
   health_status: "healthy" | "regular" | "sick" | "dead";
   green_space_name: string;
   tree_type_name: string;
+  latitude: number | null;
+  longitude: number | null;
   image_urls: string[];
   created_at: string;
 }
@@ -413,6 +415,8 @@ export const treeInventorySeeds: TreeInventorySeed[] = [
     health_status: "healthy",
     green_space_name: "Jardín Central",
     tree_type_name: "Araguaney",
+    latitude: 10.06473,
+    longitude: -69.32198,
     image_urls: [
       "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=80",
@@ -424,6 +428,8 @@ export const treeInventorySeeds: TreeInventorySeed[] = [
     health_status: "regular",
     green_space_name: "Jardín Central",
     tree_type_name: "Mango",
+    latitude: 10.06461,
+    longitude: -69.32179,
     image_urls: [
       "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=1200&q=80",
@@ -435,6 +441,8 @@ export const treeInventorySeeds: TreeInventorySeed[] = [
     health_status: "healthy",
     green_space_name: "Bosque Universitario",
     tree_type_name: "Ucaro",
+    latitude: 10.06522,
+    longitude: -69.32264,
     image_urls: [
       "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
@@ -446,6 +454,8 @@ export const treeInventorySeeds: TreeInventorySeed[] = [
     health_status: "sick",
     green_space_name: "Parque de la Facultad",
     tree_type_name: "Apamate",
+    latitude: 10.06412,
+    longitude: -69.32092,
     image_urls: [
       "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1471193945509-9ad0617afabf?auto=format&fit=crop&w=1200&q=80",
@@ -457,6 +467,8 @@ export const treeInventorySeeds: TreeInventorySeed[] = [
     health_status: "regular",
     green_space_name: "Sendero Verde",
     tree_type_name: "Flamboyan",
+    latitude: null,
+    longitude: null,
     image_urls: [
       "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80",
@@ -468,6 +480,8 @@ export const treeInventorySeeds: TreeInventorySeed[] = [
     health_status: "healthy",
     green_space_name: "Área de descanso Estudiantil",
     tree_type_name: "Nispero",
+    latitude: 10.06388,
+    longitude: -69.32143,
     image_urls: [
       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1200&q=80",

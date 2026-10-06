@@ -148,9 +148,7 @@ const serializeEvent = (
     id: Number(event.getDataValue("event_id")),
     title: String(event.getDataValue("title") || ""),
     description: String(event.getDataValue("description") || ""),
-    status: String(event.getDataValue("status") || "open") as
-      | "open"
-      | "closed",
+    status: String(event.getDataValue("status") || "open") as "open" | "closed",
     closureDescription:
       String(event.getDataValue("closure_description") || "") || null,
     closureImages: parseStringArray(event.getDataValue("closure_images")),
@@ -217,47 +215,51 @@ router.post(
   },
 );
 
-router.get("/", optionalAuthenticate, async (req: AuthRequest, res: Response) => {
-  const rows = await Event.findAll({
-    include: [
-      {
-        model: User,
-        as: "CreatedBy",
-        attributes: ["user_id", "username", "name"],
-      },
-    ],
-    order: [
-      ["updated_at", "DESC"],
-      ["event_id", "DESC"],
-    ],
-  });
+router.get(
+  "/",
+  optionalAuthenticate,
+  async (req: AuthRequest, res: Response) => {
+    const rows = await Event.findAll({
+      include: [
+        {
+          model: User,
+          as: "CreatedBy",
+          attributes: ["user_id", "username", "name"],
+        },
+      ],
+      order: [
+        ["updated_at", "DESC"],
+        ["event_id", "DESC"],
+      ],
+    });
 
-  const currentUserId = req.user?.user_id;
+    const currentUserId = req.user?.user_id;
 
-  const serialized = await Promise.all(
-    rows.map(async (event) => {
-      const eventId = Number(event.getDataValue("event_id"));
-      const enrollmentCount = await EventEnrollment.count({
-        where: { event_id: eventId },
-      });
-
-      let isEnrolled = false;
-      if (currentUserId) {
-        const myEnrollment = await EventEnrollment.findOne({
-          where: {
-            event_id: eventId,
-            user_id: currentUserId,
-          },
+    const serialized = await Promise.all(
+      rows.map(async (event) => {
+        const eventId = Number(event.getDataValue("event_id"));
+        const enrollmentCount = await EventEnrollment.count({
+          where: { event_id: eventId },
         });
-        isEnrolled = Boolean(myEnrollment);
-      }
 
-      return serializeEvent(event as Event, enrollmentCount, isEnrolled);
-    }),
-  );
+        let isEnrolled = false;
+        if (currentUserId) {
+          const myEnrollment = await EventEnrollment.findOne({
+            where: {
+              event_id: eventId,
+              user_id: currentUserId,
+            },
+          });
+          isEnrolled = Boolean(myEnrollment);
+        }
 
-  return res.json(serialized);
-});
+        return serializeEvent(event as Event, enrollmentCount, isEnrolled);
+      }),
+    );
+
+    return res.json(serialized);
+  },
+);
 
 router.get(
   "/:id",
@@ -330,29 +332,34 @@ router.get(
   },
 );
 
-router.post("/", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
-  const title = String(req.body?.title || "").trim();
-  const description = String(req.body?.description || "").trim();
+router.post(
+  "/",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const title = String(req.body?.title || "").trim();
+    const description = String(req.body?.description || "").trim();
 
-  if (!title || !description) {
-    return res.status(400).json({
-      error: "Debes completar título y descripción del evento",
+    if (!title || !description) {
+      return res.status(400).json({
+        error: "Debes completar título y descripción del evento",
+      });
+    }
+
+    const created = await Event.create({
+      title,
+      description,
+      status: "open",
+      closure_description: null,
+      closure_images: "[]",
+      created_by_user_id: req.user!.user_id,
+      created_at: new Date(),
+      updated_at: new Date(),
     });
-  }
 
-  const created = await Event.create({
-    title,
-    description,
-    status: "open",
-    closure_description: null,
-    closure_images: "[]",
-    created_by_user_id: req.user!.user_id,
-    created_at: new Date(),
-    updated_at: new Date(),
-  });
-
-  return res.status(201).json(serializeEvent(created as Event, 0, false));
-});
+    return res.status(201).json(serializeEvent(created as Event, 0, false));
+  },
+);
 
 router.post(
   "/:id/enroll",
@@ -383,7 +390,9 @@ router.post(
     });
 
     if (existing) {
-      return res.status(409).json({ error: "Ya estás inscrito en este evento" });
+      return res
+        .status(409)
+        .json({ error: "Ya estás inscrito en este evento" });
     }
 
     await EventEnrollment.create({
@@ -433,7 +442,9 @@ router.delete(
     });
 
     if (!enrollment) {
-      return res.status(404).json({ error: "No estabas inscrito en este evento" });
+      return res
+        .status(404)
+        .json({ error: "No estabas inscrito en este evento" });
     }
 
     await enrollment.destroy();
@@ -469,10 +480,14 @@ router.patch(
       return res.status(409).json({ error: "El evento ya está cerrado" });
     }
 
-    const closureDescription = String(req.body?.closureDescription || "").trim();
+    const closureDescription = String(
+      req.body?.closureDescription || "",
+    ).trim();
     const closureImages = Array.isArray(req.body?.closureImages)
       ? req.body.closureImages
-          .filter((entry: unknown): entry is string => typeof entry === "string")
+          .filter(
+            (entry: unknown): entry is string => typeof entry === "string",
+          )
           .map((entry: string) => entry.trim())
           .filter((entry: string) => entry.length > 0)
       : [];

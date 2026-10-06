@@ -126,7 +126,9 @@ export function EventsSection({
   }, [sortedEvents, statusFilter, onlyMyEnrollments, userRole]);
 
   const totalCount = sortedEvents.length;
-  const openCount = sortedEvents.filter((event) => event.status === "open").length;
+  const openCount = sortedEvents.filter(
+    (event) => event.status === "open",
+  ).length;
   const closedCount = totalCount - openCount;
 
   const eventColumns: DefaultTableColumn<CampusEvent>[] = [
@@ -221,7 +223,8 @@ export function EventsSection({
     },
     {
       label: "Creador",
-      value: (event) => event.createdBy?.name || event.createdBy?.username || "-",
+      value: (event) =>
+        event.createdBy?.name || event.createdBy?.username || "-",
     },
     {
       label: "Actualizado",
@@ -241,9 +244,9 @@ export function EventsSection({
       <article className="principal-panel">
         <h3>Eventos</h3>
         <p>
-          Los usuarios se inscriben cuando el evento está <strong>Abierto</strong>.
-          Al cerrar, el administrador publica resultados, fotos y descripción de
-          la actividad.
+          Los usuarios se inscriben cuando el evento está{" "}
+          <strong>Abierto</strong>. Al cerrar, el administrador publica
+          resultados, fotos y descripción de la actividad.
         </p>
         {userRole === "admin" && (
           <div className="button-row">

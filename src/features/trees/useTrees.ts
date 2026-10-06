@@ -35,6 +35,8 @@ export function useTrees({
     useState<TreeHealthStatus>("healthy");
   const [treeTypeIdInput, setTreeTypeIdInput] = useState(0);
   const [treeSpaceIdInput, setTreeSpaceIdInput] = useState(0);
+  const [treeLatitudeInput, setTreeLatitudeInput] = useState("");
+  const [treeLongitudeInput, setTreeLongitudeInput] = useState("");
   const [treeImagesInput, setTreeImagesInput] = useState("");
   const [editingTreeId, setEditingTreeId] = useState<number | null>(null);
   const [isSubmittingTree, setIsSubmittingTree] = useState(false);
@@ -92,6 +94,8 @@ export function useTrees({
     setTreeHealthStatusInput("healthy");
     setTreeTypeIdInput(treeTypes[0]?.id || 0);
     setTreeSpaceIdInput(greenSpaces[0]?.id || 0);
+    setTreeLatitudeInput("");
+    setTreeLongitudeInput("");
     setTreeImagesInput("");
   };
 
@@ -148,6 +152,10 @@ export function useTrees({
     setTreeHealthStatusInput(tree.healthStatus);
     setTreeTypeIdInput(tree.typeId || 0);
     setTreeSpaceIdInput(tree.spaceId);
+    setTreeLatitudeInput(tree.latitude === null ? "" : String(tree.latitude));
+    setTreeLongitudeInput(
+      tree.longitude === null ? "" : String(tree.longitude),
+    );
     setTreeImagesInput(tree.imageUrls.join("\n"));
   };
 
@@ -166,6 +174,30 @@ export function useTrees({
 
     if (!Number.isFinite(treeSpaceIdInput) || treeSpaceIdInput <= 0) {
       setError("Selecciona un área verde válida");
+      return false;
+    }
+
+    const hasLatitude = treeLatitudeInput.trim() !== "";
+    const hasLongitude = treeLongitudeInput.trim() !== "";
+    if (hasLatitude !== hasLongitude) {
+      setError("La latitud y la longitud deben indicarse juntas");
+      return false;
+    }
+
+    const latitude = hasLatitude ? Number(treeLatitudeInput) : null;
+    const longitude = hasLongitude ? Number(treeLongitudeInput) : null;
+    if (
+      latitude !== null &&
+      (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)
+    ) {
+      setError("La latitud debe estar entre -90 y 90");
+      return false;
+    }
+    if (
+      longitude !== null &&
+      (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)
+    ) {
+      setError("La longitud debe estar entre -180 y 180");
       return false;
     }
 
@@ -189,6 +221,8 @@ export function useTrees({
           healthStatus: treeHealthStatusInput,
           typeId: treeTypeIdInput > 0 ? treeTypeIdInput : null,
           spaceId: treeSpaceIdInput,
+          latitude,
+          longitude,
           imageUrls,
         }),
       });
@@ -333,6 +367,8 @@ export function useTrees({
     treeHealthStatusInput,
     treeTypeIdInput,
     treeSpaceIdInput,
+    treeLatitudeInput,
+    treeLongitudeInput,
     treeImagesInput,
     editingTreeId,
     isSubmittingTree,
@@ -342,6 +378,8 @@ export function useTrees({
     setTreeHealthStatusInput,
     setTreeTypeIdInput,
     setTreeSpaceIdInput,
+    setTreeLatitudeInput,
+    setTreeLongitudeInput,
     setTreeImagesInput,
     resetTreeForm,
     uploadTreeImages,

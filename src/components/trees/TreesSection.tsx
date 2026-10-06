@@ -29,6 +29,8 @@ interface TreesSectionProps {
   treeHealthStatusInput: TreeHealthStatus;
   treeTypeIdInput: number;
   treeSpaceIdInput: number;
+  treeLatitudeInput: string;
+  treeLongitudeInput: string;
   treeImagesInput: string;
   isSubmittingTree: boolean;
   uploadingTreeImages: boolean;
@@ -39,6 +41,8 @@ interface TreesSectionProps {
   setTreeHealthStatusInput: (value: TreeHealthStatus) => void;
   setTreeTypeIdInput: (value: number) => void;
   setTreeSpaceIdInput: (value: number) => void;
+  setTreeLatitudeInput: (value: string) => void;
+  setTreeLongitudeInput: (value: string) => void;
   setTreeImagesInput: (value: string) => void;
   onResetTreeForm: () => void;
   onOpenTreeDetail: (tree: TreeInventoryItem) => void;
@@ -73,6 +77,8 @@ export function TreesSection({
   treeHealthStatusInput,
   treeTypeIdInput,
   treeSpaceIdInput,
+  treeLatitudeInput,
+  treeLongitudeInput,
   treeImagesInput,
   isSubmittingTree,
   uploadingTreeImages,
@@ -83,6 +89,8 @@ export function TreesSection({
   setTreeHealthStatusInput,
   setTreeTypeIdInput,
   setTreeSpaceIdInput,
+  setTreeLatitudeInput,
+  setTreeLongitudeInput,
   setTreeImagesInput,
   onResetTreeForm,
   onOpenTreeDetail,
@@ -305,6 +313,8 @@ export function TreesSection({
           treeHealthStatusInput={treeHealthStatusInput}
           treeTypeIdInput={treeTypeIdInput}
           treeSpaceIdInput={treeSpaceIdInput}
+          treeLatitudeInput={treeLatitudeInput}
+          treeLongitudeInput={treeLongitudeInput}
           treeImagesInput={treeImagesInput}
           isSubmittingTree={isSubmittingTree}
           uploadingTreeImages={uploadingTreeImages}
@@ -312,6 +322,8 @@ export function TreesSection({
           setTreeHealthStatusInput={setTreeHealthStatusInput}
           setTreeTypeIdInput={setTreeTypeIdInput}
           setTreeSpaceIdInput={setTreeSpaceIdInput}
+          setTreeLatitudeInput={setTreeLatitudeInput}
+          setTreeLongitudeInput={setTreeLongitudeInput}
           setTreeImagesInput={setTreeImagesInput}
           onUploadTreeImages={onUploadTreeImages}
           onSaveTree={onSaveTree}
