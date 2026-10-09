@@ -1223,6 +1223,12 @@ function App() {
     navigate("/login");
   };
 
+  const continueAsGuest = () => {
+    setError(null);
+    setSuccessMessage(null);
+    navigate("/");
+  };
+
   const isAuthenticated = Boolean(token);
   const isGuest = !isAuthenticated;
 
@@ -2933,6 +2939,13 @@ function App() {
         onLogin={login}
         onGoForgotPassword={() => navigate("/forgot-password")}
         onGoRegister={() => navigate("/register")}
+        onContinueAsGuest={continueAsGuest}
+        themeMode={themeMode}
+        onToggleTheme={() =>
+          setThemeMode((previousMode) =>
+            previousMode === "dark" ? "light" : "dark",
+          )
+        }
       />
     );
   }
@@ -2951,6 +2964,13 @@ function App() {
         onPasswordChange={setPassword}
         onRegister={register}
         onBackToLogin={() => navigate("/login")}
+        onContinueAsGuest={continueAsGuest}
+        themeMode={themeMode}
+        onToggleTheme={() =>
+          setThemeMode((previousMode) =>
+            previousMode === "dark" ? "light" : "dark",
+          )
+        }
       />
     );
   }
