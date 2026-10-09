@@ -3,7 +3,7 @@ erDiagram
 
     Role {
         int role_id PK
-        string role_name
+        string role_name "unique"
         string description
         datetime created_at
         datetime updated_at
@@ -12,8 +12,8 @@ erDiagram
     User {
         int user_id PK
         string name
-        string email
-        string username
+        string email "unique"
+        string username "unique"
         string password_hash
         string avatar_url
         boolean is_active
@@ -93,8 +93,8 @@ erDiagram
 
     SurveyResponse {
         int survey_response_id PK
-        int survey_id FK
-        int user_id FK
+        int survey_id FK "unique with user_id"
+        int user_id FK "unique with survey_id"
         string answer
         datetime created_at
         datetime updated_at
@@ -102,7 +102,7 @@ erDiagram
 
     GreenMetricRecord {
         int record_id PK
-        datetime calculation_date
+        datetime calculation_date "unique"
         float total_campus_area_m2
         float green_area_m2
         int campus_population
@@ -194,8 +194,8 @@ erDiagram
 
     EventEnrollment {
         int event_enrollment_id PK
-        int event_id FK
-        int user_id FK
+        int event_id FK "unique with user_id"
+        int user_id FK "unique with event_id"
         datetime created_at
     }
 
