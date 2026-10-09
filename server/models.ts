@@ -409,6 +409,107 @@ ReportOfGreenArea.init(
   },
 );
 
+export class Survey extends Model {}
+Survey.init(
+  {
+    survey_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "",
+    },
+    type: {
+      type: DataTypes.ENUM("yesno", "scale"),
+      allowNull: false,
+      defaultValue: "yesno",
+    },
+    active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "Survey",
+    tableName: "Survey",
+    freezeTableName: true,
+    timestamps: false,
+  },
+);
+
+export class SurveyResponse extends Model {}
+SurveyResponse.init(
+  {
+    survey_response_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    survey_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "Survey",
+        key: "survey_id",
+      },
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
+    },
+    answer: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "SurveyResponse",
+    tableName: "SurveyResponse",
+    freezeTableName: true,
+    timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ["survey_id", "user_id"],
+      },
+    ],
+  },
+);
+
 export class GreenMetricRecord extends Model {}
 GreenMetricRecord.init(
   {
@@ -937,6 +1038,12 @@ User.belongsTo(Role, { foreignKey: "role_id" });
 
 User.hasMany(ReportOfGreenArea, { foreignKey: "user_id" });
 ReportOfGreenArea.belongsTo(User, { foreignKey: "user_id" });
+
+Survey.hasMany(SurveyResponse, { foreignKey: "survey_id" });
+SurveyResponse.belongsTo(Survey, { foreignKey: "survey_id" });
+
+User.hasMany(SurveyResponse, { foreignKey: "user_id" });
+SurveyResponse.belongsTo(User, { foreignKey: "user_id" });
 
 User.hasMany(GreenMetricRecord, { foreignKey: "created_by_user_id" });
 GreenMetricRecord.belongsTo(User, {

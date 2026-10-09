@@ -33,6 +33,12 @@ interface MetricDefinition {
 }
 
 type MetricKey = MetricDefinition["key"];
+type QuickInputKey = Exclude<keyof GreenMetricFormInput, "calculationDate">;
+
+interface QuickCalculatorResult {
+  metricKey: MetricKey;
+  value: number;
+}
 
 const metricDefinitions: MetricDefinition[] = [
   {
@@ -85,6 +91,82 @@ const formatPeriod = (record: GreenMetricRecord) =>
     month: "short",
     year: "numeric",
   });
+
+const quickInputLabels: Record<QuickInputKey, string> = {
+  totalCampusAreaM2: "Área total del campus (m2)",
+  greenAreaM2: "Área verde (m2)",
+  campusPopulation: "Población total del campus",
+  denseVegetationAreaM2: "Área de bosque o vegetación densa (m2)",
+  rainwaterAbsorptionAreaM2: "Área de absorción de agua de lluvia (m2)",
+  sustainabilityBudget: "Presupuesto de sostenibilidad",
+  conservationOperationBudget:
+    "Presupuesto de operación y mantenimiento ambiental",
+};
+
+const quickInputSteps: Record<QuickInputKey, number | string> = {
+  totalCampusAreaM2: "0.01",
+  greenAreaM2: "0.01",
+  campusPopulation: 1,
+  denseVegetationAreaM2: "0.01",
+  rainwaterAbsorptionAreaM2: "0.01",
+  sustainabilityBudget: "0.01",
+  conservationOperationBudget: "0.01",
+};
+
+const quickInputsByMetric: Record<MetricKey, QuickInputKey[]> = {
+  metric1GreenAreaRatio: ["greenAreaM2", "totalCampusAreaM2"],
+  metric2GreenAreaPerCapita: ["greenAreaM2", "campusPopulation"],
+  metric3DenseVegetationRatio: ["denseVegetationAreaM2", "totalCampusAreaM2"],
+  metric4RainwaterAbsorptionRatio: [
+    "rainwaterAbsorptionAreaM2",
+    "totalCampusAreaM2",
+  ],
+  metric5SustainabilityBudgetShare: [
+    "sustainabilityBudget",
+    "conservationOperationBudget",
+  ],
+  metric6ConservationOperationShare: [
+    "conservationOperationBudget",
+    "sustainabilityBudget",
+  ],
+};
+
+const computeQuickMetricValue = (
+  metricKey: MetricKey,
+  inputValues: Record<QuickInputKey, number>,
+) => {
+  const toPercent = (numerator: number, denominator: number) =>
+    denominator > 0 ? (numerator / denominator) * 100 : 0;
+
+  const totalBudget =
+    inputValues.sustainabilityBudget + inputValues.conservationOperationBudget;
+
+  if (metricKey === "metric1GreenAreaRatio") {
+    return toPercent(inputValues.greenAreaM2, inputValues.totalCampusAreaM2);
+  }
+  if (metricKey === "metric2GreenAreaPerCapita") {
+    return inputValues.campusPopulation > 0
+      ? inputValues.greenAreaM2 / inputValues.campusPopulation
+      : 0;
+  }
+  if (metricKey === "metric3DenseVegetationRatio") {
+    return toPercent(
+      inputValues.denseVegetationAreaM2,
+      inputValues.totalCampusAreaM2,
+    );
+  }
+  if (metricKey === "metric4RainwaterAbsorptionRatio") {
+    return toPercent(
+      inputValues.rainwaterAbsorptionAreaM2,
+      inputValues.totalCampusAreaM2,
+    );
+  }
+  if (metricKey === "metric5SustainabilityBudgetShare") {
+    return toPercent(inputValues.sustainabilityBudget, totalBudget);
+  }
+
+  return toPercent(inputValues.conservationOperationBudget, totalBudget);
+};
 
 const escapeSvgText = (value: string) =>
   value
@@ -229,6 +311,8 @@ export function GreenMetricsSection({
   onSave,
 }: GreenMetricsSectionProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showQuickCalculatorModal, setShowQuickCalculatorModal] =
+    useState(false);
   const [showReportRangeModal, setShowReportRangeModal] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [selectedMetricKey, setSelectedMetricKey] = useState<MetricKey>(
@@ -241,6 +325,23 @@ export function GreenMetricsSection({
   );
   const [reportStartDate, setReportStartDate] = useState("");
   const [reportEndDate, setReportEndDate] = useState("");
+  const [quickMetricKey, setQuickMetricKey] = useState<MetricKey>(
+    "metric1GreenAreaRatio",
+  );
+  const [quickInputValues, setQuickInputValues] = useState<
+    Record<QuickInputKey, string>
+  >({
+    totalCampusAreaM2: "",
+    greenAreaM2: "",
+    campusPopulation: "",
+    denseVegetationAreaM2: "",
+    rainwaterAbsorptionAreaM2: "",
+    sustainabilityBudget: "",
+    conservationOperationBudget: "",
+  });
+  const [quickResult, setQuickResult] = useState<QuickCalculatorResult | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!records.length) {
@@ -624,6 +725,95 @@ export function GreenMetricsSection({
     }).length;
   }, [records, reportRangeMode, reportStartDate, reportEndDate]);
 
+  const selectedQuickMetric =
+    metricDefinitions.find((metric) => metric.key === quickMetricKey) ||
+    metricDefinitions[0];
+  const requiredQuickInputs = quickInputsByMetric[quickMetricKey];
+
+  const setQuickInputValue = (field: QuickInputKey, value: string) => {
+    setQuickInputValues((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const resetQuickCalculator = () => {
+    setQuickInputValues({
+      totalCampusAreaM2: "",
+      greenAreaM2: "",
+      campusPopulation: "",
+      denseVegetationAreaM2: "",
+      rainwaterAbsorptionAreaM2: "",
+      sustainabilityBudget: "",
+      conservationOperationBudget: "",
+    });
+    setQuickResult(null);
+  };
+
+  const onCalculateQuickMetric = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const numericInputs: Record<QuickInputKey, number> = {
+      totalCampusAreaM2: 0,
+      greenAreaM2: 0,
+      campusPopulation: 0,
+      denseVegetationAreaM2: 0,
+      rainwaterAbsorptionAreaM2: 0,
+      sustainabilityBudget: 0,
+      conservationOperationBudget: 0,
+    };
+
+    requiredQuickInputs.forEach((field) => {
+      const parsedValue = Number(quickInputValues[field]);
+      numericInputs[field] = Number.isFinite(parsedValue)
+        ? Math.max(0, parsedValue)
+        : 0;
+    });
+
+    const value = computeQuickMetricValue(quickMetricKey, numericInputs);
+    setQuickResult({
+      metricKey: quickMetricKey,
+      value,
+    });
+  };
+
+  const onSelectQuickMetric = (metricKey: MetricKey) => {
+    setQuickMetricKey(metricKey);
+
+    const inputsForMetric = quickInputsByMetric[metricKey];
+    const hasAllInputs = inputsForMetric.every((field) => {
+      const rawValue = quickInputValues[field];
+      return rawValue.trim() !== "";
+    });
+
+    if (!hasAllInputs) {
+      setQuickResult(null);
+      return;
+    }
+
+    const numericInputs: Record<QuickInputKey, number> = {
+      totalCampusAreaM2: 0,
+      greenAreaM2: 0,
+      campusPopulation: 0,
+      denseVegetationAreaM2: 0,
+      rainwaterAbsorptionAreaM2: 0,
+      sustainabilityBudget: 0,
+      conservationOperationBudget: 0,
+    };
+
+    inputsForMetric.forEach((field) => {
+      const parsedValue = Number(quickInputValues[field]);
+      numericInputs[field] = Number.isFinite(parsedValue)
+        ? Math.max(0, parsedValue)
+        : 0;
+    });
+
+    setQuickResult({
+      metricKey,
+      value: computeQuickMetricValue(metricKey, numericInputs),
+    });
+  };
+
   return (
     <section className="box green-metrics-box">
       <article className="principal-panel green-metrics-header">
@@ -634,7 +824,7 @@ export function GreenMetricsSection({
             fecha.
           </p>
         </div>
-        <div className="button-row">
+        <div className="green-metrics-actions">
           <button
             type="button"
             className="secondary"
@@ -645,13 +835,123 @@ export function GreenMetricsSection({
           >
             Descargar PDF completo
           </button>
-          {userRole === "admin" ? (
-            <button type="button" onClick={() => setShowCreateModal(true)}>
-              Nuevo cálculo
+          <div className="green-metrics-actions-primary">
+            {userRole === "admin" ? (
+              <button type="button" onClick={() => setShowCreateModal(true)}>
+                Nuevo cálculo
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                resetQuickCalculator();
+                setShowQuickCalculatorModal(true);
+              }}
+            >
+              Calculadora rápida
             </button>
-          ) : null}
+          </div>
         </div>
       </article>
+
+      <AppModal
+        isOpen={showQuickCalculatorModal}
+        onClose={() => setShowQuickCalculatorModal(false)}
+        title="Calculadora rápida GreenMetric"
+        description="Calcula un indicador puntual sin guardar registros en la base de datos."
+      >
+        <form className="admin-form quick-calculator-form" onSubmit={onCalculateQuickMetric}>
+          <label>
+            Indicador
+            <select
+              value={quickMetricKey}
+              onChange={(event) =>
+                onSelectQuickMetric(event.target.value as MetricKey)
+              }
+            >
+              {metricDefinitions.map((metric) => (
+                <option key={metric.key} value={metric.key}>
+                  {metric.title}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="quick-metric-switches" role="group" aria-label="Indicadores rápidos">
+            {metricDefinitions.map((metric) => (
+              <button
+                key={`quick-switch-${metric.key}`}
+                type="button"
+                className={metric.key === quickMetricKey ? "active" : ""}
+                onClick={() => onSelectQuickMetric(metric.key)}
+              >
+                {metric.title.split(".")[0]}
+              </button>
+            ))}
+          </div>
+
+          <div className="quick-calculator-panel">
+            <p className="muted quick-metric-formula">
+              Fórmula: {selectedQuickMetric.formula}
+            </p>
+
+            <div className="quick-calculator-grid">
+              {requiredQuickInputs.map((field) => (
+                <label key={`quick-input-${field}`} className="quick-calculator-field">
+                  {quickInputLabels[field]}
+                  <input
+                    type="number"
+                    min={0}
+                    step={quickInputSteps[field]}
+                    value={quickInputValues[field]}
+                    onChange={(event) =>
+                      setQuickInputValue(field, event.target.value)
+                    }
+                    required
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {quickResult && quickResult.metricKey === quickMetricKey ? (
+            <article className="summary-item quick-calculator-result">
+              <span>Resultado</span>
+              <strong>
+                {formatNumber(
+                  quickResult.value,
+                  selectedQuickMetric.unit === "m2/persona" ? 3 : 2,
+                )}{" "}
+                {selectedQuickMetric.unit}
+              </strong>
+              <small className="muted">
+                Este resultado es temporal y no se almacena como registro.
+              </small>
+            </article>
+          ) : null}
+
+          <div className="button-row">
+            <button type="submit">Calcular indicador</button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                resetQuickCalculator();
+              }}
+            >
+              Limpiar
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setShowQuickCalculatorModal(false)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </form>
+      </AppModal>
 
       <AppModal
         isOpen={showReportRangeModal}

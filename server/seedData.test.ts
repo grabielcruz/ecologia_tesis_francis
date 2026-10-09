@@ -7,6 +7,8 @@ import {
   proposalSeeds,
   reportOfGreenAreaSeeds,
   roleSeeds,
+  surveyResponseSeeds,
+  surveySeeds,
   treeTypeSeeds,
   treeInventorySeeds,
   userSeeds,
@@ -114,6 +116,32 @@ describe("seedData", () => {
         expect(imageUrl.startsWith("https://")).toBe(true);
       }
       expect(Number.isNaN(new Date(tree.created_at).getTime())).toBe(false);
+    }
+  });
+
+  it("defines surveys and responses linked to existing users", () => {
+    expect(surveySeeds.length).toBeGreaterThan(0);
+    expect(surveyResponseSeeds.length).toBeGreaterThan(0);
+
+    const usernames = new Set(userSeeds.map((user) => user.username));
+    const surveyTitles = new Set(surveySeeds.map((survey) => survey.title));
+
+    for (const survey of surveySeeds) {
+      expect(survey.title.trim().length).toBeGreaterThan(0);
+      expect(survey.description.trim().length).toBeGreaterThan(0);
+      expect(["yesno", "scale"]).toContain(survey.type);
+      expect(Number.isNaN(new Date(survey.created_at).getTime())).toBe(false);
+    }
+
+    for (const response of surveyResponseSeeds) {
+      expect(usernames.has(response.username)).toBe(true);
+      expect(surveyTitles.has(response.survey_title)).toBe(true);
+      expect(
+        ["yes", "no", "too_bad", "bad", "regular", "good", "excellent"].includes(
+          response.answer,
+        ),
+      ).toBe(true);
+      expect(Number.isNaN(new Date(response.created_at).getTime())).toBe(false);
     }
   });
 

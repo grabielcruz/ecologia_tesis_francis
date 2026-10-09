@@ -48,8 +48,13 @@ interface SurveySummary {
   totalResponses: number;
   yesCount?: number;
   noCount?: number;
-  average?: number;
-  ratingCounts?: Record<string, number>;
+  scaleCounts?: Record<string, number>;
+}
+
+interface SurveyResponseEntry {
+  username: string;
+  answer: string;
+  respondedAt?: string | null;
 }
 
 interface Survey {
@@ -57,8 +62,10 @@ interface Survey {
   title: string;
   description: string;
   active: boolean;
-  type: "yesno" | "rating";
+  type: "yesno" | "scale";
   summary?: SurveySummary;
+  responses?: SurveyResponseEntry[];
+  currentUserAnswer?: string | null;
   updatedAt?: string;
 }
 
@@ -107,6 +114,14 @@ interface AdminUser {
 
 type SortDirection = "asc" | "desc";
 type ThemeMode = "light" | "dark";
+
+const SCALE_POLL_OPTIONS = [
+  { value: "too_bad", label: "Muy mala" },
+  { value: "bad", label: "Mala" },
+  { value: "regular", label: "Regular" },
+  { value: "good", label: "Buena" },
+  { value: "excellent", label: "Excelente" },
+] as const;
 
 const THEME_STORAGE_KEY = "ecologia-theme-mode";
 const getInitialThemeMode = (): ThemeMode => {
@@ -310,7 +325,7 @@ function App() {
   const [limit] = useState(5);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "yesno" | "rating">(
+  const [filterType, setFilterType] = useState<"all" | "yesno" | "scale">(
     "all",
   );
   const [filterStatus, setFilterStatus] = useState<
@@ -338,7 +353,7 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [pollTitle, setPollTitle] = useState("");
   const [pollDescription, setPollDescription] = useState("");
-  const [pollType, setPollType] = useState<"yesno" | "rating">("yesno");
+  const [pollType, setPollType] = useState<"yesno" | "scale">("yesno");
   const [pollActive, setPollActive] = useState(true);
   const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
   const [greenSpaces, setGreenSpaces] = useState<GreenSpace[]>([]);
@@ -769,12 +784,6 @@ function App() {
   }, [sidebarOpen]);
 
   useEffect(() => {
-    // Survey module was removed from backend; keep only active modules loading.
-    if (route === "/surveys") {
-      navigate("/", true);
-      return;
-    }
-
     const routePath = route.split("?")[0] || route;
     const isEventsRoute =
       routePath === "/events" || routePath.startsWith("/events/");
@@ -819,11 +828,17 @@ function App() {
 
   const fetchSurveys = async () => {
     try {
-      const res = await fetch("/api/surveys?active=true&page=1&limit=1000");
+      const res = await fetch("/api/surveys?active=true&page=1&limit=1000", {
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : undefined,
+      });
       if (!res.ok) {
         setSurveys([]);
         setUserPage(1);
-        setError("El módulo de encuestas aún no está disponible");
+        setError("No se pudieron cargar las encuestas");
         return;
       }
       const data = await res.json();
@@ -833,6 +848,18 @@ function App() {
           ? data
           : [];
       setSurveys(surveyList);
+      if (token && user) {
+        const fetchedAnswers = surveyList.reduce(
+          (accumulator: Record<number, string>, survey: Survey) => {
+            if (survey.currentUserAnswer) {
+              accumulator[survey.id] = survey.currentUserAnswer;
+            }
+            return accumulator;
+          },
+          {},
+        );
+        setPollAnswers(fetchedAnswers);
+      }
       setUserPage(1);
     } catch {
       setSurveys([]);
@@ -901,7 +928,13 @@ function App() {
       }
       params.set("sort", sortOrder);
 
-      const res = await fetch(`/api/surveys?${params.toString()}`);
+      const res = await fetch(`/api/surveys?${params.toString()}`, {
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : undefined,
+      });
       if (!res.ok) {
         setSurveys([]);
         setTotalPages(1);
@@ -929,6 +962,13 @@ function App() {
     try {
       const res = await fetch(
         "/api/surveys?admin=true&page=1&limit=1000&sort=desc",
+        {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : undefined,
+        },
       );
       if (!res.ok) {
         setAdminSurveyOverview([]);
@@ -941,6 +981,39 @@ function App() {
       // Keep UI functional even if overview fails.
     }
   };
+
+  useEffect(() => {
+    if (!token) {
+      setSurveys([]);
+      setAdminSurveyOverview([]);
+      return;
+    }
+
+    if (route === "/surveys" && user?.role === "admin") {
+      fetchAdminSurveys(adminPage);
+      fetchAdminSurveyOverview();
+      return;
+    }
+
+    if (route === "/surveys") {
+      fetchSurveys();
+      return;
+    }
+
+    fetchSurveys();
+    if (user?.role === "admin") {
+      fetchAdminSurveyOverview();
+    }
+  }, [
+    token,
+    route,
+    user,
+    adminPage,
+    searchTerm,
+    filterType,
+    filterStatus,
+    sortOrder,
+  ]);
 
   const requestPasswordRecovery = async () => {
     setError(null);
@@ -1498,7 +1571,14 @@ function App() {
         : "/api/surveys";
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -1949,6 +2029,454 @@ function App() {
     );
   };
 
+  const getSurveyAnswerLabel = (surveyType: Survey["type"], answer: string) => {
+    if (surveyType === "yesno") {
+      return answer === "yes" ? "Sí" : answer === "no" ? "No" : answer;
+    }
+
+    const match = SCALE_POLL_OPTIONS.find((option) => option.value === answer);
+    return match?.label || answer;
+  };
+
+  const getSurveyDistribution = (survey: Survey) => {
+    if (!survey.summary) {
+      return [];
+    }
+
+    if (survey.type === "yesno") {
+      return [
+        { key: "yes", label: "Sí", value: survey.summary.yesCount ?? 0, color: "#16a34a" },
+        { key: "no", label: "No", value: survey.summary.noCount ?? 0, color: "#dc2626" },
+      ];
+    }
+
+    return SCALE_POLL_OPTIONS.map((option, index) => {
+      const colors = ["#f97316", "#f59e0b", "#22c55e", "#0ea5e9", "#4f46e5"];
+      return {
+        key: option.value,
+        label: option.label,
+        value: survey.summary?.scaleCounts?.[option.value] ?? 0,
+        color: colors[index],
+      };
+    });
+  };
+
+  const renderSurveyResults = (survey: Survey) => {
+    if (!survey.summary) {
+      return null;
+    }
+
+    const distribution = getSurveyDistribution(survey);
+    const total = survey.summary.totalResponses || 0;
+    const conicStops: string[] = [];
+    let accumulator = 0;
+
+    for (const item of distribution) {
+      if (item.value <= 0 || total <= 0) {
+        continue;
+      }
+      const slice = (item.value / total) * 100;
+      const start = accumulator;
+      const end = accumulator + slice;
+      conicStops.push(`${item.color} ${start}% ${end}%`);
+      accumulator = end;
+    }
+
+    const chartBackground =
+      conicStops.length > 0
+        ? `conic-gradient(${conicStops.join(", ")})`
+        : "conic-gradient(#d4dfe0 0% 100%)";
+
+    return (
+      <div className="poll-chart">
+        <h4>Distribución de respuestas</h4>
+        <div className="poll-pie-grid">
+          <div className="poll-pie-chart" style={{ background: chartBackground }} />
+          <div className="poll-pie-legend">
+            {distribution.map((item) => {
+              const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
+              return (
+                <div key={`${survey.id}-${item.key}`} className="poll-pie-legend-item">
+                  <span
+                    className="poll-pie-dot"
+                    style={{ backgroundColor: item.color }}
+                    aria-hidden="true"
+                  />
+                  <span>{item.label}</span>
+                  <strong>
+                    {item.value} ({percentage}%)
+                  </strong>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="poll-response-list">
+          <h5>Respuestas de usuarios</h5>
+          {(survey.responses || []).length === 0 ? (
+            <p className="small muted">Aún no hay respuestas registradas.</p>
+          ) : (
+            <ul>
+              {(survey.responses || []).map((entry, index) => (
+                <li key={`${survey.id}-response-${index}`}>
+                  <span>
+                    <strong>{entry.username}</strong>:{" "}
+                    {getSurveyAnswerLabel(survey.type, entry.answer)}
+                  </span>
+                  <span className="small muted">{formatUpdatedAt(entry.respondedAt || undefined)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const downloadSurveyPdf = async (survey: Survey) => {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+
+    const buildChartImage = (targetSurvey: Survey) => {
+      const distribution = getSurveyDistribution(targetSurvey);
+      const total = targetSurvey.summary?.totalResponses ?? 0;
+      const canvas = document.createElement("canvas");
+      canvas.width = 1100;
+      canvas.height = 420;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        return null;
+      }
+
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      const pieCenterX = 180;
+      const pieCenterY = 200;
+      const pieRadius = 120;
+      let currentAngle = -Math.PI / 2;
+
+      const nonZeroRows = distribution.filter((row) => row.value > 0);
+      const chartRows =
+        nonZeroRows.length > 0
+          ? nonZeroRows
+          : [{ key: "none", label: "Sin respuestas", value: 1, color: "#d4dfe0" }];
+
+      for (const item of chartRows) {
+        const ratio = item.value / chartRows.reduce((sum, row) => sum + row.value, 0);
+        const nextAngle = currentAngle + ratio * Math.PI * 2;
+
+        context.beginPath();
+        context.moveTo(pieCenterX, pieCenterY);
+        context.arc(pieCenterX, pieCenterY, pieRadius, currentAngle, nextAngle);
+        context.closePath();
+        context.fillStyle = item.color;
+        context.fill();
+        currentAngle = nextAngle;
+      }
+
+      context.font = "20px Arial";
+      context.fillStyle = "#1f3438";
+      context.fillText("Distribución de respuestas", 360, 70);
+
+      distribution.forEach((item, index) => {
+        const percentage =
+          total > 0 ? Math.round((item.value / total) * 100) : 0;
+        const y = 120 + index * 48;
+
+        context.fillStyle = item.color;
+        context.fillRect(360, y - 15, 20, 20);
+        context.fillStyle = "#2f4f54";
+        context.font = "19px Arial";
+        context.fillText(
+          `${item.label}: ${item.value} (${percentage}%)`,
+          390,
+          y,
+        );
+      });
+
+      return canvas.toDataURL("image/png");
+    };
+
+    const sanitizeFileName = (value: string) =>
+      value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") || "reporte";
+
+    const renderSurveySection = (
+      doc: InstanceType<typeof jsPDF>,
+      targetSurvey: Survey,
+      startY: number,
+    ) => {
+      doc.setFontSize(14);
+      doc.text(targetSurvey.title, 40, startY);
+      doc.setFontSize(10);
+      doc.text(`Tipo: ${targetSurvey.type === "yesno" ? "Sí / No" : "Escala cualitativa"}`, 40, startY + 16);
+      doc.text(`Estado: ${targetSurvey.active ? "Activa" : "Inactiva"}`, 240, startY + 16);
+      doc.text(`Total respuestas: ${targetSurvey.summary?.totalResponses ?? 0}`, 380, startY + 16);
+      doc.text(`Actualizada: ${formatUpdatedAt(targetSurvey.updatedAt)}`, 40, startY + 30);
+      doc.setFontSize(11);
+      doc.text("Gráfico de resultados", 40, startY + 45);
+
+      const chartImage = buildChartImage(targetSurvey);
+      if (chartImage) {
+        doc.addImage(chartImage, "PNG", 40, startY + 52, 515, 180);
+      }
+
+      const summaryDistribution = getSurveyDistribution(targetSurvey);
+      const summaryTotal = targetSurvey.summary?.totalResponses ?? 0;
+      const summaryRows = summaryDistribution.map((item) => {
+        const percentage =
+          summaryTotal > 0 ? Math.round((item.value / summaryTotal) * 100) : 0;
+        return [item.label, String(item.value), `${percentage}%`];
+      });
+
+      autoTable(doc, {
+        startY: startY + 240,
+        head: [["Opción", "Cantidad", "Porcentaje"]],
+        body: summaryRows.length > 0 ? summaryRows : [["Sin respuestas", "0", "0%"]],
+        styles: {
+          fontSize: 9,
+          cellPadding: 4,
+          lineWidth: 0.2,
+        },
+        headStyles: {
+          fillColor: [63, 173, 147],
+          textColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [243, 251, 249],
+        },
+        margin: { left: 40, right: 40 },
+      });
+
+      const summaryFinalY = (doc as unknown as { lastAutoTable?: { finalY?: number } })
+        .lastAutoTable?.finalY;
+
+      const rows = (targetSurvey.responses || []).map((response) => [
+        response.username,
+        getSurveyAnswerLabel(targetSurvey.type, response.answer),
+        formatUpdatedAt(response.respondedAt || undefined),
+      ]);
+
+      autoTable(doc, {
+        startY:
+          typeof summaryFinalY === "number"
+            ? summaryFinalY + 12
+            : startY + 292,
+        head: [["Usuario", "Respuesta", "Fecha"]],
+        body: rows.length > 0 ? rows : [["-", "Sin respuestas", "-"]],
+        styles: {
+          fontSize: 9,
+          cellPadding: 4,
+          lineWidth: 0.2,
+        },
+        headStyles: {
+          fillColor: [63, 173, 147],
+          textColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [243, 251, 249],
+        },
+        margin: { left: 40, right: 40 },
+      });
+    };
+
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "pt",
+      format: "a4",
+    });
+
+    doc.setFontSize(16);
+    doc.text("Reporte de encuesta", 40, 36);
+    renderSurveySection(doc, survey, 62);
+
+    doc.save(`encuesta-${survey.id}-${sanitizeFileName(survey.title)}.pdf`);
+  };
+
+  const downloadAllSurveysPdf = async () => {
+    const sourceSurveys =
+      adminSurveyOverview.length > 0 ? adminSurveyOverview : surveys;
+
+    if (sourceSurveys.length === 0) {
+      setError("No hay encuestas para exportar");
+      return;
+    }
+
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+
+    const sanitizeFileName = (value: string) =>
+      value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") || "reporte";
+
+    const buildChartImage = (targetSurvey: Survey) => {
+      const distribution = getSurveyDistribution(targetSurvey);
+      const total = targetSurvey.summary?.totalResponses ?? 0;
+      const canvas = document.createElement("canvas");
+      canvas.width = 1100;
+      canvas.height = 420;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        return null;
+      }
+
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      const pieCenterX = 180;
+      const pieCenterY = 200;
+      const pieRadius = 120;
+      let currentAngle = -Math.PI / 2;
+      const nonZeroRows = distribution.filter((row) => row.value > 0);
+      const chartRows =
+        nonZeroRows.length > 0
+          ? nonZeroRows
+          : [{ key: "none", label: "Sin respuestas", value: 1, color: "#d4dfe0" }];
+
+      for (const item of chartRows) {
+        const ratio = item.value / chartRows.reduce((sum, row) => sum + row.value, 0);
+        const nextAngle = currentAngle + ratio * Math.PI * 2;
+        context.beginPath();
+        context.moveTo(pieCenterX, pieCenterY);
+        context.arc(pieCenterX, pieCenterY, pieRadius, currentAngle, nextAngle);
+        context.closePath();
+        context.fillStyle = item.color;
+        context.fill();
+        currentAngle = nextAngle;
+      }
+
+      context.font = "20px Arial";
+      context.fillStyle = "#1f3438";
+      context.fillText("Distribución de respuestas", 360, 70);
+
+      distribution.forEach((item, index) => {
+        const percentage =
+          total > 0 ? Math.round((item.value / total) * 100) : 0;
+        const y = 120 + index * 48;
+
+        context.fillStyle = item.color;
+        context.fillRect(360, y - 15, 20, 20);
+        context.fillStyle = "#2f4f54";
+        context.font = "19px Arial";
+        context.fillText(
+          `${item.label}: ${item.value} (${percentage}%)`,
+          390,
+          y,
+        );
+      });
+
+      return canvas.toDataURL("image/png");
+    };
+
+    const renderSurveySection = (
+      doc: InstanceType<typeof jsPDF>,
+      targetSurvey: Survey,
+      startY: number,
+    ) => {
+      doc.setFontSize(14);
+      doc.text(targetSurvey.title, 40, startY);
+      doc.setFontSize(10);
+      doc.text(`Tipo: ${targetSurvey.type === "yesno" ? "Sí / No" : "Escala cualitativa"}`, 40, startY + 16);
+      doc.text(`Estado: ${targetSurvey.active ? "Activa" : "Inactiva"}`, 240, startY + 16);
+      doc.text(`Total respuestas: ${targetSurvey.summary?.totalResponses ?? 0}`, 380, startY + 16);
+      doc.text(`Actualizada: ${formatUpdatedAt(targetSurvey.updatedAt)}`, 40, startY + 30);
+      doc.setFontSize(11);
+      doc.text("Gráfico de resultados", 40, startY + 45);
+
+      const chartImage = buildChartImage(targetSurvey);
+      if (chartImage) {
+        doc.addImage(chartImage, "PNG", 40, startY + 52, 515, 180);
+      }
+
+      const summaryDistribution = getSurveyDistribution(targetSurvey);
+      const summaryTotal = targetSurvey.summary?.totalResponses ?? 0;
+      const summaryRows = summaryDistribution.map((item) => {
+        const percentage =
+          summaryTotal > 0 ? Math.round((item.value / summaryTotal) * 100) : 0;
+        return [item.label, String(item.value), `${percentage}%`];
+      });
+
+      autoTable(doc, {
+        startY: startY + 240,
+        head: [["Opción", "Cantidad", "Porcentaje"]],
+        body: summaryRows.length > 0 ? summaryRows : [["Sin respuestas", "0", "0%"]],
+        styles: {
+          fontSize: 9,
+          cellPadding: 4,
+          lineWidth: 0.2,
+        },
+        headStyles: {
+          fillColor: [63, 173, 147],
+          textColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [243, 251, 249],
+        },
+        margin: { left: 40, right: 40 },
+      });
+
+      const summaryFinalY = (doc as unknown as { lastAutoTable?: { finalY?: number } })
+        .lastAutoTable?.finalY;
+
+      const rows = (targetSurvey.responses || []).map((response) => [
+        response.username,
+        getSurveyAnswerLabel(targetSurvey.type, response.answer),
+        formatUpdatedAt(response.respondedAt || undefined),
+      ]);
+
+      autoTable(doc, {
+        startY:
+          typeof summaryFinalY === "number"
+            ? summaryFinalY + 12
+            : startY + 292,
+        head: [["Usuario", "Respuesta", "Fecha"]],
+        body: rows.length > 0 ? rows : [["-", "Sin respuestas", "-"]],
+        styles: {
+          fontSize: 9,
+          cellPadding: 4,
+          lineWidth: 0.2,
+        },
+        headStyles: {
+          fillColor: [63, 173, 147],
+          textColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [243, 251, 249],
+        },
+        margin: { left: 40, right: 40 },
+      });
+    };
+
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "pt",
+      format: "a4",
+    });
+
+    doc.setFontSize(16);
+    doc.text("Reporte consolidado de encuestas", 40, 36);
+
+    sourceSurveys.forEach((survey, index) => {
+      if (index > 0) {
+        doc.addPage();
+      }
+      renderSurveySection(doc, survey, 62);
+    });
+
+    doc.save(`encuestas-${sanitizeFileName("consolidado")}.pdf`);
+  };
+
   const renderModal = () => {
     if (!showModal) return null;
 
@@ -1980,11 +2508,11 @@ function App() {
                 <select
                   value={pollType}
                   onChange={(e) =>
-                    setPollType(e.target.value as "yesno" | "rating")
+                    setPollType(e.target.value as "yesno" | "scale")
                   }
                 >
                   <option value="yesno">Sí / No</option>
-                  <option value="rating">Valoración 1–5</option>
+                  <option value="scale">Escala cualitativa</option>
                 </select>
               </label>
             )}
@@ -2069,7 +2597,14 @@ function App() {
   const deleteSurvey = async (id: number) => {
     setError(null);
     try {
-      const response = await fetch(`/api/surveys/${id}`, { method: "DELETE" });
+      const response = await fetch(`/api/surveys/${id}`, {
+        method: "DELETE",
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : undefined,
+      });
       if (!response.ok) {
         setError("No se pudo eliminar la encuesta");
         return;
@@ -2087,21 +2622,23 @@ function App() {
   };
 
   const submitResponse = async (survey: Survey) => {
-    if (!user) {
+    if (!user || !token) {
       setError("Debes iniciar sesión para responder la encuesta");
       return;
     }
 
     setError(null);
-    const answerPayload = survey.type === "yesno" ? voteValue : voteValue;
+    const answerPayload = voteValue;
 
     try {
       const response = await fetch(`/api/surveys/${survey.id}/responses`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
-          username: user.username,
-          answers: JSON.stringify({ answer: answerPayload }),
+          answer: answerPayload,
         }),
       });
 
@@ -2112,7 +2649,7 @@ function App() {
 
       setSubmittedPollId(survey.id);
       setActivePollId(null);
-      setVoteValue(survey.type === "yesno" ? "yes" : "3");
+      setVoteValue(survey.type === "yesno" ? "yes" : "regular");
       setPollAnswers((prev) => {
         const next = { ...prev, [survey.id]: answerPayload };
         if (user) {
@@ -2123,6 +2660,10 @@ function App() {
         }
         return next;
       });
+      await fetchSurveys();
+      if (user.role === "admin") {
+        fetchAdminSurveyOverview();
+      }
     } catch {
       setError("No se pudo enviar tu respuesta");
     }
@@ -2517,6 +3058,15 @@ function App() {
           <button type="button" onClick={openCreateModal}>
             Nueva encuesta
           </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              void downloadAllSurveysPdf();
+            }}
+          >
+            Descargar consolidado PDF
+          </button>
         </div>
       </div>
 
@@ -2533,13 +3083,13 @@ function App() {
         <select
           value={filterType}
           onChange={(e) => {
-            setFilterType(e.target.value as "all" | "yesno" | "rating");
+            setFilterType(e.target.value as "all" | "yesno" | "scale");
             setAdminPage(1);
           }}
         >
           <option value="all">Todos los tipos</option>
           <option value="yesno">Sí / No</option>
-          <option value="rating">Valoración 1–5</option>
+          <option value="scale">Escala cualitativa</option>
         </select>
         <select
           value={filterStatus}
@@ -2585,9 +3135,9 @@ function App() {
                     {survey.active ? "Activa" : "Inactiva"}
                   </span>
                   <span
-                    className={`pill ${survey.type === "rating" ? "rating" : "active"}`}
+                    className={`pill ${survey.type === "scale" ? "rating" : "active"}`}
                   >
-                    {survey.type === "rating" ? "Valoración 1–5" : "Sí / No"}
+                    {survey.type === "scale" ? "Escala cualitativa" : "Sí / No"}
                   </span>
                 </div>
               </div>
@@ -2609,97 +3159,28 @@ function App() {
                       </div>
                     </>
                   ) : (
-                    <div className="summary-item">
-                      <span>Promedio</span>
-                      <strong>
-                        {survey.summary.average?.toFixed(1) ?? "0.0"}
-                      </strong>
-                    </div>
+                    SCALE_POLL_OPTIONS.map((option) => (
+                      <div key={`${survey.id}-${option.value}`} className="summary-item">
+                        <span>{option.label}</span>
+                        <strong>{survey.summary?.scaleCounts?.[option.value] ?? 0}</strong>
+                      </div>
+                    ))
                   )}
                 </div>
               )}
-              {survey.summary && survey.summary.totalResponses > 0 && (
-                <div className="poll-chart">
-                  <h4>Distribución de respuestas</h4>
-                  {survey.type === "yesno" ? (
-                    <>
-                      {[
-                        {
-                          label: "Sí",
-                          value: survey.summary.yesCount ?? 0,
-                          tone: "yes",
-                        },
-                        {
-                          label: "No",
-                          value: survey.summary.noCount ?? 0,
-                          tone: "no",
-                        },
-                      ].map((item) => {
-                        const percentage =
-                          survey.summary && survey.summary.totalResponses > 0
-                            ? Math.round(
-                                (item.value / survey.summary.totalResponses) *
-                                  100,
-                              )
-                            : 0;
-
-                        return (
-                          <div key={item.label} className="chart-row">
-                            <div className="chart-row-label">
-                              <span>{item.label}</span>
-                              <strong>
-                                {item.value} ({percentage}%)
-                              </strong>
-                            </div>
-                            <div className="chart-track">
-                              <div
-                                className={`chart-fill ${item.tone}`}
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  ) : (
-                    <>
-                      {[1, 2, 3, 4, 5].map((score) => {
-                        const scoreKey = String(score);
-                        const value =
-                          survey.summary?.ratingCounts?.[scoreKey] ?? 0;
-                        const percentage =
-                          survey.summary && survey.summary.totalResponses > 0
-                            ? Math.round(
-                                (value / survey.summary.totalResponses) * 100,
-                              )
-                            : 0;
-
-                        return (
-                          <div key={score} className="chart-row">
-                            <div className="chart-row-label">
-                              <span>
-                                {score} estrella{score > 1 ? "s" : ""}
-                              </span>
-                              <strong>
-                                {value} ({percentage}%)
-                              </strong>
-                            </div>
-                            <div className="chart-track">
-                              <div
-                                className="chart-fill rating"
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  )}
-                </div>
-              )}
+              {renderSurveyResults(survey)}
               <div className="admin-actions">
                 <button type="button" onClick={() => editSurvey(survey)}>
                   Editar
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    void downloadSurveyPdf(survey);
+                  }}
+                >
+                  Descargar PDF
                 </button>
                 <button
                   type="button"
@@ -3516,38 +3997,40 @@ function App() {
         onClick: () => navigate("/green-spaces"),
       },
     ];
+    const principalSummaryItems = [
+      { id: "polls-total", label: "Encuestas totales", value: String(totalPolls), chip: "EN" },
+      { id: "polls-visible", label: "Encuestas visibles", value: String(activePolls), chip: "AV" },
+      {
+        id: "polls-responses",
+        label: "Respuestas registradas",
+        value: String(totalResponses),
+        chip: "RR",
+      },
+      { id: "green-spaces", label: "Áreas verdes", value: String(greenSpaces.length), chip: "GV" },
+      {
+        id: "green-area",
+        label: "Superficie verde total",
+        value: `${totalGreenArea.toFixed(0)} m²`,
+        chip: "M2",
+      },
+      { id: "tall-trees", label: "Árboles altos", value: String(totalTallTrees), chip: "AR" },
+      { id: "proposals", label: "Propuestas visibles", value: String(proposals.length), chip: "PR" },
+    ];
     return (
       <>
         <section className="box principal-box">
           <div className="principal-summary-grid">
-            <article className="summary-item">
-              <span>Encuestas totales</span>
-              <strong>{totalPolls}</strong>
-            </article>
-            <article className="summary-item">
-              <span>Encuestas visibles</span>
-              <strong>{activePolls}</strong>
-            </article>
-            <article className="summary-item">
-              <span>Respuestas registradas</span>
-              <strong>{totalResponses}</strong>
-            </article>
-            <article className="summary-item">
-              <span>Areas verdes</span>
-              <strong>{greenSpaces.length}</strong>
-            </article>
-            <article className="summary-item">
-              <span>Superficie verde total</span>
-              <strong>{totalGreenArea.toFixed(0)} m2</strong>
-            </article>
-            <article className="summary-item">
-              <span>Arboles altos</span>
-              <strong>{totalTallTrees}</strong>
-            </article>
-            <article className="summary-item">
-              <span>Propuestas visibles</span>
-              <strong>{proposals.length}</strong>
-            </article>
+            {principalSummaryItems.map((item) => (
+              <article key={item.id} className="summary-item principal-summary-item">
+                <div className="principal-summary-item-header">
+                  <span className="principal-summary-item-label">{item.label}</span>
+                  <span className="principal-summary-item-chip" aria-hidden="true">
+                    {item.chip}
+                  </span>
+                </div>
+                <strong className="principal-summary-item-value">{item.value}</strong>
+              </article>
+            ))}
           </div>
 
           <div className="principal-highlights">
@@ -4172,7 +4655,8 @@ function App() {
           <p>No hay encuestas disponibles.</p>
         ) : (
           pagedSurveys.map((survey) => {
-            const previousAnswer = pollAnswers[survey.id];
+            const previousAnswer =
+              pollAnswers[survey.id] || survey.currentUserAnswer || "";
             const hasAnswered = Boolean(previousAnswer);
 
             return (
@@ -4197,7 +4681,8 @@ function App() {
                   <div className="survey-card-answer">
                     <span className="pill answered">Respondida</span>
                     <p className="previous-answer">
-                      Tu respuesta: {previousAnswer}
+                      Tu respuesta:{" "}
+                      {getSurveyAnswerLabel(survey.type, previousAnswer)}
                     </p>
                   </div>
                 )}
@@ -4229,14 +4714,14 @@ function App() {
                         </div>
                       ) : (
                         <label>
-                          Califica de 1 a 5
+                          Selecciona una opción
                           <select
                             value={voteValue}
                             onChange={(e) => setVoteValue(e.target.value)}
                           >
-                            {[1, 2, 3, 4, 5].map((value) => (
-                              <option key={value} value={String(value)}>
-                                {value}
+                            {SCALE_POLL_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
                               </option>
                             ))}
                           </select>
@@ -4266,7 +4751,7 @@ function App() {
                         setVoteValue(
                           survey.type === "yesno"
                             ? previousAnswer || "yes"
-                            : previousAnswer || "3",
+                            : previousAnswer || "regular",
                         );
                       }}
                     >
@@ -4274,6 +4759,14 @@ function App() {
                     </button>
                   )}
                 </div>
+                {hasAnswered ? (
+                  renderSurveyResults(survey)
+                ) : (
+                  <p className="small muted">
+                    Responde esta encuesta para ver el gráfico y el detalle de
+                    respuestas.
+                  </p>
+                )}
               </article>
             );
           })
@@ -4379,6 +4872,7 @@ function App() {
           onNavigateFindFlower={() => navigate("/find-the-flower")}
           onNavigateTreeTypes={() => navigate("/tree-types")}
           onNavigateTrees={() => navigate("/trees")}
+          onNavigateSurveys={() => navigate("/surveys")}
           onNavigateUsers={() => navigate("/admin-users")}
           themeMode={themeMode}
           onToggleTheme={() =>

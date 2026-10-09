@@ -18,6 +18,21 @@ export interface UserSeed {
   role_name: string;
 }
 
+export interface SurveySeed {
+  title: string;
+  description: string;
+  type: "yesno" | "scale";
+  active: boolean;
+  created_at: string;
+}
+
+export interface SurveyResponseSeed {
+  survey_title: string;
+  username: string;
+  answer: "yes" | "no" | "too_bad" | "bad" | "regular" | "good" | "excellent";
+  created_at: string;
+}
+
 export interface GreenSpaceSeed {
   name: string;
   location: string;
@@ -196,6 +211,92 @@ export const userSeeds: UserSeed[] = [
     avatar_url: "",
     is_active: true,
     role_name: "regular",
+  },
+];
+
+export const surveySeeds: SurveySeed[] = [
+  {
+    title: "¿Consideras suficiente el arbolado del campus?",
+    description:
+      "Queremos conocer si la cobertura actual de árboles es adecuada para el confort térmico.",
+    type: "yesno",
+    active: true,
+    created_at: "2026-09-01T10:00:00.000Z",
+  },
+  {
+    title: "¿Te sientes seguro en las zonas verdes durante la noche?",
+    description:
+      "Esta encuesta busca conocer tu percepción de seguridad en áreas verdes en horario nocturno.",
+    type: "yesno",
+    active: true,
+    created_at: "2026-09-05T08:40:00.000Z",
+  },
+  {
+    title: "Calidad del mantenimiento de áreas verdes",
+    description:
+      "Evalúa la calidad general del mantenimiento y limpieza de las áreas verdes.",
+    type: "scale",
+    active: true,
+    created_at: "2026-09-03T09:30:00.000Z",
+  },
+  {
+    title: "Percepción de sombra en rutas peatonales",
+    description:
+      "Indica cómo percibes la disponibilidad de sombra en los recorridos peatonales del campus.",
+    type: "scale",
+    active: false,
+    created_at: "2026-08-15T08:00:00.000Z",
+  },
+];
+
+export const surveyResponseSeeds: SurveyResponseSeed[] = [
+  {
+    survey_title: "¿Consideras suficiente el arbolado del campus?",
+    username: "regular.user",
+    answer: "yes",
+    created_at: "2026-09-01T11:10:00.000Z",
+  },
+  {
+    survey_title: "¿Consideras suficiente el arbolado del campus?",
+    username: "daniela.t",
+    answer: "no",
+    created_at: "2026-09-01T11:25:00.000Z",
+  },
+  {
+    survey_title: "¿Te sientes seguro en las zonas verdes durante la noche?",
+    username: "regular.user",
+    answer: "yes",
+    created_at: "2026-09-05T09:10:00.000Z",
+  },
+  {
+    survey_title: "¿Te sientes seguro en las zonas verdes durante la noche?",
+    username: "mateo.rios",
+    answer: "no",
+    created_at: "2026-09-05T09:25:00.000Z",
+  },
+  {
+    survey_title: "¿Te sientes seguro en las zonas verdes durante la noche?",
+    username: "laura.campos",
+    answer: "yes",
+    created_at: "2026-09-05T09:48:00.000Z",
+  },
+  {
+    survey_title: "Calidad del mantenimiento de áreas verdes",
+    username: "regular.user",
+    answer: "regular",
+    created_at: "2026-09-03T11:05:00.000Z",
+  },
+  {
+    survey_title: "Calidad del mantenimiento de áreas verdes",
+    username: "mateo.rios",
+    answer: "good",
+    created_at: "2026-09-03T11:50:00.000Z",
+  },
+  {
+    survey_title: "Calidad del mantenimiento de áreas verdes",
+    username: "laura.campos",
+    answer: "excellent",
+    created_at: "2026-09-03T12:12:00.000Z",
   },
 ];
 

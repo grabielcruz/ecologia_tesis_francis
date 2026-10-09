@@ -81,6 +81,25 @@ erDiagram
         int space_id FK
     }
 
+    Survey {
+        int survey_id PK
+        string title
+        text description
+        enum type "yesno|scale"
+        boolean active
+        datetime created_at
+        datetime updated_at
+    }
+
+    SurveyResponse {
+        int survey_response_id PK
+        int survey_id FK
+        int user_id FK
+        string answer
+        datetime created_at
+        datetime updated_at
+    }
+
     GreenMetricRecord {
         int record_id PK
         datetime calculation_date
@@ -185,6 +204,9 @@ erDiagram
 
     User ||--o{ ReportOfGreenArea : creates
     GreenSpace ||--o{ ReportOfGreenArea : has
+
+    Survey ||--o{ SurveyResponse : receives
+    User ||--o{ SurveyResponse : responds
 
     User ||--o{ GreenSpaceReview : writes
     GreenSpace ||--o{ GreenSpaceReview : has

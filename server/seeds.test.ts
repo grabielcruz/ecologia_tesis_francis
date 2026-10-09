@@ -13,6 +13,8 @@ import {
   ProposalOfGreenArea,
   ReportOfGreenArea,
   Role,
+  Survey,
+  SurveyResponse,
   TreeType,
   TreeInventory,
   User,
@@ -31,6 +33,8 @@ import {
   proposalSeeds,
   reportOfGreenAreaSeeds,
   roleSeeds,
+  surveyResponseSeeds,
+  surveySeeds,
   treeTypeSeeds,
   treeInventorySeeds,
   userSeeds,
@@ -85,6 +89,18 @@ describe("seedDatabase", () => {
     vi.spyOn(ReportOfGreenArea, "create").mockResolvedValue({} as never);
     vi.spyOn(GreenMetricRecord, "create").mockResolvedValue({} as never);
     vi.spyOn(FindFlowerScore, "create").mockResolvedValue({} as never);
+    vi.spyOn(Survey, "create").mockImplementation(
+      async (payload?: Record<string, unknown>) =>
+        ({
+          getDataValue: (key: string) => {
+            if (key === "survey_id") {
+              return String(payload?.title || "").length;
+            }
+            return undefined;
+          },
+        }) as never,
+    );
+    vi.spyOn(SurveyResponse, "create").mockResolvedValue({} as never);
     vi.spyOn(Event, "create").mockImplementation(
       async (payload?: Record<string, unknown>) =>
         ({
@@ -133,6 +149,8 @@ describe("seedDatabase", () => {
     expect(sequelize.sync).toHaveBeenCalledWith({ force: true });
     expect(Role.create).toHaveBeenCalledTimes(roleSeeds.length);
     expect(User.create).toHaveBeenCalledTimes(userSeeds.length);
+    expect(Survey.create).toHaveBeenCalled();
+    expect(SurveyResponse.create).toHaveBeenCalled();
     expect(GreenSpace.create).toHaveBeenCalledTimes(greenSpaceSeeds.length);
     expect(GreenSpaceReview.create).toHaveBeenCalledTimes(
       greenSpaceReviewSeeds.length,

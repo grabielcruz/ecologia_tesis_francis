@@ -15,6 +15,7 @@ import aiChatRoutes from "./routes/aiChat";
 import greenMetricsRoutes from "./routes/greenMetrics";
 import findFlowerRoutes from "./routes/findFlower";
 import eventRoutes from "./routes/events";
+import surveyRoutes from "./routes/surveys";
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
@@ -41,6 +42,7 @@ app.use("/api/ai-chat", aiChatRoutes);
 app.use("/api/green-metrics", greenMetricsRoutes);
 app.use("/api/find-the-flower", findFlowerRoutes);
 app.use("/api/events", eventRoutes);
+app.use("/api/surveys", surveyRoutes);
 
 initializeDatabase()
   .then(() => {

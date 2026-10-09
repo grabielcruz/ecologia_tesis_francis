@@ -11,6 +11,8 @@ import {
   ProposalOfGreenArea,
   ReportOfGreenArea,
   Role,
+  Survey,
+  SurveyResponse,
   TreeType,
   TreeInventory,
   User,
@@ -29,6 +31,8 @@ import {
   proposalSeeds,
   reportOfGreenAreaSeeds,
   roleSeeds,
+  surveyResponseSeeds,
+  surveySeeds,
   treeTypeSeeds,
   treeInventorySeeds,
   userSeeds,
@@ -55,6 +59,7 @@ export async function seedDatabase() {
   const proposalById: Record<number, ProposalOfGreenArea> = {};
   const treeTypeIdByName: Record<string, number> = {};
   const eventIdByTitle: Record<string, number> = {};
+  const surveyIdByTitle: Record<string, number> = {};
 
   const normalizeTreeNameKey = (value: string) =>
     value
@@ -98,6 +103,47 @@ export async function seedDatabase() {
       throw new Error(
         `User not found for find flower score seed: ${scoreSeed.username}`,
       );
+    }
+
+    for (const surveySeed of surveySeeds) {
+      const createdAt = new Date(surveySeed.created_at);
+      const createdSurvey = await Survey.create({
+        title: surveySeed.title,
+        description: surveySeed.description,
+        type: surveySeed.type,
+        active: surveySeed.active,
+        created_at: createdAt,
+        updated_at: createdAt,
+      });
+
+      surveyIdByTitle[surveySeed.title] = Number(
+        createdSurvey.getDataValue("survey_id"),
+      );
+    }
+
+    for (const surveyResponseSeed of surveyResponseSeeds) {
+      const surveyId = surveyIdByTitle[surveyResponseSeed.survey_title];
+      if (!surveyId) {
+        throw new Error(
+          `Survey not found for response seed: ${surveyResponseSeed.survey_title}`,
+        );
+      }
+
+      const userId = userIdByUsername[surveyResponseSeed.username];
+      if (!userId) {
+        throw new Error(
+          `User not found for survey response seed: ${surveyResponseSeed.username}`,
+        );
+      }
+
+      const createdAt = new Date(surveyResponseSeed.created_at);
+      await SurveyResponse.create({
+        survey_id: surveyId,
+        user_id: userId,
+        answer: surveyResponseSeed.answer,
+        created_at: createdAt,
+        updated_at: createdAt,
+      });
     }
 
     const updatedAt = new Date(scoreSeed.updated_at);
@@ -468,7 +514,7 @@ export async function seedDatabase() {
   }
 
   console.log(
-    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${findFlowerScoreSeeds.length} find flower scores, ${eventSeeds.length} events, ${eventEnrollmentSeeds.length} event enrollments, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${greenMetricRecordSeeds.length} green metric records, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
+    `Seeding complete: ${roleSeeds.length} roles, ${userSeeds.length} users, ${surveySeeds.length} surveys, ${surveyResponseSeeds.length} survey responses, ${findFlowerScoreSeeds.length} find flower scores, ${eventSeeds.length} events, ${eventEnrollmentSeeds.length} event enrollments, ${greenSpaceSeeds.length} green spaces, ${greenSpaceReviewSeeds.length} green space reviews, ${treeTypeSeeds.length} tree types, ${treeInventorySeeds.length} trees in inventory, ${reportOfGreenAreaSeeds.length} reports, ${greenMetricRecordSeeds.length} green metric records, ${proposalSeeds.length} proposals, ${voteOfProposalSeeds.length} votes, ${projectOfProposalSeeds.length} projects and ${projectUpdateOfProposalSeeds.length} project updates created.`,
   );
 }
 

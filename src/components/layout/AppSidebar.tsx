@@ -25,6 +25,7 @@ interface AppSidebarProps {
   onNavigateFindFlower: () => void;
   onNavigateTreeTypes: () => void;
   onNavigateTrees: () => void;
+  onNavigateSurveys: () => void;
   onNavigateUsers: () => void;
   themeMode: "light" | "dark";
   onToggleTheme: () => void;
@@ -59,6 +60,7 @@ export function AppSidebar({
   onNavigateFindFlower,
   onNavigateTreeTypes,
   onNavigateTrees,
+  onNavigateSurveys,
   onNavigateUsers,
   themeMode,
   onToggleTheme,
@@ -221,6 +223,16 @@ export function AppSidebar({
               AR
             </span>
             <span>Listado de árboles</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${route === "/surveys" ? "active" : ""}`}
+            onClick={onNavigateSurveys}
+          >
+            <span className="nav-icon" aria-hidden="true">
+              EN
+            </span>
+            <span>Encuestas</span>
           </button>
         </div>
 

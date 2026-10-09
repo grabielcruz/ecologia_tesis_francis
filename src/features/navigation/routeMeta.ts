@@ -125,6 +125,8 @@ export function getPageHeaderMeta(
                                         ? "Detalle de área verde"
                                         : route === "/green-spaces"
                                           ? "Áreas verdes del campus"
+                                          : route === "/surveys"
+                                            ? "Encuestas"
                                           : "Principal";
 
   const pageSubtitle =
@@ -168,6 +170,8 @@ export function getPageHeaderMeta(
                                         ? "Información completa, reseñas y sugerencias del espacio"
                                         : route === "/green-spaces"
                                           ? "Registro y consulta de espacios verdes universitarios"
+                                          : route === "/surveys"
+                                            ? "Participa en encuestas y consulta resultados comunitarios"
                                           : `Bienvenido${displayName ? `, ${displayName}` : ""}`;
 
   return {
