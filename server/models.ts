@@ -139,6 +139,11 @@ GreenSpace.init(
       allowNull: false,
       defaultValue: "[]",
     },
+    perimeter_points: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -250,82 +255,6 @@ TreeType.init(
     sequelize,
     modelName: "TreeType",
     tableName: "TreeType",
-    freezeTableName: true,
-    timestamps: false,
-  },
-);
-
-export class TreeTypeSuggestion extends Model {}
-TreeTypeSuggestion.init(
-  {
-    tree_type_suggestion_id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      defaultValue: "",
-    },
-    reference_images: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      defaultValue: "[]",
-    },
-    status: {
-      type: DataTypes.ENUM("pending", "approved", "rejected"),
-      allowNull: false,
-      defaultValue: "pending",
-    },
-    suggested_by_user_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "User",
-        key: "user_id",
-      },
-    },
-    approved_by_user_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: "User",
-        key: "user_id",
-      },
-    },
-    tree_type_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: "TreeType",
-        key: "type_id",
-      },
-    },
-    admin_notes: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "",
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-  },
-  {
-    sequelize,
-    modelName: "TreeTypeSuggestion",
-    tableName: "TreeTypeSuggestion",
     freezeTableName: true,
     timestamps: false,
   },
@@ -1096,21 +1025,6 @@ TreeInventory.belongsTo(User, {
   as: "ValidatedBy",
 });
 
-User.hasMany(TreeTypeSuggestion, { foreignKey: "suggested_by_user_id" });
-TreeTypeSuggestion.belongsTo(User, {
-  foreignKey: "suggested_by_user_id",
-  as: "SuggestedBy",
-});
-
-User.hasMany(TreeTypeSuggestion, { foreignKey: "approved_by_user_id" });
-TreeTypeSuggestion.belongsTo(User, {
-  foreignKey: "approved_by_user_id",
-  as: "ApprovedBy",
-});
-
-TreeType.hasMany(TreeTypeSuggestion, { foreignKey: "tree_type_id" });
-TreeTypeSuggestion.belongsTo(TreeType, { foreignKey: "tree_type_id" });
-
 const enforceFixedRoles = async () => {
   const fixedRoles = [
     { role_name: "admin", description: "System administrator" },
@@ -1222,9 +1136,36 @@ const ensureEventColumns = async () => {
   }
 };
 
+const ensureGreenSpacePerimeterColumn = async () => {
+  const queryInterface = sequelize.getQueryInterface();
+  const greenSpaceTable = await queryInterface.describeTable("GreenSpace");
+
+  if (!("perimeter_points" in greenSpaceTable)) {
+    await queryInterface.addColumn("GreenSpace", "perimeter_points", {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "[]",
+    });
+  }
+};
+
+const dropTreeTypeSuggestionTable = async () => {
+  const queryInterface = sequelize.getQueryInterface();
+  const tables = await queryInterface.showAllTables();
+  const hasTreeTypeSuggestionTable = tables
+    .map((table) => String(table))
+    .includes("TreeTypeSuggestion");
+
+  if (hasTreeTypeSuggestionTable) {
+    await queryInterface.dropTable("TreeTypeSuggestion");
+  }
+};
+
 export const initializeDatabase = async () => {
   try {
     await sequelize.sync();
+    await dropTreeTypeSuggestionTable();
+    await ensureGreenSpacePerimeterColumn();
     await ensureProposalValidationColumns();
     await ensureEventColumns();
     await enforceFixedRoles();

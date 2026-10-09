@@ -1,5 +1,6 @@
 import { ChangeEvent, FormEvent } from "react";
 import { AppModal } from "../AppModal";
+import { ImageUrlPreviewEditor } from "../ImageUrlPreviewEditor";
 
 interface GreenSpaceOption {
   id: number;
@@ -42,6 +43,15 @@ export function ProposalCreateModal({
   onClose,
 }: ProposalCreateModalProps) {
   if (!isOpen) return null;
+  const imageUrlRows = proposalImagesInput
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const removeImageUrl = (indexToRemove: number) => {
+    const next = imageUrlRows.filter((_, index) => index !== indexToRemove);
+    setProposalImagesInput(next.join("\n"));
+  };
 
   return (
     <AppModal
@@ -85,14 +95,11 @@ export function ProposalCreateModal({
             required
           />
         </label>
-        <label>
-          Imágenes relacionadas (una URL por línea)
-          <textarea
-            value={proposalImagesInput}
-            onChange={(e) => setProposalImagesInput(e.target.value)}
-            placeholder="/uploads/proposals/imagen-1.jpg"
-          />
-        </label>
+        <p className="small muted">Imágenes relacionadas</p>
+        <ImageUrlPreviewEditor
+          imageUrls={imageUrlRows}
+          onRemove={removeImageUrl}
+        />
         <div className="field-row">
           <label>
             Subir imágenes de la propuesta

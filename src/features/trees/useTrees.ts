@@ -1,10 +1,15 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { TreeHealthStatus, TreeInventoryItem } from "./types";
 import { TreeType } from "../treeTypes/types";
+import { isPointInsidePolygon } from "../geo/polygon";
 
 interface GreenSpaceOption {
   id: number;
   name: string;
+  perimeterPoints: Array<{
+    latitude: number;
+    longitude: number;
+  }>;
 }
 
 interface UseTreesParams {
@@ -166,6 +171,10 @@ export function useTrees({
       setError("Debes iniciar sesión para gestionar árboles");
       return false;
     }
+    if (editingTreeId === null && userRole !== "admin") {
+      setError("Solo administradores pueden registrar árboles");
+      return false;
+    }
 
     if (!treeNameInput.trim()) {
       setError("El nombre del árbol es obligatorio");
@@ -199,6 +208,35 @@ export function useTrees({
     ) {
       setError("La longitud debe estar entre -180 y 180");
       return false;
+    }
+
+    if (latitude !== null && longitude !== null) {
+      const selectedSpace = greenSpaces.find(
+        (greenSpace) => greenSpace.id === treeSpaceIdInput,
+      );
+
+      if (!selectedSpace) {
+        setError("Selecciona un área verde válida");
+        return false;
+      }
+
+      if ((selectedSpace.perimeterPoints || []).length < 3) {
+        setError("El área verde seleccionada no tiene un perímetro válido");
+        return false;
+      }
+
+      if (
+        !isPointInsidePolygon(
+          latitude,
+          longitude,
+          selectedSpace.perimeterPoints || [],
+        )
+      ) {
+        setError(
+          "La ubicación GPS del árbol debe estar dentro del perímetro del área verde",
+        );
+        return false;
+      }
     }
 
     setIsSubmittingTree(true);
@@ -241,9 +279,7 @@ export function useTrees({
         backendMessage ||
           (isEditing
             ? "Árbol actualizado correctamente."
-            : userRole === "admin"
-              ? "Árbol registrado correctamente."
-              : "Árbol enviado para validación de administrador."),
+            : "Árbol registrado correctamente."),
       );
       resetTreeForm();
       await fetchTrees();

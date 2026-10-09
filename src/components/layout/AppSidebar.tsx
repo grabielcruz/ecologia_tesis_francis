@@ -69,7 +69,18 @@ export function AppSidebar({
     <>
       <div className="brand">
         <div className="brand-title-row">
-          <h2>Panel del campus</h2>
+          <button
+            type="button"
+            className="brand-home-button"
+            onClick={onNavigateHome}
+            aria-label="Ir a principal"
+            title="Ir a principal"
+          >
+            <img src="/favicon.svg" alt="" aria-hidden="true" />
+          </button>
+          <div className="brand-copy">
+            <h2>Panel del campus</h2>
+          </div>
           <button
             type="button"
             className={`nav-theme-toggle ${
@@ -86,9 +97,6 @@ export function AppSidebar({
             <span className="sun-icon" aria-hidden="true" />
             <span className="moon-icon" aria-hidden="true" />
           </button>
-        </div>
-        <div>
-          <p>Accede a áreas verdes y tu perfil.</p>
         </div>
       </div>
       <nav className="nav-bar" aria-label="Navegacion principal">

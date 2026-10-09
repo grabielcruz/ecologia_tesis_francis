@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent } from "react";
 import { CampusEvent, CampusEventDetail } from "../../features/events/types";
 import { AppModal } from "../AppModal";
+import { ImageUrlPreviewEditor } from "../ImageUrlPreviewEditor";
 import { ImageCarousel } from "../ImageCarousel";
 
 interface EventDetailSectionProps {
@@ -95,6 +96,16 @@ export function EventDetailSection({
       </section>
     );
   }
+
+  const closureImageRows = closureImagesInput
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const removeClosureImage = (indexToRemove: number) => {
+    const next = closureImageRows.filter((_, index) => index !== indexToRemove);
+    setClosureImagesInput(next.join("\n"));
+  };
 
   return (
     <section className="box reports-box">
@@ -315,34 +326,12 @@ export function EventDetailSection({
               disabled={isUploadingEventImages}
             />
           </label>
-          <label>
-            URLs de fotos (una por línea)
-            <textarea
-              value={closureImagesInput}
-              onChange={(event) => setClosureImagesInput(event.target.value)}
-              placeholder="/uploads/events/foto-1.jpg"
-              rows={4}
-            />
-          </label>
-
-          {closureImagesInput
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0).length > 0 && (
-            <ImageCarousel
-              images={closureImagesInput
-                .split("\n")
-                .map((line) => line.trim())
-                .filter((line) => line.length > 0)}
-              title={
-                selectedEventForClosure
-                  ? `Cierre: ${selectedEventForClosure.title}`
-                  : "Cierre de evento"
-              }
-              resolveAssetUrl={resolveAssetUrl}
-              className="report-carousel"
-            />
-          )}
+          <p className="small muted">Fotos del evento</p>
+          <ImageUrlPreviewEditor
+            imageUrls={closureImageRows}
+            onRemove={removeClosureImage}
+            resolveAssetUrl={resolveAssetUrl}
+          />
 
           <div className="button-row">
             <button type="submit" disabled={isSubmittingClosure}>

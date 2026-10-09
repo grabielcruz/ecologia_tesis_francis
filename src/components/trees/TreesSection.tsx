@@ -253,12 +253,10 @@ export function TreesSection({
           Registro de árboles reales presentes en las áreas verdes, vinculados a
           tipos oficiales.
         </p>
-        {(userRole === "admin" || userRole === "regular") && (
+        {userRole === "admin" && (
           <div className="button-row">
             <button type="button" onClick={openCreateModal}>
-              {userRole === "regular"
-                ? "Registrar árbol para validación"
-                : "Registrar árbol"}
+              Registrar árbol
             </button>
           </div>
         )}
@@ -269,7 +267,7 @@ export function TreesSection({
               className="secondary"
               onClick={onOpenGreenSpaces}
             >
-              Áreas verdes
+              Volver al área verde
             </button>
             <span className="small muted">/</span>
             <span className="small muted">Árboles filtrados</span>
@@ -302,7 +300,7 @@ export function TreesSection({
         />
       </article>
 
-      {(userRole === "admin" || userRole === "regular") && (
+      {userRole === "admin" && (
         <TreeFormModal
           isOpen={showCreateModal}
           isEditing={false}

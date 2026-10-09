@@ -168,6 +168,7 @@ export async function seedDatabase() {
       total_area_m2: greenSpaceSeed.total_area_m2,
       trees_count: greenSpaceSeed.trees_count,
       images: JSON.stringify(greenSpaceSeed.images),
+      perimeter_points: JSON.stringify(greenSpaceSeed.perimeter_points),
     });
     spaceIdByName[greenSpaceSeed.name] = Number(
       createdGreenSpace.getDataValue("space_id"),

@@ -2,6 +2,9 @@ import bcrypt from "bcryptjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { seedDatabase } from "./seeds";
 import {
+  Event,
+  EventEnrollment,
+  FindFlowerScore,
   GreenMetricRecord,
   GreenSpace,
   GreenSpaceReview,
@@ -17,6 +20,9 @@ import {
   sequelize,
 } from "./models";
 import {
+  eventEnrollmentSeeds,
+  eventSeeds,
+  findFlowerScoreSeeds,
   greenMetricRecordSeeds,
   greenSpaceReviewSeeds,
   greenSpaceSeeds,
@@ -78,6 +84,19 @@ describe("seedDatabase", () => {
     vi.spyOn(TreeInventory, "create").mockResolvedValue({} as never);
     vi.spyOn(ReportOfGreenArea, "create").mockResolvedValue({} as never);
     vi.spyOn(GreenMetricRecord, "create").mockResolvedValue({} as never);
+    vi.spyOn(FindFlowerScore, "create").mockResolvedValue({} as never);
+    vi.spyOn(Event, "create").mockImplementation(
+      async (payload?: Record<string, unknown>) =>
+        ({
+          getDataValue: (key: string) => {
+            if (key === "event_id") {
+              return String(payload?.title || "").length;
+            }
+            return undefined;
+          },
+        }) as never,
+    );
+    vi.spyOn(EventEnrollment, "create").mockResolvedValue({} as never);
 
     vi.spyOn(ProposalOfGreenArea, "create").mockImplementation(
       async (payload?: Record<string, unknown>) =>
@@ -127,6 +146,13 @@ describe("seedDatabase", () => {
     );
     expect(GreenMetricRecord.create).toHaveBeenCalledTimes(
       greenMetricRecordSeeds.length,
+    );
+    expect(FindFlowerScore.create).toHaveBeenCalledTimes(
+      findFlowerScoreSeeds.length,
+    );
+    expect(Event.create).toHaveBeenCalledTimes(eventSeeds.length);
+    expect(EventEnrollment.create).toHaveBeenCalledTimes(
+      eventEnrollmentSeeds.length,
     );
     expect(ProposalOfGreenArea.create).toHaveBeenCalledTimes(
       proposalSeeds.length,

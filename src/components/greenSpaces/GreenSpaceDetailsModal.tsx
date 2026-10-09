@@ -1,4 +1,6 @@
 import { AppModal } from "../AppModal";
+import type { PerimeterPoint } from "./GreenSpacePerimeterEditor";
+import { GreenSpacePerimeterMap } from "./GreenSpacePerimeterMap";
 
 interface GreenSpaceDetails {
   id: number;
@@ -6,6 +8,7 @@ interface GreenSpaceDetails {
   location: string;
   totalAreaM2: number;
   tallTreeCount: number;
+  perimeterPoints: PerimeterPoint[];
 }
 
 interface GreenSpaceDetailsModalProps {
@@ -46,6 +49,10 @@ export function GreenSpaceDetailsModal({
             <span>Árboles altos</span>
             <strong>{greenSpace.tallTreeCount}</strong>
           </div>
+        </div>
+        <div className="green-space-perimeter-panel">
+          <h4>Perímetro geográfico</h4>
+          <GreenSpacePerimeterMap points={greenSpace.perimeterPoints || []} />
         </div>
         <div className="button-row">
           <button type="button" className="secondary" onClick={onClose}>

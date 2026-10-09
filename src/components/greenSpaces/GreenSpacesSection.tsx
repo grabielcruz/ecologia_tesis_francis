@@ -1,9 +1,11 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import {
   DefaultTable,
   DefaultTableColumn,
   DefaultTableExportColumn,
 } from "../DefaultTable";
+import type { PerimeterPoint } from "./GreenSpacePerimeterEditor";
+import { GreenSpacesOverviewMap } from "./GreenSpacesOverviewMap";
 
 interface GreenSpaceRow {
   id: number;
@@ -12,6 +14,7 @@ interface GreenSpaceRow {
   totalAreaM2: number;
   tallTreeCount: number;
   images: string[];
+  perimeterPoints: PerimeterPoint[];
   reviewSummary?: {
     totalReviews: number;
     averageRating: number;
@@ -39,6 +42,8 @@ export function GreenSpacesSection({
   greenSpaceModal,
   greenSpaceDetailsModal,
 }: GreenSpacesSectionProps) {
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+
   const greenSpaceColumns: DefaultTableColumn<GreenSpaceRow>[] = [
     {
       key: "thumbnail",
@@ -150,22 +155,61 @@ export function GreenSpacesSection({
 
       <article className="principal-panel">
         <h3>Áreas verdes del campus</h3>
-        <DefaultTable
-          rows={greenSpaces}
-          columns={greenSpaceColumns}
-          onRowClick={(space) => onNavigateGreenSpace(space.id)}
-          getRowId={(space) => space.id}
-          getSearchText={(space) =>
-            `${space.name} ${space.location} ${space.totalAreaM2} ${space.tallTreeCount}`
-          }
-          emptyMessage="No hay áreas verdes registradas."
-          searchPlaceholder="Buscar por nombre o ubicación"
-          onAdd={userRole === "admin" ? onOpenCreateGreenSpaceModal : undefined}
-          addButtonLabel="Nueva área verde"
-          exportTitle="Listado de áreas verdes"
-          exportFileName="areas-verdes-campus"
-          exportColumns={greenSpaceExportColumns}
-        />
+        <div className="green-spaces-view-toggle" role="tablist" aria-label="Vista de áreas verdes">
+          <button
+            type="button"
+            className={viewMode === "list" ? "active" : ""}
+            role="tab"
+            aria-selected={viewMode === "list"}
+            onClick={() => setViewMode("list")}
+          >
+            Listado
+          </button>
+          <button
+            type="button"
+            className={viewMode === "map" ? "active" : ""}
+            role="tab"
+            aria-selected={viewMode === "map"}
+            onClick={() => setViewMode("map")}
+          >
+            Mapa de polígonos
+          </button>
+        </div>
+        {viewMode === "list" ? (
+          <DefaultTable
+            rows={greenSpaces}
+            columns={greenSpaceColumns}
+            onRowClick={(space) => onNavigateGreenSpace(space.id)}
+            getRowId={(space) => space.id}
+            getSearchText={(space) =>
+              `${space.name} ${space.location} ${space.totalAreaM2} ${space.tallTreeCount}`
+            }
+            emptyMessage="No hay áreas verdes registradas."
+            searchPlaceholder="Buscar por nombre o ubicación"
+            onAdd={userRole === "admin" ? onOpenCreateGreenSpaceModal : undefined}
+            addButtonLabel="Nueva área verde"
+            exportTitle="Listado de áreas verdes"
+            exportFileName="areas-verdes-campus"
+            exportColumns={greenSpaceExportColumns}
+          />
+        ) : (
+          <div className="green-spaces-map-panel">
+            <p className="small muted">
+              Haz clic en cualquier polígono para abrir los detalles del área verde.
+            </p>
+            <GreenSpacesOverviewMap
+              greenSpaces={greenSpaces}
+              onClickGreenSpace={onNavigateGreenSpace}
+            />
+            {userRole === "admin" && (
+              <div className="button-row compact">
+                <button type="button" onClick={onOpenCreateGreenSpaceModal}>
+                  Nueva área verde
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </article>
       {greenSpaceModal}
       {greenSpaceDetailsModal}

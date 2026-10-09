@@ -6,6 +6,8 @@ import { DefaultTable, DefaultTableColumn } from "./components/DefaultTable";
 import { ImageCarousel } from "./components/ImageCarousel";
 import { GreenSpaceDetailsModal } from "./components/greenSpaces/GreenSpaceDetailsModal";
 import { GreenSpaceFormModal } from "./components/greenSpaces/GreenSpaceFormModal";
+import { GreenSpacePerimeterMap } from "./components/greenSpaces/GreenSpacePerimeterMap";
+import type { PerimeterPoint } from "./components/greenSpaces/GreenSpacePerimeterEditor";
 import { GreenSpacesSection } from "./components/greenSpaces/GreenSpacesSection";
 import { AppSidebar } from "./components/layout/AppSidebar";
 import { ProfileForm } from "./components/profile/ProfileForm";
@@ -67,6 +69,7 @@ interface GreenSpace {
   totalAreaM2: number;
   tallTreeCount: number;
   images: string[];
+  perimeterPoints: PerimeterPoint[];
   updatedAt?: string;
   reviewSummary?: {
     totalReviews: number;
@@ -344,6 +347,9 @@ function App() {
   const [spaceArea, setSpaceArea] = useState("");
   const [spaceTrees, setSpaceTrees] = useState("");
   const [spaceImagesInput, setSpaceImagesInput] = useState("");
+  const [spacePerimeterPoints, setSpacePerimeterPoints] = useState<
+    PerimeterPoint[]
+  >([]);
   const [uploadingSpaceImages, setUploadingSpaceImages] = useState(false);
   const [showGreenSpaceModal, setShowGreenSpaceModal] = useState(false);
   const [showGreenSpaceDetailsModal, setShowGreenSpaceDetailsModal] =
@@ -381,6 +387,9 @@ function App() {
   >([]);
   const [selectedTreeDetail, setSelectedTreeDetail] =
     useState<TreeInventoryItem | null>(null);
+  const [greenSpaceDetailTrees, setGreenSpaceDetailTrees] = useState<
+    TreeInventoryItem[]
+  >([]);
   const {
     reports,
     reportStateFilter,
@@ -497,6 +506,7 @@ function App() {
   });
   const {
     trees,
+    selectedSpaceFilterId,
     selectedSpaceFilterName,
     treeNameInput,
     treeHealthStatusInput,
@@ -536,6 +546,12 @@ function App() {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+  const removeSpaceImageAt = (indexToRemove: number) => {
+    const next = spaceImagePreviewList.filter(
+      (_, index) => index !== indexToRemove,
+    );
+    setSpaceImagesInput(next.join("\n"));
+  };
 
   const navigate = (path: string, replace = false) => {
     const currentPath = `${window.location.pathname}${window.location.search}`;
@@ -1419,6 +1435,39 @@ function App() {
     fetchTreeDetail();
   }, [token, route, selectedTreeId, trees]);
 
+  useEffect(() => {
+    if (!route.startsWith("/green-spaces/") || !selectedGreenSpaceId) {
+      setGreenSpaceDetailTrees([]);
+      return;
+    }
+
+    const fetchGreenSpaceTrees = async () => {
+      try {
+        const response = await fetch(`/api/trees?spaceId=${selectedGreenSpaceId}`, {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : undefined,
+        });
+
+        if (!response.ok) {
+          setGreenSpaceDetailTrees([]);
+          setError("No se pudo cargar el arbolado de esta área verde");
+          return;
+        }
+
+        const data = await response.json();
+        setGreenSpaceDetailTrees(Array.isArray(data) ? data : []);
+      } catch {
+        setGreenSpaceDetailTrees([]);
+        setError("No se pudo cargar el arbolado de esta área verde");
+      }
+    };
+
+    fetchGreenSpaceTrees();
+  }, [token, route, selectedGreenSpaceId]);
+
   const resetAdminForm = () => {
     setEditingSurvey(null);
     setPollTitle("");
@@ -1498,6 +1547,7 @@ function App() {
     setSpaceArea("");
     setSpaceTrees("");
     setSpaceImagesInput("");
+    setSpacePerimeterPoints([]);
     setUploadingSpaceImages(false);
   };
 
@@ -1727,6 +1777,10 @@ function App() {
       setError("Debes subir al menos una imagen desde tu equipo");
       return;
     }
+    if (spacePerimeterPoints.length < 3) {
+      setError("Debes marcar al menos 3 puntos para el perímetro");
+      return;
+    }
 
     const payload = {
       name: spaceName,
@@ -1734,6 +1788,7 @@ function App() {
       totalAreaM2: Number(spaceArea) || 0,
       tallTreeCount: Number(spaceTrees) || 0,
       images,
+      perimeterPoints: spacePerimeterPoints,
     };
 
     try {
@@ -1776,6 +1831,7 @@ function App() {
     setSpaceArea(String(space.totalAreaM2));
     setSpaceTrees(String(space.tallTreeCount));
     setSpaceImagesInput((space.images || []).join("\n"));
+    setSpacePerimeterPoints(space.perimeterPoints || []);
     setShowGreenSpaceModal(true);
   };
 
@@ -2693,6 +2749,7 @@ function App() {
         spaceArea={spaceArea}
         spaceTrees={spaceTrees}
         spaceImagePreviewList={spaceImagePreviewList}
+        spacePerimeterPoints={spacePerimeterPoints}
         uploadingSpaceImages={uploadingSpaceImages}
         onSpaceNameChange={setSpaceName}
         onSpaceLocationChange={setSpaceLocation}
@@ -2700,6 +2757,8 @@ function App() {
         onSpaceTreesChange={setSpaceTrees}
         onUploadGreenSpaceImages={uploadGreenSpaceImages}
         onResolveAssetUrl={resolveAssetUrl}
+        onRemoveImage={removeSpaceImageAt}
+        onSpacePerimeterPointsChange={setSpacePerimeterPoints}
         onSubmit={saveGreenSpace}
         onClose={closeGreenSpaceModal}
         onDelete={
@@ -2961,6 +3020,15 @@ function App() {
               resolveAssetUrl={resolveAssetUrl}
             />
           )}
+
+          <div className="green-space-perimeter-panel">
+            <h4>Perímetro geográfico</h4>
+            <GreenSpacePerimeterMap
+              points={selectedGreenSpace.perimeterPoints || []}
+              trees={greenSpaceDetailTrees}
+              onClickTree={(treeId) => navigate(`/trees/${treeId}`)}
+            />
+          </div>
 
           <div className="green-space-review-box">
             <h4>Califica este espacio (0 a 5 estrellas)</h4>
@@ -3895,7 +3963,11 @@ function App() {
         greenSpaces={greenSpaces}
         userRole={user?.role}
         selectedSpaceFilterName={selectedSpaceFilterName}
-        onOpenGreenSpaces={() => navigate("/green-spaces")}
+        onOpenGreenSpaces={() =>
+          selectedSpaceFilterId
+            ? navigate(`/green-spaces/${selectedSpaceFilterId}`)
+            : navigate("/green-spaces")
+        }
         onClearSpaceFilter={() => navigate("/trees")}
         treeNameInput={treeNameInput}
         treeHealthStatusInput={treeHealthStatusInput}

@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent, useState } from "react";
 import { AppModal } from "../AppModal";
 import { ImageCarousel } from "../ImageCarousel";
+import { ImageUrlPreviewEditor } from "../ImageUrlPreviewEditor";
 import {
   ProjectListEntry,
   ProposalProjectDetails,
@@ -108,6 +109,17 @@ export function ProjectActivityDetailSection({
 
   const selectedUpdate: ProposalProjectUpdate | null =
     updates.find((update) => update.id === selectedProjectUpdateId) || null;
+  const projectUpdateImageRows = projectUpdateImagesInput
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const removeProjectUpdateImage = (indexToRemove: number) => {
+    const next = projectUpdateImageRows.filter(
+      (_, index) => index !== indexToRemove,
+    );
+    setProjectUpdateImagesInput(next.join("\n"));
+  };
 
   if (!selectedUpdate) {
     return (
@@ -256,14 +268,12 @@ export function ProjectActivityDetailSection({
                 : "Puedes subir una o varias imágenes"}
             </span>
           </label>
-          <label>
-            Rutas cargadas
-            <textarea
-              value={projectUpdateImagesInput}
-              onChange={(e) => setProjectUpdateImagesInput(e.target.value)}
-              placeholder="Se completa automáticamente al subir imágenes"
-            />
-          </label>
+          <p className="small muted">Imágenes de actividad</p>
+          <ImageUrlPreviewEditor
+            imageUrls={projectUpdateImageRows}
+            onRemove={removeProjectUpdateImage}
+            resolveAssetUrl={resolveAssetUrl}
+          />
           <div className="button-row">
             <button type="submit" disabled={isSubmittingProjectUpdate}>
               {isSubmittingProjectUpdate

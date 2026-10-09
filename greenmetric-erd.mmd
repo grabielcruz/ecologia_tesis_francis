@@ -29,6 +29,7 @@ erDiagram
         int total_area_m2
         int trees_count
         text images
+        text perimeter_points
         datetime created_at
         datetime updated_at
     }
@@ -64,20 +65,6 @@ erDiagram
         int submitted_by_user_id FK
         int validated_by_user_id FK "nullable"
         text images
-        datetime created_at
-        datetime updated_at
-    }
-
-    TreeTypeSuggestion {
-        int tree_type_suggestion_id PK
-        string name
-        text description
-        text reference_images
-        enum status "pending|approved|rejected"
-        int suggested_by_user_id FK
-        int approved_by_user_id FK "nullable"
-        int tree_type_id FK "nullable"
-        string admin_notes
         datetime created_at
         datetime updated_at
     }
@@ -124,6 +111,10 @@ erDiagram
         int minimum_votes_required "nullable"
         datetime voting_starts "nullable"
         datetime voting_ends "nullable"
+        string approximate_execution_duration "nullable"
+        float estimated_budget "nullable"
+        text proposal_images
+        text rejection_reason "nullable"
         int user_id FK
         int space_id FK
         datetime created_at
@@ -159,6 +150,36 @@ erDiagram
         datetime created_at
     }
 
+    FindFlowerScore {
+        int find_flower_score_id PK
+        int user_id FK "unique"
+        int max_score
+        int best_time_seconds "nullable"
+        int best_moves "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+
+    Event {
+        int event_id PK
+        string title
+        text description
+        datetime event_date "nullable"
+        enum status "open|closed"
+        text closure_description "nullable"
+        text closure_images
+        int created_by_user_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
+    EventEnrollment {
+        int event_enrollment_id PK
+        int event_id FK
+        int user_id FK
+        datetime created_at
+    }
+
     %% Relationships defined in Sequelize associations
     Role ||--o{ User : assigns
 
@@ -186,6 +207,8 @@ erDiagram
     User ||--o{ TreeInventory : submits
     User ||--o{ TreeInventory : validates
 
-    User ||--o{ TreeTypeSuggestion : suggests
-    User ||--o{ TreeTypeSuggestion : reviews
-    TreeType ||--o{ TreeTypeSuggestion : links
+    User ||--|| FindFlowerScore : has_score
+
+    User ||--o{ Event : creates
+    Event ||--o{ EventEnrollment : has_participants
+    User ||--o{ EventEnrollment : enrolls

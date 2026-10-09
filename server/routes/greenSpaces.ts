@@ -73,6 +73,49 @@ const parseImages = (value: string) => {
   }
 };
 
+interface PerimeterPoint {
+  latitude: number;
+  longitude: number;
+}
+
+const normalizePerimeterPoints = (value: unknown): PerimeterPoint[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((point) => {
+      if (!point || typeof point !== "object") {
+        return null;
+      }
+      const latitude = Number(
+        (point as { latitude?: unknown; lat?: unknown }).latitude ??
+          (point as { latitude?: unknown; lat?: unknown }).lat,
+      );
+      const longitude = Number(
+        (point as { longitude?: unknown; lng?: unknown }).longitude ??
+          (point as { longitude?: unknown; lng?: unknown }).lng,
+      );
+
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180
+      ) {
+        return null;
+      }
+
+      return {
+        latitude,
+        longitude,
+      };
+    })
+    .filter((point): point is PerimeterPoint => point !== null);
+};
+
 const serializeGreenSpace = (row: GreenSpace) => ({
   id: row.getDataValue("space_id"),
   name: row.getDataValue("name"),
@@ -80,6 +123,9 @@ const serializeGreenSpace = (row: GreenSpace) => ({
   totalAreaM2: row.getDataValue("total_area_m2"),
   tallTreeCount: row.getDataValue("trees_count"),
   images: parseImages(String(row.getDataValue("images") || "[]")),
+  perimeterPoints: parseImages(
+    String(row.getDataValue("perimeter_points") || "[]"),
+  ),
   updatedAt: row.getDataValue("updated_at"),
 });
 
@@ -195,7 +241,14 @@ router.post(
   authenticate,
   requireAdmin,
   async (req: AuthRequest, res: Response) => {
-    const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
+    const {
+      name,
+      location,
+      totalAreaM2,
+      tallTreeCount,
+      images,
+      perimeterPoints,
+    } = req.body;
 
     if (!name || !location) {
       return res
@@ -213,12 +266,20 @@ router.post(
         .json({ error: "Debes incluir al menos una imagen" });
     }
 
+    const normalizedPerimeterPoints = normalizePerimeterPoints(perimeterPoints);
+    if (normalizedPerimeterPoints.length < 3) {
+      return res.status(400).json({
+        error: "Debes indicar al menos 3 puntos válidos para el perímetro",
+      });
+    }
+
     const created = await GreenSpace.create({
       name,
       location,
       total_area_m2: Number(totalAreaM2) || 0,
       trees_count: Number(tallTreeCount) || 0,
       images: JSON.stringify(imageList),
+      perimeter_points: JSON.stringify(normalizedPerimeterPoints),
       updated_at: new Date(),
     });
 
@@ -239,7 +300,14 @@ router.put(
     const updates: Record<string, unknown> = {
       updated_at: new Date(),
     };
-    const { name, location, totalAreaM2, tallTreeCount, images } = req.body;
+    const {
+      name,
+      location,
+      totalAreaM2,
+      tallTreeCount,
+      images,
+      perimeterPoints,
+    } = req.body;
 
     if (typeof name !== "undefined") updates.name = name;
     if (typeof location !== "undefined") updates.location = location;
@@ -255,6 +323,15 @@ router.put(
           (img) => typeof img === "string" && img.trim().length > 0,
         ),
       );
+    }
+    if (typeof perimeterPoints !== "undefined") {
+      const normalizedPerimeterPoints = normalizePerimeterPoints(perimeterPoints);
+      if (normalizedPerimeterPoints.length < 3) {
+        return res.status(400).json({
+          error: "Debes indicar al menos 3 puntos válidos para el perímetro",
+        });
+      }
+      updates.perimeter_points = JSON.stringify(normalizedPerimeterPoints);
     }
 
     await row.update(updates);

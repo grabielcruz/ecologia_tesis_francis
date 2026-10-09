@@ -1,5 +1,10 @@
 import { ChangeEvent, FormEvent } from "react";
 import { AppModal } from "../AppModal";
+import { ImageUrlPreviewEditor } from "../ImageUrlPreviewEditor";
+import {
+  GreenSpacePerimeterEditor,
+  PerimeterPoint,
+} from "./GreenSpacePerimeterEditor";
 
 interface GreenSpaceFormModalProps {
   isOpen: boolean;
@@ -9,6 +14,7 @@ interface GreenSpaceFormModalProps {
   spaceArea: string;
   spaceTrees: string;
   spaceImagePreviewList: string[];
+  spacePerimeterPoints: PerimeterPoint[];
   uploadingSpaceImages: boolean;
   onSpaceNameChange: (value: string) => void;
   onSpaceLocationChange: (value: string) => void;
@@ -16,6 +22,8 @@ interface GreenSpaceFormModalProps {
   onSpaceTreesChange: (value: string) => void;
   onUploadGreenSpaceImages: (event: ChangeEvent<HTMLInputElement>) => void;
   onResolveAssetUrl: (assetPath: string) => string;
+  onRemoveImage: (index: number) => void;
+  onSpacePerimeterPointsChange: (points: PerimeterPoint[]) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onClose: () => void;
   onDelete?: () => void;
@@ -29,6 +37,7 @@ export function GreenSpaceFormModal({
   spaceArea,
   spaceTrees,
   spaceImagePreviewList,
+  spacePerimeterPoints,
   uploadingSpaceImages,
   onSpaceNameChange,
   onSpaceLocationChange,
@@ -36,6 +45,8 @@ export function GreenSpaceFormModal({
   onSpaceTreesChange,
   onUploadGreenSpaceImages,
   onResolveAssetUrl,
+  onRemoveImage,
+  onSpacePerimeterPointsChange,
   onSubmit,
   onClose,
   onDelete,
@@ -99,26 +110,20 @@ export function GreenSpaceFormModal({
           </label>
         </div>
 
+        <GreenSpacePerimeterEditor
+          points={spacePerimeterPoints}
+          setPoints={onSpacePerimeterPointsChange}
+        />
+
         <p className="muted">
           Las imágenes se agregan solo desde tu equipo con el botón "Elegir
           archivos".
         </p>
-        {spaceImagePreviewList.length > 0 && (
-          <div className="green-space-preview-list">
-            {spaceImagePreviewList.map((image, index) => (
-              <figure
-                key={`${image}-${index}`}
-                className="green-space-preview-item"
-              >
-                <img
-                  src={onResolveAssetUrl(image)}
-                  alt={`Previsualización ${index + 1}`}
-                />
-                <figcaption>{image}</figcaption>
-              </figure>
-            ))}
-          </div>
-        )}
+        <ImageUrlPreviewEditor
+          imageUrls={spaceImagePreviewList}
+          onRemove={onRemoveImage}
+          resolveAssetUrl={onResolveAssetUrl}
+        />
 
         <label>
           Imágenes del área verde (solo carga local)
@@ -130,9 +135,6 @@ export function GreenSpaceFormModal({
             disabled={uploadingSpaceImages}
           />
         </label>
-        {spaceImagePreviewList.length === 0 && (
-          <p className="muted">Aún no se han subido imágenes.</p>
-        )}
         {uploadingSpaceImages && (
           <p className="muted">Subiendo imágenes, por favor espera...</p>
         )}

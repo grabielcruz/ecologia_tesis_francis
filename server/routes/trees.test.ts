@@ -130,9 +130,18 @@ const makeTreeRow = ({
   };
 };
 
-const makeGreenSpaceRow = (treesCount = 10) => {
+const makeGreenSpaceRow = (
+  treesCount = 10,
+  perimeterPoints = [
+    { latitude: 10.06555, longitude: -69.32345 },
+    { latitude: 10.06582, longitude: -69.32318 },
+    { latitude: 10.06558, longitude: -69.32292 },
+    { latitude: 10.0653, longitude: -69.3232 },
+  ],
+) => {
   const values: Record<string, unknown> = {
     trees_count: treesCount,
+    perimeter_points: JSON.stringify(perimeterPoints),
   };
 
   return {
@@ -183,26 +192,10 @@ describe("tree inventory routes", () => {
     });
   });
 
-  it("allows regular users to submit trees as pending", async () => {
-    const createdPendingTree = makeTreeRow({
-      typeId: null,
-      status: "pending",
-      validatedByUserId: null,
-    });
-
-    vi.mocked(GreenSpace.findByPk).mockResolvedValue(
-      makeGreenSpaceRow() as never,
-    );
-    vi.mocked(TreeInventory.create).mockResolvedValue(
-      createdPendingTree as never,
-    );
-    vi.mocked(TreeInventory.findByPk).mockResolvedValue(
-      createdPendingTree as never,
-    );
-
+  it("rejects tree registration for regular users", async () => {
     const response = await request(app)
       .post("/api/trees")
-      .set("Authorization", "Bearer any-token")
+      .set("Authorization", testAuthHeader)
       .send({
         name: "Arbol enviado",
         healthStatus: "healthy",
@@ -211,23 +204,17 @@ describe("tree inventory routes", () => {
         longitude: -69.32198,
       });
 
-    expect(response.status).toBe(201);
-    expect(response.body.tree).toMatchObject({
-      id: 7,
-      status: "pending",
-      typeId: null,
-      latitude: 10.06473,
-      longitude: -69.32198,
-    });
-    expect(TreeInventory.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        latitude: 10.06473,
-        longitude: -69.32198,
-      }),
-    );
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: "Solo administradores" });
+    expect(TreeInventory.create).not.toHaveBeenCalled();
   });
 
   it("rejects incomplete or out-of-range GPS coordinates", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
     const incompleteResponse = await request(app)
       .post("/api/trees")
       .set("Authorization", testAuthHeader)
@@ -289,10 +276,49 @@ describe("tree inventory routes", () => {
     });
   });
 
-  it("allows any authenticated user to upload tree images", async () => {
+  it("rejects coordinates outside the selected green-space perimeter", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    vi.mocked(GreenSpace.findByPk).mockResolvedValue(makeGreenSpaceRow(20) as never);
+
+    const response = await request(app)
+      .post("/api/trees")
+      .set("Authorization", testAuthHeader)
+      .send({
+        name: "Arbol fuera",
+        healthStatus: "healthy",
+        spaceId: 10,
+        latitude: 10.0675,
+        longitude: -69.325,
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("dentro del perímetro");
+    expect(TreeInventory.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects tree image upload for regular users", async () => {
     const response = await request(app)
       .post("/api/trees/images")
-      .set("Authorization", "Bearer any-token")
+      .set("Authorization", testAuthHeader)
+      .attach("images", Buffer.from([0xff, 0xd8, 0xff]), "tree.jpg");
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: "Solo administradores" });
+  });
+
+  it("allows admin to upload tree images", async () => {
+    vi.mocked(jwt.verify).mockReturnValue({
+      user_id: 1,
+      role: "admin",
+    } as never);
+
+    const response = await request(app)
+      .post("/api/trees/images")
+      .set("Authorization", testAuthHeader)
       .attach("images", Buffer.from([0xff, 0xd8, 0xff]), "tree.jpg");
 
     expect(response.status).toBe(201);

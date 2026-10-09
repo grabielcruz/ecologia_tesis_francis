@@ -1,7 +1,9 @@
 import { ChangeEvent, FormEvent } from "react";
 import { AppModal } from "../AppModal";
+import { ImageUrlPreviewEditor } from "../ImageUrlPreviewEditor";
 import { TreeHealthStatus } from "../../features/trees/types";
 import { TreeType } from "../../features/treeTypes/types";
+import { TreeLocationPicker } from "./TreeLocationPicker";
 
 interface GreenSpaceOption {
   id: number;
@@ -99,9 +101,7 @@ export function TreeFormModal({
       description={
         isEditing
           ? "Actualiza la información del árbol seleccionado."
-          : userRole === "regular"
-            ? "Registra un árbol para validación administrativa."
-            : "Registra un nuevo árbol en el inventario."
+          : "Registra un nuevo árbol en el inventario."
       }
     >
       <form className="admin-form" onSubmit={handleSubmit}>
@@ -115,11 +115,7 @@ export function TreeFormModal({
           <input
             value={treeNameInput}
             onChange={(e) => setTreeNameInput(e.target.value)}
-            placeholder={
-              userRole === "regular"
-                ? "Ejemplo: Árbol nuevo"
-                : "Ejemplo: Árbol JC-10"
-            }
+            placeholder="Ejemplo: Árbol JC-10"
             required
           />
         </label>
@@ -198,38 +194,22 @@ export function TreeFormModal({
               />
             </label>
           </div>
+          <TreeLocationPicker
+            latitudeInput={treeLatitudeInput}
+            longitudeInput={treeLongitudeInput}
+            setLatitudeInput={setTreeLatitudeInput}
+            setLongitudeInput={setTreeLongitudeInput}
+          />
           <p className="small muted">
             Completa ambas coordenadas o deja ambos campos vacíos.
           </p>
         </fieldset>
 
-        <label>
-          Galería de imágenes (una URL por línea)
-          <textarea
-            value={treeImagesInput}
-            onChange={(e) => setTreeImagesInput(e.target.value)}
-            placeholder="https://..."
-          />
-        </label>
-        {imageUrlRows.length > 0 && (
-          <div className="green-space-preview-list">
-            {imageUrlRows.map((imageUrl, index) => (
-              <div
-                key={`tree-gallery-url-${index}`}
-                className="button-row compact"
-              >
-                <span className="small muted">{imageUrl}</span>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => removeImageUrl(index)}
-                >
-                  Quitar
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <p className="small muted">Galería de imágenes</p>
+        <ImageUrlPreviewEditor
+          imageUrls={imageUrlRows}
+          onRemove={removeImageUrl}
+        />
 
         <label>
           Subir imágenes para la galería
@@ -250,14 +230,10 @@ export function TreeFormModal({
             {isSubmittingTree
               ? isEditing
                 ? "Guardando..."
-                : userRole === "regular"
-                  ? "Enviando..."
-                  : "Guardando..."
+                : "Guardando..."
               : isEditing
                 ? "Actualizar"
-                : userRole === "regular"
-                  ? "Enviar para validación"
-                  : "Registrar"}
+                : "Registrar"}
           </button>
           <button type="button" className="secondary" onClick={handleClose}>
             Cancelar

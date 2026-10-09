@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { Op } from "sequelize";
 import { GreenSpace, TreeInventory, TreeType, User } from "../models";
+import { isPointInsidePolygon, PolygonPoint } from "../geo";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "secret_key";
@@ -112,6 +113,75 @@ const parseStringArray = (value: unknown): string[] => {
   } catch {
     return [];
   }
+};
+
+const parsePerimeterPoints = (value: unknown): PolygonPoint[] => {
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map((entry) => {
+        if (!entry || typeof entry !== "object") {
+          return null;
+        }
+
+        const latitude = Number(
+          (entry as { latitude?: unknown; lat?: unknown }).latitude ??
+            (entry as { latitude?: unknown; lat?: unknown }).lat,
+        );
+        const longitude = Number(
+          (entry as { longitude?: unknown; lng?: unknown }).longitude ??
+            (entry as { longitude?: unknown; lng?: unknown }).lng,
+        );
+
+        if (
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude) ||
+          latitude < -90 ||
+          latitude > 90 ||
+          longitude < -180 ||
+          longitude > 180
+        ) {
+          return null;
+        }
+
+        return { latitude, longitude };
+      })
+      .filter((entry): entry is PolygonPoint => entry !== null);
+  } catch {
+    return [];
+  }
+};
+
+const validateCoordinatesWithinGreenSpace = (
+  greenSpace: GreenSpace,
+  latitude: number | null,
+  longitude: number | null,
+) => {
+  if (latitude === null || longitude === null) {
+    return null;
+  }
+
+  const perimeterPoints = parsePerimeterPoints(
+    greenSpace.getDataValue("perimeter_points"),
+  );
+
+  if (perimeterPoints.length < 3) {
+    return "El área verde seleccionada no tiene un perímetro válido";
+  }
+
+  if (!isPointInsidePolygon(latitude, longitude, perimeterPoints)) {
+    return "La ubicación GPS del árbol debe estar dentro del perímetro del área verde";
+  }
+
+  return null;
 };
 
 const toIsoStringOrNull = (value: unknown) => {
@@ -304,6 +374,7 @@ router.get(
 router.post(
   "/images",
   authenticate,
+  requireAdmin,
   uploadTreeImages.array("images", 10),
   async (req: AuthRequest, res: Response) => {
     const files = (req.files as Express.Multer.File[]) || [];
@@ -385,101 +456,110 @@ router.get(
   },
 );
 
-router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({ error: "No autorizado" });
-  }
-
-  const name = String(req.body?.name || "").trim();
-  const healthStatus = String(req.body?.healthStatus || "healthy")
-    .trim()
-    .toLowerCase();
-  const typeId = Number(req.body?.typeId);
-  const hasTypeId = Number.isFinite(typeId) && typeId > 0;
-  const spaceId = Number(req.body?.spaceId);
-  const imageUrls = parseStringArray(req.body?.imageUrls);
-  const coordinates = parseCoordinates(
-    req.body?.latitude,
-    req.body?.longitude,
-  );
-
-  if (!name) {
-    return res
-      .status(400)
-      .json({ error: "El nombre del árbol es obligatorio" });
-  }
-
-  if (!["healthy", "regular", "sick", "dead"].includes(healthStatus)) {
-    return res.status(400).json({ error: "Estado de salud inválido" });
-  }
-
-  if (!Number.isFinite(spaceId) || spaceId <= 0) {
-    return res.status(400).json({ error: "Área verde inválida" });
-  }
-
-  if ("error" in coordinates) {
-    return res.status(400).json({ error: coordinates.error });
-  }
-
-  if (hasTypeId) {
-    const treeType = await TreeType.findByPk(typeId);
-    if (!treeType) {
-      return res.status(404).json({ error: "Tipo de árbol no encontrado" });
+router.post(
+  "/",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "No autorizado" });
     }
-  }
 
-  const greenSpace = await GreenSpace.findByPk(spaceId);
-  if (!greenSpace) {
-    return res.status(404).json({ error: "Área verde no encontrada" });
-  }
+    const name = String(req.body?.name || "").trim();
+    const healthStatus = String(req.body?.healthStatus || "healthy")
+      .trim()
+      .toLowerCase();
+    const typeId = Number(req.body?.typeId);
+    const hasTypeId = Number.isFinite(typeId) && typeId > 0;
+    const spaceId = Number(req.body?.spaceId);
+    const imageUrls = parseStringArray(req.body?.imageUrls);
+    const coordinates = parseCoordinates(
+      req.body?.latitude,
+      req.body?.longitude,
+    );
 
-  const created = await TreeInventory.create({
-    name,
-    health_status: healthStatus,
-    type_id: hasTypeId ? typeId : null,
-    space_id: spaceId,
-    latitude: coordinates.latitude,
-    longitude: coordinates.longitude,
-    status: req.user.role === "admin" ? "approved" : "pending",
-    submitted_by_user_id: req.user.user_id,
-    validated_by_user_id: req.user.role === "admin" ? req.user.user_id : null,
-    images: JSON.stringify(imageUrls),
-    created_at: new Date(),
-    updated_at: new Date(),
-  });
+    if (!name) {
+      return res
+        .status(400)
+        .json({ error: "El nombre del árbol es obligatorio" });
+    }
 
-  if (req.user.role === "admin") {
+    if (!["healthy", "regular", "sick", "dead"].includes(healthStatus)) {
+      return res.status(400).json({ error: "Estado de salud inválido" });
+    }
+
+    if (!Number.isFinite(spaceId) || spaceId <= 0) {
+      return res.status(400).json({ error: "Área verde inválida" });
+    }
+
+    if ("error" in coordinates) {
+      return res.status(400).json({ error: coordinates.error });
+    }
+
+    if (hasTypeId) {
+      const treeType = await TreeType.findByPk(typeId);
+      if (!treeType) {
+        return res.status(404).json({ error: "Tipo de árbol no encontrado" });
+      }
+    }
+
+    const greenSpace = await GreenSpace.findByPk(spaceId);
+    if (!greenSpace) {
+      return res.status(404).json({ error: "Área verde no encontrada" });
+    }
+
+    const coordinateValidationError = validateCoordinatesWithinGreenSpace(
+      greenSpace,
+      coordinates.latitude,
+      coordinates.longitude,
+    );
+    if (coordinateValidationError) {
+      return res.status(400).json({ error: coordinateValidationError });
+    }
+
+    const created = await TreeInventory.create({
+      name,
+      health_status: healthStatus,
+      type_id: hasTypeId ? typeId : null,
+      space_id: spaceId,
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+      status: "approved",
+      submitted_by_user_id: req.user.user_id,
+      validated_by_user_id: req.user.user_id,
+      images: JSON.stringify(imageUrls),
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
     await applyTreeCountDelta(spaceId, 1);
-  }
 
-  const withRelations = await TreeInventory.findByPk(
-    created.getDataValue("tree_id"),
-    {
-      include: [
-        { model: TreeType, attributes: ["type_id", "name"] },
-        { model: GreenSpace, attributes: ["space_id", "name"] },
-        {
-          model: User,
-          as: "SubmittedBy",
-          attributes: ["user_id", "username", "name"],
-        },
-        {
-          model: User,
-          as: "ValidatedBy",
-          attributes: ["user_id", "username", "name"],
-        },
-      ],
-    },
-  );
+    const withRelations = await TreeInventory.findByPk(
+      created.getDataValue("tree_id"),
+      {
+        include: [
+          { model: TreeType, attributes: ["type_id", "name"] },
+          { model: GreenSpace, attributes: ["space_id", "name"] },
+          {
+            model: User,
+            as: "SubmittedBy",
+            attributes: ["user_id", "username", "name"],
+          },
+          {
+            model: User,
+            as: "ValidatedBy",
+            attributes: ["user_id", "username", "name"],
+          },
+        ],
+      },
+    );
 
-  return res.status(201).json({
-    message:
-      req.user.role === "admin"
-        ? "Árbol registrado correctamente"
-        : "Árbol enviado para validación de administrador",
-    tree: serializeTree((withRelations || created) as TreeInventory),
-  });
-});
+    return res.status(201).json({
+      message: "Árbol registrado correctamente",
+      tree: serializeTree((withRelations || created) as TreeInventory),
+    });
+  },
+);
 
 router.put(
   "/:id",
@@ -537,6 +617,8 @@ router.put(
       }
     }
 
+    let targetGreenSpace: GreenSpace | null = null;
+
     if (typeof req.body?.spaceId !== "undefined") {
       const spaceId = Number(req.body.spaceId);
       if (!Number.isFinite(spaceId) || spaceId <= 0) {
@@ -548,12 +630,16 @@ router.put(
         return res.status(404).json({ error: "Área verde no encontrada" });
       }
 
+      targetGreenSpace = greenSpace;
       payload.space_id = spaceId;
     }
 
     if (typeof req.body?.imageUrls !== "undefined") {
       payload.images = JSON.stringify(parseStringArray(req.body.imageUrls));
     }
+
+    let parsedLatitude = row.getDataValue("latitude");
+    let parsedLongitude = row.getDataValue("longitude");
 
     if (
       typeof req.body?.latitude !== "undefined" ||
@@ -569,6 +655,39 @@ router.put(
 
       payload.latitude = coordinates.latitude;
       payload.longitude = coordinates.longitude;
+      parsedLatitude = coordinates.latitude;
+      parsedLongitude = coordinates.longitude;
+    }
+
+    const effectiveSpaceId =
+      typeof payload.space_id !== "undefined"
+        ? Number(payload.space_id)
+        : previousSpaceId;
+
+    if (!targetGreenSpace) {
+      const greenSpace = await GreenSpace.findByPk(effectiveSpaceId);
+      if (!greenSpace) {
+        return res.status(404).json({ error: "Área verde no encontrada" });
+      }
+      targetGreenSpace = greenSpace;
+    }
+
+    const latitude =
+      parsedLatitude === null || typeof parsedLatitude === "undefined"
+        ? null
+        : Number(parsedLatitude);
+    const longitude =
+      parsedLongitude === null || typeof parsedLongitude === "undefined"
+        ? null
+        : Number(parsedLongitude);
+
+    const coordinateValidationError = validateCoordinatesWithinGreenSpace(
+      targetGreenSpace,
+      latitude,
+      longitude,
+    );
+    if (coordinateValidationError) {
+      return res.status(400).json({ error: coordinateValidationError });
     }
 
     await row.update(payload);

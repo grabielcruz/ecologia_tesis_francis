@@ -1,5 +1,6 @@
 import { ChangeEvent, FormEvent } from "react";
 import { AppModal } from "../AppModal";
+import { ImageUrlPreviewEditor } from "../ImageUrlPreviewEditor";
 
 interface TreeTypeFormModalProps {
   isOpen: boolean;
@@ -35,6 +36,15 @@ export function TreeTypeFormModal({
   onClose,
 }: TreeTypeFormModalProps) {
   if (!isOpen) return null;
+  const imageUrlRows = treeTypeImagesInput
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const removeImageUrl = (indexToRemove: number) => {
+    const next = imageUrlRows.filter((_, index) => index !== indexToRemove);
+    setTreeTypeImagesInput(next.join("\n"));
+  };
 
   const handleClose = () => {
     onResetTreeTypeForm();
@@ -77,15 +87,11 @@ export function TreeTypeFormModal({
             required
           />
         </label>
-        <label>
-          Imágenes referenciales
-          <textarea
-            value={treeTypeImagesInput}
-            onChange={(e) => setTreeTypeImagesInput(e.target.value)}
-            placeholder="Una URL por línea"
-            required
-          />
-        </label>
+        <p className="small muted">Imágenes referenciales</p>
+        <ImageUrlPreviewEditor
+          imageUrls={imageUrlRows}
+          onRemove={removeImageUrl}
+        />
         <label>
           Subir imágenes
           <input

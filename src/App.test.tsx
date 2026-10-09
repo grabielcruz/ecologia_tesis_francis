@@ -42,6 +42,20 @@ describe("App UI", () => {
     cleanup();
     localStorage.clear();
     window.history.pushState({}, "", "/");
+    window.scrollTo = vi.fn();
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
   });
 
   it("shows guest read-only view when user is not authenticated", () => {
@@ -105,6 +119,7 @@ describe("App UI", () => {
         totalAreaM2: 1000,
         tallTreeCount: 25,
         images: [],
+        perimeterPoints: [],
       },
     ];
 
@@ -167,7 +182,7 @@ describe("App UI", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "Propuestas" }),
+        screen.getByRole("heading", { name: "Propuestas de mejora" }),
       ).toBeInTheDocument();
     });
 
@@ -197,6 +212,7 @@ describe("App UI", () => {
         totalAreaM2: 1000,
         tallTreeCount: 25,
         images: [],
+        perimeterPoints: [],
       },
     ];
 
@@ -289,26 +305,51 @@ describe("App UI", () => {
       ).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Inicio de votacion"), {
-      target: { value: "2026-09-01T10:00" },
+    fireEvent.change(screen.getByLabelText("Inicio de votación"), {
+      target: { value: "2027-09-01T10:00" },
     });
-    fireEvent.change(screen.getByLabelText("Fin de votacion"), {
-      target: { value: "2026-09-10T18:00" },
+    fireEvent.change(screen.getByLabelText("Fin de votación"), {
+      target: { value: "2027-09-10T18:00" },
     });
-    fireEvent.change(screen.getByLabelText("Minimo de votos requeridos"), {
+    fireEvent.change(screen.getByLabelText("Mínimo de votos requeridos"), {
       target: { value: "6" },
+    });
+    fireEvent.change(screen.getByLabelText("Duración aproximada de ejecución"), {
+      target: { value: "4 semanas" },
+    });
+    fireEvent.change(screen.getByLabelText("Presupuesto del proyecto (USD)"), {
+      target: { value: "2500" },
     });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Guardar y abrir votacion" }),
+      screen.getByRole("button", { name: "Guardar y abrir votación" }),
     );
 
     await waitFor(() => {
-      expect(screen.getByText("open")).toBeInTheDocument();
+      expect(
+        fetchMock.mock.calls.some(
+          ([input, init]) =>
+            String(input).includes("/api/proposals/7/decision") &&
+            String(init?.method || "GET").toUpperCase() === "PATCH",
+        ),
+      ).toBe(true);
     });
 
-    expect(
-      screen.getByRole("button", { name: "Finalizar votacion" }),
-    ).toBeInTheDocument();
+    const decisionCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        String(input).includes("/api/proposals/7/decision") &&
+        String(init?.method || "GET").toUpperCase() === "PATCH",
+    );
+    expect(decisionCall).toBeDefined();
+
+    const decisionBody = JSON.parse(String(decisionCall?.[1]?.body || "{}"));
+    expect(decisionBody).toEqual(
+      expect.objectContaining({
+        decision: "accepted",
+        minimumVotesRequired: 6,
+        approximateExecutionDuration: "4 semanas",
+        projectBudget: 2500,
+      }),
+    );
   });
 });
