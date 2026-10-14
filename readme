@@ -18,9 +18,13 @@ vit. Para la base de datos se utiliza sqlite con el paquete sequelize
 
 En «Consulta por indicador», selecciona el indicador y el tipo de consulta:
 - **Por rango de fechas**: conserva la consulta histórica con fechas desde/hasta opcionales.
-- **Comparar dos registros**: selecciona dos registros guardados distintos, identificados por
-  su número y fecha. La tabla y el gráfico muestran únicamente esos dos registros en orden
-  cronológico, sin incluir registros intermedios. Se necesitan al menos dos registros guardados.
+- **Seleccionar registros**: marca uno o más registros guardados mediante casillas, identificados
+  por su número y fecha. «Seleccionar todos los registros» permite marcar o desmarcar la lista
+  completa. La tabla y el gráfico muestran únicamente los registros elegidos en orden cronológico.
+
+Los gráficos de indicadores usan barras con referencia en cero, tanto en pantalla como en los
+reportes PDF (incluido el reporte completo). El eje vertical muestra la escala y la unidad.
+En pantalla, los gráficos con muchos registros permiten desplazamiento horizontal.
 
 El botón «Descargar PDF» exporta el indicador y los registros de la consulta activa.
 Al alternar entre tipos de consulta se conservan las fechas y las selecciones de registros.

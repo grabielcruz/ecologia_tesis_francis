@@ -62,9 +62,9 @@ const change = (label: string, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 const resultRows = () => within(screen.getByRole("table")).getAllByRole("row").slice(1);
 const selectComparison = () => {
-  change("Tipo de consulta", "two-records");
-  change("Primer registro", "3");
-  change("Segundo registro", "1");
+  change("Tipo de consulta", "selected-records");
+  fireEvent.click(screen.getByRole("checkbox", { name: /#3/ }));
+  fireEvent.click(screen.getByRole("checkbox", { name: /#1/ }));
 };
 
 afterEach(() => {
@@ -80,11 +80,11 @@ describe("GreenMetric indicator queries", () => {
       new DOMRect(0, 0, 800, 700),
     );
 
-    change("Tipo de consulta", "two-records");
+    change("Tipo de consulta", "selected-records");
     expect(panel).toHaveStyle({ minHeight: "700px" });
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    change("Primer registro", "3");
-    change("Segundo registro", "1");
+    fireEvent.click(screen.getByRole("checkbox", { name: /#3/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /#1/ }));
     expect(panel).toHaveStyle({ minHeight: "700px" });
     change("Tipo de consulta", "date-range");
     expect(panel).toHaveStyle({ minHeight: "700px" });
@@ -108,9 +108,9 @@ describe("GreenMetric indicator queries", () => {
     expect(screen.getByLabelText("Fecha desde")).toHaveValue("2026-05-01");
     expect(screen.getByLabelText("Fecha hasta")).toHaveValue("2026-05-31");
     expect(resultRows()[0]).toHaveTextContent("#2");
-    change("Tipo de consulta", "two-records");
-    expect(screen.getByLabelText("Primer registro")).toHaveValue("3");
-    expect(screen.getByLabelText("Segundo registro")).toHaveValue("1");
+    change("Tipo de consulta", "selected-records");
+    expect(screen.getByRole("checkbox", { name: /#3/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /#1/ })).toBeChecked();
     expect(resultRows()).toHaveLength(2);
   });
 
@@ -125,7 +125,8 @@ describe("GreenMetric indicator queries", () => {
       change("Indicador", option.value);
       expect(screen.getByRole("columnheader", { name: option.textContent! })).toBeInTheDocument();
       expect(resultRows()).toHaveLength(2);
-      expect(container.querySelectorAll("svg circle")).toHaveLength(2);
+      expect(container.querySelectorAll(".green-metric-bar")).toHaveLength(2);
+      expect(container.querySelector("polyline")).not.toBeInTheDocument();
     }
     change("Indicador", "metric2GreenAreaPerCapita");
     expect(within(resultRows()[0]).getAllByRole("cell")[2]).toHaveTextContent(/^1$/);
@@ -133,43 +134,63 @@ describe("GreenMetric indicator queries", () => {
     expect(screen.getByRole("heading", { name: "Comparación: M2. Área verde por persona" })).toBeInTheDocument();
   });
 
-  it("requires two distinct selections and prevents choosing the same record twice", () => {
+  it("allows any subset, a single record, selecting all, and clearing the selection", () => {
     render(<GreenMetricsSection {...props} />);
-    change("Tipo de consulta", "two-records");
-    expect(screen.getByText("Selecciona dos registros distintos para consultar el indicador.")).toBeInTheDocument();
+    change("Tipo de consulta", "selected-records");
+    expect(screen.getByText("Selecciona uno o más registros para consultar el indicador.")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    change("Primer registro", "3");
-    expect(within(screen.getByLabelText("Segundo registro")).getByRole("option", { name: /#3/ })).toBeDisabled();
-    change("Segundo registro", "1");
-    expect(within(screen.getByLabelText("Primer registro")).getByRole("option", { name: /#1/ })).toBeDisabled();
-    change("Primer registro", "");
+    fireEvent.click(screen.getByRole("checkbox", { name: /#3/ }));
+    expect(resultRows()).toHaveLength(1);
+    expect(resultRows()[0]).toHaveTextContent("#3");
+    const selectAll = screen.getByRole("checkbox", { name: "Seleccionar todos los registros" });
+    expect(selectAll).toBePartiallyChecked();
+    fireEvent.click(selectAll);
+    expect(selectAll).toBeChecked();
+    expect(resultRows()).toHaveLength(3);
+    expect(resultRows()[0]).toHaveTextContent("#1");
+    fireEvent.click(screen.getByRole("checkbox", { name: /#2/ }));
+    expect(selectAll).toBePartiallyChecked();
+    expect(resultRows()).toHaveLength(2);
+    fireEvent.click(selectAll);
+    fireEvent.click(selectAll);
+    expect(selectAll).not.toBeChecked();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Descargar PDF" })).not.toBeInTheDocument();
   });
 
-  it.each([0, 1])("explains when there are only %i saved records", (count) => {
-    render(<GreenMetricsSection {...props} records={records.slice(0, count)} />);
-    change("Tipo de consulta", "two-records");
-    expect(screen.getByText("Se necesitan al menos dos registros guardados para comparar.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Primer registro")).toBeDisabled();
-    expect(screen.getByLabelText("Segundo registro")).toBeDisabled();
+  it("explains when there are no saved records", () => {
+    render(<GreenMetricsSection {...props} records={[]} />);
+    change("Tipo de consulta", "selected-records");
+    expect(screen.getByText("No hay registros guardados para seleccionar.")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Seleccionar todos los registros" })).toBeDisabled();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("handles loading and removed records without showing a partial comparison", () => {
+  it("supports a database with only one saved record", () => {
+    render(<GreenMetricsSection {...props} records={records.slice(0, 1)} />);
+    change("Tipo de consulta", "selected-records");
+    fireEvent.click(screen.getByRole("checkbox", { name: /#3/ }));
+    expect(resultRows()).toHaveLength(1);
+    expect(screen.getByRole("checkbox", { name: "Seleccionar todos los registros" })).toBeChecked();
+  });
+
+  it("disables selection while loading and only shows records still in the database", () => {
     const { rerender } = render(<GreenMetricsSection {...props} />);
     selectComparison();
     rerender(<GreenMetricsSection {...props} isLoading />);
     expect(screen.getByText("Cargando histórico...")).toBeInTheDocument();
-    expect(screen.getByLabelText("Primer registro")).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /#3/ })).toBeDisabled();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     rerender(<GreenMetricsSection {...props} records={records.slice(0, 2)} />);
-    expect(screen.getByLabelText("Segundo registro")).toHaveValue("");
+    expect(screen.queryByRole("checkbox", { name: /#1/ })).not.toBeInTheDocument();
+    expect(resultRows()).toHaveLength(1);
+    expect(resultRows()[0]).toHaveTextContent("#3");
+    rerender(<GreenMetricsSection {...props} records={[records[1]]} />);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(screen.getByText("Selecciona dos registros distintos para consultar el indicador.")).toBeInTheDocument();
   });
 
   it("exports only the selected records and indicator to PDF", async () => {
+    const chartBlobs: Blob[] = [];
     vi.stubGlobal("Image", class {
       width = 1400;
       height = 560;
@@ -177,7 +198,10 @@ describe("GreenMetric indicator queries", () => {
       set src(_value: string) { this.onload?.(); }
     });
     vi.stubGlobal("URL", class extends URL {
-      static createObjectURL = vi.fn(() => "blob:chart");
+      static createObjectURL = vi.fn((blob: Blob) => {
+        chartBlobs.push(blob);
+        return "blob:chart";
+      });
       static revokeObjectURL = vi.fn();
     });
     const context: Partial<CanvasRenderingContext2D> = {
@@ -200,6 +224,34 @@ describe("GreenMetric indicator queries", () => {
         [expect.any(String), "#3", "3 m2/persona"],
       ],
     }));
-    expect(pdf.text).toHaveBeenCalledWith(expect.stringMatching(/^Comparación: #1 .* y #3 /), 40, 66);
+    expect(pdf.text).toHaveBeenCalledWith(expect.stringMatching(/^Registros seleccionados: 2 /), 40, 66);
+    const svgMarkup = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(chartBlobs[0]);
+    });
+    const svg = new DOMParser().parseFromString(svgMarkup, "image/svg+xml");
+    const bars = Array.from(svg.querySelectorAll('rect[fill="#1e7770"]'));
+    expect(bars).toHaveLength(2);
+    expect(svg.querySelector("polyline, circle")).toBeNull();
+    expect(Number(bars[1].getAttribute("height")) / Number(bars[0].getAttribute("height"))).toBeCloseTo(3);
+    bars.forEach((bar) => {
+      expect(Number(bar.getAttribute("y")) + Number(bar.getAttribute("height"))).toBeCloseTo(450);
+    });
+  });
+
+  it("draws proportional bars from a visible zero baseline in date-range mode", () => {
+    const { container } = render(<GreenMetricsSection {...props} />);
+    const bars = Array.from(container.querySelectorAll(".green-metric-bar"));
+    expect(bars).toHaveLength(3);
+    const baseline = Number(container.querySelector(".green-metric-zero-baseline")!.getAttribute("y1"));
+    const heights = bars.map((bar) => Number(bar.getAttribute("height")));
+    expect(heights[1] / heights[0]).toBeCloseTo(2);
+    expect(heights[2] / heights[0]).toBeCloseTo(3);
+    bars.forEach((bar) => {
+      expect(Number(bar.getAttribute("y")) + Number(bar.getAttribute("height"))).toBeCloseTo(baseline);
+    });
+    expect(within(screen.getByRole("img", { name: /Gráfico de barras:/ })).getByText("0")).toBeInTheDocument();
   });
 });

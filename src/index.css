@@ -2790,6 +2790,36 @@ button.danger:hover {
   margin-bottom: 0.7rem;
 }
 
+.green-metric-record-selection {
+  min-width: 0;
+  margin: 0 0 0.7rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+}
+
+.green-metric-record-selection legend {
+  float: none;
+  width: auto;
+  padding: 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.green-metric-record-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 0.6rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  margin-top: 0.75rem;
+}
+
+.green-metric-bar-chart-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .quick-metric-formula {
   margin: 0;
 }

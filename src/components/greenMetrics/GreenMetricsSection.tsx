@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AppModal } from "../AppModal";
+import { buildBarChart } from "./barChart";
 import {
   GreenMetricFormInput,
   GreenMetricRecord,
@@ -186,38 +187,24 @@ const buildMetricChartSvg = (
   const right = 72;
   const top = 60;
   const bottom = 110;
-  const innerWidth = width - left - right;
   const innerHeight = height - top - bottom;
 
   const entries = sortedRecords.map((record) => ({
     id: record.id,
     value: record.metrics[metric.key],
-    label: formatPeriod(record),
+    label: `#${record.id} — ${formatPeriod(record)}`,
   }));
 
-  const minValue = entries.length
-    ? Math.min(...entries.map((entry) => entry.value))
-    : 0;
-  const maxValue = entries.length
-    ? Math.max(...entries.map((entry) => entry.value))
-    : 1;
-  const range = maxValue - minValue || 1;
-  const xSpan = Math.max(1, entries.length - 1);
-
-  const points = entries.map((entry, index) => {
-    const x = left + (index * innerWidth) / xSpan;
-    const y =
-      top + innerHeight - ((entry.value - minValue) / range) * innerHeight;
-    return { ...entry, x, y };
-  });
-
-  const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const ticks = [0, 0.25, 0.5, 0.75, 1];
-  const yGrid = ticks
-    .map((tick) => {
-      const y = top + innerHeight - tick * innerHeight;
+  const chart = buildBarChart(
+    entries.map((entry) => entry.value),
+    width,
+    height,
+    { left, right, top, bottom },
+  );
+  const yGrid = chart.ticks
+    .map(({ value, y }) => {
       const valueLabel = formatNumber(
-        minValue + range * tick,
+        value,
         metric.unit === "m2/persona" ? 3 : 2,
       );
       return `
@@ -237,17 +224,17 @@ const buildMetricChartSvg = (
       if (!showLabel) {
         return "";
       }
-      const x = left + (index * innerWidth) / xSpan;
+      const x = chart.bars[index].center;
       return `
         <text x="${x}" y="${height - 40}" text-anchor="middle" font-size="15" fill="#3e5b58">${escapeSvgText(entry.label)}</text>
       `;
     })
     .join("\n");
 
-  const pointsMarkup = points
+  const barsMarkup = chart.bars
     .map(
-      (point) => `
-      <circle cx="${point.x}" cy="${point.y}" r="5" fill="#155d56" />
+      (bar) => `
+      <rect x="${bar.x}" y="${bar.y}" width="${bar.width}" height="${bar.height}" fill="#1e7770" />
     `,
     )
     .join("\n");
@@ -257,9 +244,8 @@ const buildMetricChartSvg = (
       <rect x="0" y="0" width="${width}" height="${height}" fill="#ffffff" />
       ${yGrid}
       <line x1="${left}" y1="${top}" x2="${left}" y2="${top + innerHeight}" stroke="#8eb6b1" stroke-width="2" />
-      <line x1="${left}" y1="${top + innerHeight}" x2="${width - right}" y2="${top + innerHeight}" stroke="#8eb6b1" stroke-width="2" />
-      ${polyline ? `<polyline fill="none" stroke="#1e7770" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" points="${polyline}" />` : ""}
-      ${pointsMarkup}
+      <line x1="${left}" y1="${chart.baseline}" x2="${width - right}" y2="${chart.baseline}" stroke="#8eb6b1" stroke-width="2" />
+      ${barsMarkup}
       ${xLabels}
       <text x="${left}" y="28" font-size="24" font-weight="700" fill="#0f4f49">${escapeSvgText(metric.title)}</text>
       <text x="${left}" y="54" font-size="16" fill="#35514e">${escapeSvgText(metric.formula)} (${escapeSvgText(metric.unit)})</text>
@@ -320,13 +306,15 @@ export function GreenMetricsSection({
   );
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
-  const [queryMode, setQueryMode] = useState<"date-range" | "two-records">(
+  const [queryMode, setQueryMode] = useState<"date-range" | "selected-records">(
     "date-range",
   );
   const queryPanelRef = useRef<HTMLElement>(null);
   const [queryPanelMinHeight, setQueryPanelMinHeight] = useState(0);
-  const [firstComparisonId, setFirstComparisonId] = useState("");
-  const [secondComparisonId, setSecondComparisonId] = useState("");
+  const [selectedComparisonIds, setSelectedComparisonIds] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const selectAllRecordsRef = useRef<HTMLInputElement>(null);
   const [reportRangeMode, setReportRangeMode] = useState<"all-time" | "custom">(
     "all-time",
   );
@@ -356,11 +344,25 @@ export function GreenMetricsSection({
     return () => window.removeEventListener("resize", clearReservedQueryHeight);
   }, []);
 
-  const changeQueryMode = (value: string) => {
-    // Keep the page from shrinking and clamping the scroll position on a mode switch.
+  const reserveQueryPanelHeight = () => {
+    // Keep shrinking results from clamping the page's scroll position.
     const height = queryPanelRef.current?.getBoundingClientRect().height ?? 0;
     setQueryPanelMinHeight((previous) => Math.max(previous, height));
-    setQueryMode(value === "two-records" ? "two-records" : "date-range");
+  };
+
+  const changeQueryMode = (value: string) => {
+    reserveQueryPanelHeight();
+    setQueryMode(value === "selected-records" ? "selected-records" : "date-range");
+  };
+
+  const toggleComparisonRecord = (id: number) => {
+    reserveQueryPanelHeight();
+    setSelectedComparisonIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -389,31 +391,33 @@ export function GreenMetricsSection({
   const comparisonRecords = useMemo(
     () =>
       records
-        .filter(
-          (record) =>
-            String(record.id) === firstComparisonId ||
-            String(record.id) === secondComparisonId,
-        )
+        .filter((record) => selectedComparisonIds.has(record.id))
         .sort(
           (left, right) =>
             new Date(left.calculationDate).getTime() -
             new Date(right.calculationDate).getTime(),
         ),
-    [records, firstComparisonId, secondComparisonId],
+    [records, selectedComparisonIds],
   );
+  const allRecordsSelected =
+    records.length > 0 && comparisonRecords.length === records.length;
+
+  useEffect(() => {
+    if (selectAllRecordsRef.current) {
+      selectAllRecordsRef.current.indeterminate =
+        comparisonRecords.length > 0 && !allRecordsSelected;
+    }
+  }, [comparisonRecords.length, allRecordsSelected, queryMode]);
+
   const comparisonMessage = isLoading
     ? "Cargando histórico..."
-    : records.length < 2
-      ? "Se necesitan al menos dos registros guardados para comparar."
-      : comparisonRecords.length !== 2
-        ? "Selecciona dos registros distintos para consultar el indicador."
-        : null;
+    : records.length === 0
+      ? "No hay registros guardados para seleccionar."
+      : "Selecciona uno o más registros para consultar el indicador.";
 
   const metricRows = useMemo(() => {
-    if (queryMode === "two-records") {
-      return comparisonRecords.length === 2 && !isLoading
-        ? comparisonRecords
-        : [];
+    if (queryMode === "selected-records") {
+      return isLoading ? [] : comparisonRecords;
     }
 
     const startTimestamp = filterStartDate
@@ -451,28 +455,15 @@ export function GreenMetricsSection({
     value: record.metrics[selectedMetric.key],
   }));
 
-  const chartWidth = 760;
-  const chartHeight = 280;
-  const padding = 36;
-  const valueMin = chartData.length
-    ? Math.min(...chartData.map((entry) => entry.value))
-    : 0;
-  const valueMax = chartData.length
-    ? Math.max(...chartData.map((entry) => entry.value))
-    : 0;
-  const valueRange = valueMax - valueMin || 1;
-  const xSpan = Math.max(1, chartData.length - 1);
-
-  const points = chartData
-    .map((entry, index) => {
-      const x = padding + (index * (chartWidth - padding * 2)) / xSpan;
-      const y =
-        chartHeight -
-        padding -
-        ((entry.value - valueMin) / valueRange) * (chartHeight - padding * 2);
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const chartWidth = Math.max(760, chartData.length * 140 + 112);
+  const chartHeight = 320;
+  const chartPadding = { left: 80, right: 32, top: 32, bottom: 60 };
+  const barChart = buildBarChart(
+    chartData.map((entry) => entry.value),
+    chartWidth,
+    chartHeight,
+    chartPadding,
+  );
 
   const onDownloadMetricTablePdf = async () => {
     if (!metricRows.length) {
@@ -509,8 +500,8 @@ export function GreenMetricsSection({
       doc.setTextColor(78, 103, 99);
       doc.text(`Fórmula: ${selectedMetric.formula}`, 40, 52);
       doc.text(
-        queryMode === "two-records"
-          ? `Comparación: ${metricRows.map((record) => `#${record.id} (${formatPeriod(record)})`).join(" y ")}`
+        queryMode === "selected-records"
+          ? `Registros seleccionados: ${metricRows.length} (${rangeLabel})`
           : `Rango: ${rangeLabel}`,
         40,
         66,
@@ -1213,7 +1204,7 @@ export function GreenMetricsSection({
               onChange={(event) => changeQueryMode(event.target.value)}
             >
               <option value="date-range">Por rango de fechas</option>
-              <option value="two-records">Comparar dos registros</option>
+              <option value="selected-records">Seleccionar registros</option>
             </select>
           </label>
           <label>
@@ -1250,61 +1241,47 @@ export function GreenMetricsSection({
                 />
               </label>
             </>
-          ) : (
-            <>
-              <label>
-                Primer registro
-                <select
-                  value={
-                    records.some((record) => String(record.id) === firstComparisonId)
-                      ? firstComparisonId
-                      : ""
-                  }
-                  onChange={(event) => setFirstComparisonId(event.target.value)}
-                  disabled={isLoading || records.length < 2}
-                >
-                  <option value="">Selecciona un registro</option>
-                  {records.map((record) => (
-                    <option
-                      key={record.id}
-                      value={record.id}
-                      disabled={String(record.id) === secondComparisonId}
-                    >
-                      #{record.id} — {formatPeriod(record)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Segundo registro
-                <select
-                  value={
-                    records.some((record) => String(record.id) === secondComparisonId)
-                      ? secondComparisonId
-                      : ""
-                  }
-                  onChange={(event) => setSecondComparisonId(event.target.value)}
-                  disabled={isLoading || records.length < 2}
-                >
-                  <option value="">Selecciona un registro</option>
-                  {records.map((record) => (
-                    <option
-                      key={record.id}
-                      value={record.id}
-                      disabled={String(record.id) === firstComparisonId}
-                    >
-                      #{record.id} — {formatPeriod(record)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </>
-          )}
+          ) : null}
         </div>
+
+        {queryMode === "selected-records" ? (
+          <fieldset className="green-metric-record-selection" disabled={isLoading}>
+            <legend>Registros a mostrar</legend>
+            <label className="checkbox-label">
+              <input
+                ref={selectAllRecordsRef}
+                type="checkbox"
+                checked={allRecordsSelected}
+                disabled={records.length === 0}
+                onChange={(event) => {
+                  reserveQueryPanelHeight();
+                  setSelectedComparisonIds(
+                    event.target.checked
+                      ? new Set(records.map((record) => record.id))
+                      : new Set(),
+                  );
+                }}
+              />
+              Seleccionar todos los registros
+            </label>
+            <div className="green-metric-record-checkboxes">
+              {records.map((record) => (
+                <label key={record.id} className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={selectedComparisonIds.has(record.id)}
+                    onChange={() => toggleComparisonRecord(record.id)}
+                  />
+                  #{record.id} — {formatPeriod(record)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
 
         {metricRows.length === 0 ? (
           <p>
-            {queryMode === "two-records"
+            {queryMode === "selected-records"
               ? comparisonMessage
               : isLoading
               ? "Cargando histórico..."
@@ -1356,65 +1333,108 @@ export function GreenMetricsSection({
 
             <div className="green-metric-chart-card">
               <h4>
-                {queryMode === "two-records" ? "Comparación" : "Tendencia"}:{" "}
+                {queryMode === "selected-records" ? "Comparación" : "Tendencia"}:{" "}
                 {selectedMetric.title}
               </h4>
               <p className="muted">{selectedMetric.formula}</p>
-              <svg
-                viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                className="green-metric-chart"
+              <p className="muted">Valores en {selectedMetric.unit}. Referencia: 0.</p>
+              <div
+                className="green-metric-bar-chart-wrap"
+                tabIndex={0}
+                role="region"
+                aria-label="Gráfico de barras de registros"
               >
-                <line
-                  x1={padding}
-                  y1={chartHeight - padding}
-                  x2={chartWidth - padding}
-                  y2={chartHeight - padding}
-                  stroke="#c5d8d6"
-                  strokeWidth="1"
-                />
-                <line
-                  x1={padding}
-                  y1={padding}
-                  x2={padding}
-                  y2={chartHeight - padding}
-                  stroke="#c5d8d6"
-                  strokeWidth="1"
-                />
-                {chartData.length > 1 ? (
-                  <polyline
-                    fill="none"
-                    stroke="#1e7770"
-                    strokeWidth="3"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    points={points}
-                  />
-                ) : null}
-                {chartData.map((entry, index) => {
-                  const x =
-                    padding + (index * (chartWidth - padding * 2)) / xSpan;
-                  const y =
-                    chartHeight -
-                    padding -
-                    ((entry.value - valueMin) / valueRange) *
-                      (chartHeight - padding * 2);
-                  return (
-                    <g key={`metric-point-${entry.id}`}>
-                      <circle cx={x} cy={y} r="4" fill="#134f4a" />
+                <svg
+                  viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                  className="green-metric-chart"
+                  style={{ minWidth: chartWidth }}
+                  role="img"
+                  aria-label={`Gráfico de barras: ${selectedMetric.title}. Referencia: 0 ${selectedMetric.unit}.`}
+                >
+                  {barChart.ticks.map((tick) => (
+                    <g key={`tick-${tick.value}`}>
+                      <line
+                        x1={chartPadding.left}
+                        y1={tick.y}
+                        x2={chartWidth - chartPadding.right}
+                        y2={tick.y}
+                        stroke="#c5d8d6"
+                        strokeWidth="1"
+                      />
                       <text
-                        x={x}
-                        y={chartHeight - 12}
-                        textAnchor="middle"
+                        x={chartPadding.left - 10}
+                        y={tick.y + 4}
+                        textAnchor="end"
                         className="chart-axis-label"
                       >
-                        {queryMode === "two-records"
-                          ? `#${entry.id} — ${entry.dateLabel}`
-                          : entry.dateLabel}
+                        {formatNumber(
+                          tick.value,
+                          selectedMetric.unit === "m2/persona" ? 3 : 2,
+                        )}
                       </text>
                     </g>
-                  );
-                })}
-              </svg>
+                  ))}
+                  <line
+                    className="green-metric-zero-baseline"
+                    x1={chartPadding.left}
+                    y1={barChart.baseline}
+                    x2={chartWidth - chartPadding.right}
+                    y2={barChart.baseline}
+                    stroke="#1e7770"
+                    strokeWidth="2"
+                  />
+                  <line
+                    x1={chartPadding.left}
+                    y1={chartPadding.top}
+                    x2={chartPadding.left}
+                    y2={chartHeight - chartPadding.bottom}
+                    stroke="#c5d8d6"
+                    strokeWidth="1"
+                  />
+                  {chartData.map((entry, index) => {
+                    const bar = barChart.bars[index];
+                    const valueLabel = formatNumber(
+                      entry.value,
+                      selectedMetric.unit === "m2/persona" ? 3 : 2,
+                    );
+                    return (
+                      <g key={`metric-bar-${entry.id}`}>
+                        <rect
+                          className="green-metric-bar"
+                          x={bar.x}
+                          y={bar.y}
+                          width={bar.width}
+                          height={bar.height}
+                          fill="#1e7770"
+                        >
+                          <title>
+                            #{entry.id} — {entry.dateLabel}: {valueLabel} {selectedMetric.unit}
+                          </title>
+                        </rect>
+                        <text
+                          x={bar.center}
+                          y={bar.y - 8}
+                          textAnchor="middle"
+                          className="chart-axis-label"
+                        >
+                          {valueLabel}
+                        </text>
+                        <text
+                          x={bar.center}
+                          y={chartHeight - 32}
+                          textAnchor="middle"
+                          className="chart-axis-label"
+                        >
+                          #{entry.id}
+                          <tspan x={bar.center} dy="16">
+                            {entry.dateLabel}
+                          </tspan>
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
             </div>
           </>
         )}
