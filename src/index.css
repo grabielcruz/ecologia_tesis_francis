@@ -2733,6 +2733,7 @@ button.danger:hover {
 
 .green-metrics-box {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.95rem;
 }
 

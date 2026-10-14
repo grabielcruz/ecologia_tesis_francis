@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AppModal } from "../AppModal";
 import {
   GreenMetricFormInput,
@@ -320,6 +320,13 @@ export function GreenMetricsSection({
   );
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
+  const [queryMode, setQueryMode] = useState<"date-range" | "two-records">(
+    "date-range",
+  );
+  const queryPanelRef = useRef<HTMLElement>(null);
+  const [queryPanelMinHeight, setQueryPanelMinHeight] = useState(0);
+  const [firstComparisonId, setFirstComparisonId] = useState("");
+  const [secondComparisonId, setSecondComparisonId] = useState("");
   const [reportRangeMode, setReportRangeMode] = useState<"all-time" | "custom">(
     "all-time",
   );
@@ -344,6 +351,19 @@ export function GreenMetricsSection({
   );
 
   useEffect(() => {
+    const clearReservedQueryHeight = () => setQueryPanelMinHeight(0);
+    window.addEventListener("resize", clearReservedQueryHeight);
+    return () => window.removeEventListener("resize", clearReservedQueryHeight);
+  }, []);
+
+  const changeQueryMode = (value: string) => {
+    // Keep the page from shrinking and clamping the scroll position on a mode switch.
+    const height = queryPanelRef.current?.getBoundingClientRect().height ?? 0;
+    setQueryPanelMinHeight((previous) => Math.max(previous, height));
+    setQueryMode(value === "two-records" ? "two-records" : "date-range");
+  };
+
+  useEffect(() => {
     if (!records.length) {
       setSelectedRecordId(null);
       return;
@@ -366,7 +386,36 @@ export function GreenMetricsSection({
     metricDefinitions.find((metric) => metric.key === selectedMetricKey) ||
     metricDefinitions[0];
 
+  const comparisonRecords = useMemo(
+    () =>
+      records
+        .filter(
+          (record) =>
+            String(record.id) === firstComparisonId ||
+            String(record.id) === secondComparisonId,
+        )
+        .sort(
+          (left, right) =>
+            new Date(left.calculationDate).getTime() -
+            new Date(right.calculationDate).getTime(),
+        ),
+    [records, firstComparisonId, secondComparisonId],
+  );
+  const comparisonMessage = isLoading
+    ? "Cargando histórico..."
+    : records.length < 2
+      ? "Se necesitan al menos dos registros guardados para comparar."
+      : comparisonRecords.length !== 2
+        ? "Selecciona dos registros distintos para consultar el indicador."
+        : null;
+
   const metricRows = useMemo(() => {
+    if (queryMode === "two-records") {
+      return comparisonRecords.length === 2 && !isLoading
+        ? comparisonRecords
+        : [];
+    }
+
     const startTimestamp = filterStartDate
       ? new Date(`${filterStartDate}T00:00:00`).getTime()
       : null;
@@ -387,7 +436,14 @@ export function GreenMetricsSection({
           new Date(left.calculationDate).getTime() -
           new Date(right.calculationDate).getTime(),
       );
-  }, [records, filterStartDate, filterEndDate]);
+  }, [
+    records,
+    filterStartDate,
+    filterEndDate,
+    queryMode,
+    comparisonRecords,
+    isLoading,
+  ]);
 
   const chartData = metricRows.map((record) => ({
     id: record.id,
@@ -452,7 +508,13 @@ export function GreenMetricsSection({
       doc.setFontSize(9);
       doc.setTextColor(78, 103, 99);
       doc.text(`Fórmula: ${selectedMetric.formula}`, 40, 52);
-      doc.text(`Rango: ${rangeLabel}`, 40, 66);
+      doc.text(
+        queryMode === "two-records"
+          ? `Comparación: ${metricRows.map((record) => `#${record.id} (${formatPeriod(record)})`).join(" y ")}`
+          : `Rango: ${rangeLabel}`,
+        40,
+        66,
+      );
 
       const chartSvg = buildMetricChartSvg(selectedMetric, metricRows);
       const chartImage = await svgToPngDataUrl(chartSvg);
@@ -1137,9 +1199,23 @@ export function GreenMetricsSection({
         )}
       </article>
 
-      <article className="principal-panel">
+      <article
+        className="principal-panel"
+        ref={queryPanelRef}
+        style={{ minHeight: queryPanelMinHeight || undefined }}
+      >
         <h3>2) Consulta por indicador</h3>
         <div className="green-metric-filters">
+          <label>
+            Tipo de consulta
+            <select
+              value={queryMode}
+              onChange={(event) => changeQueryMode(event.target.value)}
+            >
+              <option value="date-range">Por rango de fechas</option>
+              <option value="two-records">Comparar dos registros</option>
+            </select>
+          </label>
           <label>
             Indicador
             <select
@@ -1155,27 +1231,82 @@ export function GreenMetricsSection({
               ))}
             </select>
           </label>
-          <label>
-            Fecha desde
-            <input
-              type="date"
-              value={filterStartDate}
-              onChange={(event) => setFilterStartDate(event.target.value)}
-            />
-          </label>
-          <label>
-            Fecha hasta
-            <input
-              type="date"
-              value={filterEndDate}
-              onChange={(event) => setFilterEndDate(event.target.value)}
-            />
-          </label>
+          {queryMode === "date-range" ? (
+            <>
+              <label>
+                Fecha desde
+                <input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(event) => setFilterStartDate(event.target.value)}
+                />
+              </label>
+              <label>
+                Fecha hasta
+                <input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(event) => setFilterEndDate(event.target.value)}
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <label>
+                Primer registro
+                <select
+                  value={
+                    records.some((record) => String(record.id) === firstComparisonId)
+                      ? firstComparisonId
+                      : ""
+                  }
+                  onChange={(event) => setFirstComparisonId(event.target.value)}
+                  disabled={isLoading || records.length < 2}
+                >
+                  <option value="">Selecciona un registro</option>
+                  {records.map((record) => (
+                    <option
+                      key={record.id}
+                      value={record.id}
+                      disabled={String(record.id) === secondComparisonId}
+                    >
+                      #{record.id} — {formatPeriod(record)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Segundo registro
+                <select
+                  value={
+                    records.some((record) => String(record.id) === secondComparisonId)
+                      ? secondComparisonId
+                      : ""
+                  }
+                  onChange={(event) => setSecondComparisonId(event.target.value)}
+                  disabled={isLoading || records.length < 2}
+                >
+                  <option value="">Selecciona un registro</option>
+                  {records.map((record) => (
+                    <option
+                      key={record.id}
+                      value={record.id}
+                      disabled={String(record.id) === firstComparisonId}
+                    >
+                      #{record.id} — {formatPeriod(record)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
         </div>
 
         {metricRows.length === 0 ? (
           <p>
-            {isLoading
+            {queryMode === "two-records"
+              ? comparisonMessage
+              : isLoading
               ? "Cargando histórico..."
               : "No hay datos para el filtro seleccionado."}
           </p>
@@ -1224,7 +1355,10 @@ export function GreenMetricsSection({
             </div>
 
             <div className="green-metric-chart-card">
-              <h4>Tendencia: {selectedMetric.title}</h4>
+              <h4>
+                {queryMode === "two-records" ? "Comparación" : "Tendencia"}:{" "}
+                {selectedMetric.title}
+              </h4>
               <p className="muted">{selectedMetric.formula}</p>
               <svg
                 viewBox={`0 0 ${chartWidth} ${chartHeight}`}
@@ -1273,7 +1407,9 @@ export function GreenMetricsSection({
                         textAnchor="middle"
                         className="chart-axis-label"
                       >
-                        {entry.dateLabel}
+                        {queryMode === "two-records"
+                          ? `#${entry.id} — ${entry.dateLabel}`
+                          : entry.dateLabel}
                       </text>
                     </g>
                   );
