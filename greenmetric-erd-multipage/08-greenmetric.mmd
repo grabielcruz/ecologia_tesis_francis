@@ -1,0 +1,26 @@
+erDiagram
+    GreenMetricRecord {
+        int record_id PK
+        datetime calculation_date "unique"
+        float total_campus_area_m2
+        float green_area_m2
+        int campus_population
+        float dense_vegetation_area_m2
+        float rainwater_absorption_area_m2
+        float sustainability_budget
+        float conservation_operation_budget
+        float metric_1_green_area_ratio
+        float metric_2_green_area_per_capita
+        float metric_3_dense_vegetation_ratio
+        float metric_4_rainwater_absorption_ratio
+        float metric_5_sustainability_budget_share
+        float metric_6_conservation_operation_share
+        int created_by_user_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    User {
+        int user_id PK
+        string referencia
+    }
+    User ||--o{ GreenMetricRecord : registra_cálculos

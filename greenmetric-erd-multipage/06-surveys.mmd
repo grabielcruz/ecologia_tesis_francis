@@ -1,0 +1,24 @@
+erDiagram
+    Survey {
+        int survey_id PK
+        string title
+        text description
+        enum type "yesno|scale"
+        boolean active
+        datetime created_at
+        datetime updated_at
+    }
+    SurveyResponse {
+        int survey_response_id PK
+        int survey_id FK "unique with user_id"
+        int user_id FK "unique with survey_id"
+        string answer
+        datetime created_at
+        datetime updated_at
+    }
+    User {
+        int user_id PK
+        string referencia
+    }
+    Survey ||--o{ SurveyResponse : recibe_respuestas
+    User ||--o{ SurveyResponse : responde

@@ -1,0 +1,31 @@
+erDiagram
+    Role {
+        int role_id PK
+        string role_name "unique"
+        string description
+        datetime created_at
+        datetime updated_at
+    }
+    User {
+        int user_id PK
+        string name
+        string email "unique"
+        string username "unique"
+        string password_hash
+        string avatar_url
+        boolean is_active
+        int role_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    FindFlowerScore {
+        int find_flower_score_id PK
+        int user_id FK "unique"
+        int max_score
+        int best_time_seconds "nullable"
+        int best_moves "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+    Role ||--o{ User : asigna
+    User ||--|| FindFlowerScore : tiene_puntuación

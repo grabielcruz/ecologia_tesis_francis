@@ -1,0 +1,22 @@
+erDiagram
+    ReportOfGreenArea {
+        int report_of_green_area_id PK
+        string title
+        text description
+        text url_images
+        string state
+        datetime created_at
+        datetime updated_at
+        int user_id FK
+        int space_id FK
+    }
+    User {
+        int user_id PK
+        string referencia
+    }
+    GreenSpace {
+        int space_id PK
+        string referencia
+    }
+    User ||--o{ ReportOfGreenArea : crea
+    GreenSpace ||--o{ ReportOfGreenArea : tiene_reportes

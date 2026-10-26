@@ -1,0 +1,37 @@
+erDiagram
+    ProjectOfProposal {
+        int project_of_proposal_id PK
+        string title
+        text description
+        enum completed_status "planned|in_progress|completed"
+        int proposal_of_green_area_id FK
+        int space_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    ProjectUpdateOfProposal {
+        int project_update_of_proposal_id PK
+        string title
+        text description
+        text activity_images
+        int project_of_proposal_id FK
+        int user_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    ProposalOfGreenArea {
+        int proposal_of_green_area_id PK
+        string referencia
+    }
+    GreenSpace {
+        int space_id PK
+        string referencia
+    }
+    User {
+        int user_id PK
+        string referencia
+    }
+    ProposalOfGreenArea ||--o{ ProjectOfProposal : genera
+    GreenSpace ||--o{ ProjectOfProposal : se_ejecuta_en
+    ProjectOfProposal ||--o{ ProjectUpdateOfProposal : registra_avances
+    User ||--o{ ProjectUpdateOfProposal : registra

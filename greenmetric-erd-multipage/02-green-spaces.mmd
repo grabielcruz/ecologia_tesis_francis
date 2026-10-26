@@ -1,0 +1,54 @@
+erDiagram
+    GreenSpace {
+        int space_id PK
+        string name
+        string location
+        int total_area_m2
+        int trees_count
+        text images
+        text perimeter_points
+        datetime created_at
+        datetime updated_at
+    }
+    GreenSpaceReview {
+        int green_space_review_id PK
+        int space_id FK
+        int user_id FK
+        string review_notes
+        int rating
+        datetime created_at
+        datetime updated_at
+    }
+    TreeType {
+        int type_id PK
+        string name
+        string description
+        text reference_images
+        datetime created_at
+        datetime updated_at
+    }
+    TreeInventory {
+        int tree_id PK
+        string name
+        enum health_status "healthy|regular|sick|dead"
+        int space_id FK
+        int type_id FK "nullable"
+        double latitude "nullable"
+        double longitude "nullable"
+        enum status "pending|approved|rejected"
+        int submitted_by_user_id FK
+        int validated_by_user_id FK "nullable"
+        text images
+        datetime created_at
+        datetime updated_at
+    }
+    User {
+        int user_id PK
+        string referencia
+    }
+    GreenSpace ||--o{ TreeInventory : contiene
+    TreeType ||--o{ TreeInventory : clasifica
+    User ||--o{ TreeInventory : registra
+    User ||--o{ TreeInventory : valida
+    GreenSpace ||--o{ GreenSpaceReview : recibe
+    User ||--o{ GreenSpaceReview : escribe

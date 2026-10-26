@@ -1,0 +1,37 @@
+erDiagram
+    ProposalOfGreenArea {
+        int proposal_of_green_area_id PK
+        string title
+        text description
+        enum status "draft|open|closed|approved|rejected"
+        int total_votes
+        int minimum_votes_required "nullable"
+        datetime voting_starts "nullable"
+        datetime voting_ends "nullable"
+        string approximate_execution_duration "nullable"
+        float estimated_budget "nullable"
+        text proposal_images
+        text rejection_reason "nullable"
+        int user_id FK
+        int space_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    VoteOfProposal {
+        int vote_of_proposal_id PK
+        int proposal_of_green_area_id FK
+        int user_id FK
+        datetime created_at
+    }
+    User {
+        int user_id PK
+        string referencia
+    }
+    GreenSpace {
+        int space_id PK
+        string referencia
+    }
+    GreenSpace ||--o{ ProposalOfGreenArea : recibe_propuestas
+    User ||--o{ ProposalOfGreenArea : propone
+    ProposalOfGreenArea ||--o{ VoteOfProposal : recibe_votos
+    User ||--o{ VoteOfProposal : vota

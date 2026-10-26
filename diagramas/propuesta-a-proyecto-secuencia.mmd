@@ -1,0 +1,45 @@
+sequenceDiagram
+    autonumber
+    actor Admin as Administrador
+    actor Usuario as Usuario regular
+    participant UI as Frontend (Propuestas)
+    participant API as API /api/proposals
+    participant DB as Base de datos
+
+    Note over Admin,DB: 1) Validacion administrativa inicial
+    Admin->>UI: Completa datos de la propuesta (minimo votos, fechas, duracion, presupuesto)
+    UI->>API: PATCH /proposals/:id/decision (decision=accepted)
+    API->>DB: Buscar propuesta y validar restricciones
+    DB-->>API: Propuesta encontrada
+    API->>DB: Actualizar propuesta a status="open"
+    API-->>UI: Propuesta habilitada para votacion (sin proyecto todavia)
+
+    opt Rechazo administrativo (flujo alterno)
+        Admin->>UI: Rechazar propuesta con motivo
+        UI->>API: PATCH /proposals/:id/decision (decision=rejected)
+        API->>DB: Guardar status="rejected" y motivo
+        API-->>UI: Propuesta rechazada (no se crea proyecto)
+    end
+
+    Note over Usuario,DB: 2) Votacion de usuarios
+    loop Cada usuario vota una sola vez
+        Usuario->>UI: Votar propuesta
+        UI->>API: POST /proposals/:id/votes
+        API->>DB: Verificar propuesta open y voto previo
+        API->>DB: Registrar voto y recalcular total_votes
+        API-->>UI: Voto registrado correctamente
+    end
+
+    Note over Admin,DB: 3) Finalizacion y posible creacion del proyecto
+    Admin->>UI: Finalizar votacion
+    UI->>API: POST /proposals/:id/finalize
+    API->>DB: Contar votos y comparar con minimum_votes_required
+
+    alt Cumple umbral de aprobacion
+        API->>DB: Actualizar propuesta a status="approved"
+        API->>DB: Crear ProjectOfProposal con completed_status="planned"
+        API-->>UI: Respuesta con propuesta aprobada + proyecto creado
+    else No cumple umbral
+        API->>DB: Actualizar propuesta a status="closed"
+        API-->>UI: Respuesta con propuesta cerrada (sin proyecto)
+    end
